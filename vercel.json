@@ -1,7 +1,6 @@
 {
   "version": 2,
-  "framework": "hexo",
-  "buildCommand": "npm run build",
-  "installCommand": "npm install",
-  "outputDirectory": "public"
+  "installCommand": "echo \"skip install\"",
+  "buildCommand": "echo \"skip build\"",
+  "outputDirectory": "."
 }

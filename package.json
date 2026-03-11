@@ -1,34 +1,9 @@
 {
-  "name": "hexo-site",
-  "version": "0.0.0",
+  "name": "site-static",
   "private": true,
+  "version": "0.0.0",
   "scripts": {
-    "clean": "hexo clean",
-    "build": "hexo clean && hexo generate",
-    "deploy": "hexo deploy",
-    "start": "hexo server"
-  },
-  "hexo": {
-    "version": "8.1.1"
-  },
-  "type": "module",
-  "dependencies": {
-    "body-parser": "^2.2.2",
-    "cors": "^2.8.6",
-    "express": "^5.2.1",
-    "gray-matter": "^4.0.3",
-    "hexo": "^8.0.0",
-    "hexo-deployer-git": "^4.0.0",
-    "hexo-generator-archive": "^2.0.0",
-    "hexo-generator-category": "^2.0.0",
-    "hexo-generator-index": "^4.0.0",
-    "hexo-generator-search": "^2.4.3",
-    "hexo-generator-tag": "^2.0.0",
-    "hexo-renderer-ejs": "^2.0.0",
-    "hexo-renderer-marked": "^7.0.0",
-    "hexo-renderer-stylus": "^3.0.1",
-    "hexo-server": "^3.0.0",
-    "hexo-theme-landscape": "^1.0.0",
-    "js-yaml": "^4.1.1"
+    "install": "echo \"skip install\"",
+    "build": "echo \"skip build\""
   }
 }
