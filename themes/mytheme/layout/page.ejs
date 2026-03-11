@@ -1,0 +1,7 @@
+<%
+  const p = page && page.path ? String(page.path) : '';
+  let target = 'home';
+  if (p.startsWith('about')) target = 'about';
+  if (p.startsWith('login')) target = 'login';
+%>
+<div id="spa-route" style="display:none" data-page="<%= target %>"></div>

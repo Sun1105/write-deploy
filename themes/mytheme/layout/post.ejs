@@ -1,0 +1,7 @@
+<%
+  const sourcePath = page && page.source ? String(page.source) : '';
+  let filename = sourcePath.split(/[\\/]/).pop() || '';
+  if (!filename && page && page.slug) filename = String(page.slug);
+  if (filename && !filename.toLowerCase().endsWith('.md')) filename = filename + '.md';
+%>
+<div id="spa-route" style="display:none" data-page="article" data-param="<%= filename %>"></div>

@@ -1,0 +1,57 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "hexo-build",
+      "type": "shell",
+      "command": "hexo clean; hexo generate",
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      }
+    },
+    {
+      "label": "hexo-serve",
+      "type": "shell",
+      "command": "node --inspect=9229 ./node_modules/hexo/bin/hexo server",
+      "isBackground": true,
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      },
+      "problemMatcher": [
+        {
+          "pattern": [
+            {
+              "regexp": ".",
+              "file": 1,
+              "location": 2,
+              "message": 3
+            }
+          ],
+          "background": {
+            "activeOnStart": true,
+            "beginsPattern": "INFO[\\s\\S]*Hexo is running at|Hexo is running at",
+            "endsPattern": "INFO[\\s\\S]*Hexo is running at|Hexo is running at"
+          }
+        }
+      ]
+    },
+    {
+      "label": "open-localhost",
+      "type": "shell",
+      "command": "powershell -Command \"Start-Sleep -Seconds 1; Start-Process 'http://localhost:4000'\"",
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "silent",
+        "panel": "shared"
+      }
+    },
+    {
+      "label": "run-hexo-and-open",
+      "dependsOn": ["hexo-build", "hexo-serve", "open-localhost"],
+      "dependsOrder": "sequence"
+    }
+  ]
+}

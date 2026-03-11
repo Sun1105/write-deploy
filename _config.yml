@@ -1,0 +1,83 @@
+# ----------------------------------------------------------
+# 🏠 站点基本信息
+# ----------------------------------------------------------
+title: Sun Blog                       # 博客标题
+subtitle: '技术笔记与生活记录'           # 博客副标题
+description: '一个记录开发、学习与生活点滴的博客'  # 网站描述，用于SEO
+keywords: [Java, Spring Boot, Hexo, 日本生活]  # 网站关键词
+author: SUN                           # 作者名
+language: zh-CN                       # 网站语言
+timezone: Asia/Tokyo                  # 时区（日本时间）
+
+# 分类和标签的默认路径
+category_dir: categories   # 分类页面路径前缀，例如 /categories/Java/
+tag_dir: tags              # 标签页面路径前缀，例如 /tags/Hexo/
+archive_dir: archives      # 归档页面的路径（默认 archives/）
+per_page: 0               # 每页文章数量
+
+# ----------------------------------------------------------
+# 📝 Index Generator
+# ----------------------------------------------------------
+index_generator:
+  path: blog
+  per_page: 10
+  order_by: -date
+
+# ----------------------------------------------------------
+# 🎨 主题设置
+# ----------------------------------------------------------
+theme: mytheme
+
+# ----------------------------------------------------------
+# 🔍 搜索配置
+# ----------------------------------------------------------
+search:
+  path: search.xml
+  field: post
+  content: true
+  format: html
+
+# ----------------------------------------------------------
+# 🌐 网站 URL 设置
+# ----------------------------------------------------------
+# 如果部署到 Vercel，请填写 Vercel 的域名
+# 如果使用 GitHub Pages，请填写 GitHub 的域名
+url: https://your-vercel-site.vercel.app
+
+# ----------------------------------------------------------
+# 💡 代码高亮设置
+# ----------------------------------------------------------
+syntax_highlighter: highlight.js
+
+highlight:
+  line_number: true        # 显示行号
+  auto_detect: false       # 自动检测语言
+  tab_replace: ''          # tab 替换为空格数
+  wrap: true               # 自动换行
+  hljs: false              # 是否启用 highlight.js 样式
+
+prismjs:
+  preprocess: true
+  line_number: true
+  tab_replace: ''
+
+# ----------------------------------------------------------
+# 🕓 日期与时间格式
+# ----------------------------------------------------------
+date_format: YYYY-MM-DD
+time_format: HH:mm:ss
+updated_option: 'mtime'     # 更新时间依据：mtime 表示文件修改时间
+
+# ----------------------------------------------------------
+# 🚀 部署配置（支持 GitHub Pages + Vercel 双部署）
+# ----------------------------------------------------------
+# 执行 `hexo deploy` 时，会同时推送到两个远程仓库
+deploy:
+  type: git
+  message: "Auto deploy from Hexo at {{ now('YYYY-MM-DD HH:mm:ss') }}"
+  repo:
+    # ① GitHub Pages 仓库：主站（https://Sun1105.github.io）
+    github: git@github.com:Sun1105/Sun1105.github.io.git,master
+
+    # ② Vercel 部署仓库：用于 Vercel 自动构建（如 blog-source-lime.vercel.app）
+    vercel: git@github.com:Sun1105/hexo-deploy.git,main
