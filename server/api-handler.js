@@ -290,7 +290,7 @@ function safeUsername(username) {
   const u = String(username || '').trim();
   if (!u) return '';
   if (u.length > 40) return '';
-  if (!/^[a-zA-Z0-9._@\-]+$/.test(u)) return '';
+  if (!/^[a-zA-Z0-9._@\\-]+$/.test(u)) return '';
   return u;
 }
 
@@ -444,7 +444,7 @@ async function handleStats(req, res) {
   const usersFile = 'data/users.json';
 
   const entries = await listDir(owner, repo, headers, postsDir);
-  const postCount = entries.filter(e => e && e.type === 'file' && /\.md$/i.test(e.name || '')).length;
+  const postCount = entries.filter(e => e && e.type === 'file' && /\\.md$/i.test(e.name || '')).length;
 
   const comments = await readJsonFileOr(owner, repo, headers, commentsFile, []);
   const commentList = Array.isArray(comments.data) ? comments.data : [];
@@ -467,14 +467,14 @@ async function handlePosts(req, res) {
   const dirPath = 'data/posts';
   try {
     const entries = await listDir(owner, repo, headers, dirPath);
-    const files = entries.filter(e => e && e.type === 'file' && /\.md$/i.test(e.name || ''));
+    const files = entries.filter(e => e && e.type === 'file' && /\\.md$/i.test(e.name || ''));
     const results = await Promise.all(
       files.map(async (file) => {
         const meta = {
           filename: file.name,
           path: file.path,
           sha: file.sha,
-          title: (file.name || '').replace(/\.md$/i, ''),
+          title: (file.name || '').replace(/\\.md$/i, ''),
           date: null,
           tags: [],
           categories: [],
@@ -702,7 +702,7 @@ async function handleNovels(req, res) {
         const id = dir.name;
         const meta = await readJsonFileOr(owner, repo, headers, `${baseDir}/${id}/meta.json`, { title: id });
         const chapterList = await listDir(owner, repo, headers, `${baseDir}/${id}`);
-        const chapters = chapterList.filter(e => e && e.type === 'file' && /\.md$/i.test(e.name || '')).map(e => e.name).sort();
+        const chapters = chapterList.filter(e => e && e.type === 'file' && /\\.md$/i.test(e.name || '')).map(e => e.name).sort();
         return { ...(meta.data || { title: id }), id, chapters: chapters.length, firstChapter: chapters[0] || null };
       })
     );
@@ -730,8 +730,8 @@ async function handleNovel(req, res) {
 
 function slugify(input) {
   const raw = String(input || '').trim();
-  const normalized = raw.replace(/\s+/g, '-');
-  const cleaned = normalized.replace(/[^\w\u4e00-\u9fa5-]+/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
+  const normalized = raw.replace(/\\s+/g, '-');
+  const cleaned = normalized.replace(/[^\\w\\u4e00-\\u9fa5-]+/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
   return cleaned || 'novel';
 }
 
@@ -747,8 +747,8 @@ async function handleNovelChapter(req, res) {
   const meta = await readJsonFileOr(owner, repo, headers, `${baseDir}/meta.json`, { title: novelId });
   const list = await listDir(owner, repo, headers, baseDir);
   const chapters = list
-    .filter(e => e && e.type === 'file' && /\.md$/i.test(e.name || ''))
-    .map(e => ({ filename: e.name, title: String(e.name || '').replace(/\.md$/i, '') }))
+    .filter(e => e && e.type === 'file' && /\\.md$/i.test(e.name || ''))
+    .map(e => ({ filename: e.name, title: String(e.name || '').replace(/\\.md$/i, '') }))
     .sort((a, b) => a.filename.localeCompare(b.filename));
 
   if (req.method === 'GET') {
@@ -763,7 +763,7 @@ async function handleNovelChapter(req, res) {
     if (chapter.content == null) return res.status(404).json({ error: 'Chapter not found' });
     return res.status(200).json({
       novelTitle: meta.data && meta.data.title ? meta.data.title : novelId,
-      title: normalized.replace(/\.md$/i, ''),
+      title: normalized.replace(/\\.md$/i, ''),
       filename: normalized,
       sha: chapter.sha,
       content: chapter.content,
@@ -799,6 +799,6 @@ async function handleNovelChapter(req, res) {
 
 function normalizeChapterFilename(input) {
   const raw = String(input || '').trim();
-  const cleaned = raw.replace(/[^a-z0-9.\u4e00-\u9fa5_-]/gi, '_');
+  const cleaned = raw.replace(/[^a-z0-9.\\u4e00-\\u9fa5_-]/gi, '_');
   return cleaned.toLowerCase().endsWith('.md') ? cleaned : `${cleaned}.md`;
 }

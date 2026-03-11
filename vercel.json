@@ -1,5 +1,24 @@
 {
   "version": 2,
   "buildCommand": "npm run build",
-  "outputDirectory": "public"
+  "outputDirectory": "public",
+  "rewrites": [
+    { "source": "/api/login", "destination": "/api/auth?route=login" },
+    { "source": "/api/register", "destination": "/api/auth?route=register" },
+    { "source": "/api/me", "destination": "/api/auth?route=me" },
+
+    { "source": "/api/posts", "destination": "/api/content?route=posts" },
+    { "source": "/api/post", "destination": "/api/content?route=post" },
+    { "source": "/api/novels", "destination": "/api/content?route=novels" },
+    { "source": "/api/novel", "destination": "/api/content?route=novel" },
+    { "source": "/api/novel-chapter", "destination": "/api/content?route=novel-chapter" },
+    { "source": "/api/upload", "destination": "/api/content?route=upload" },
+
+    { "source": "/api/stats", "destination": "/api/admin?route=stats" },
+    { "source": "/api/settings", "destination": "/api/admin?route=settings" },
+    { "source": "/api/comments", "destination": "/api/admin?route=comments" },
+    { "source": "/api/comment", "destination": "/api/admin?route=comment" },
+    { "source": "/api/users", "destination": "/api/admin?route=users" },
+    { "source": "/api/user", "destination": "/api/admin?route=user" }
+  ]
 }
