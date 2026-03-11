@@ -315,7 +315,7 @@
         <div class="admin-nav-item" id="adminNav-articles" onclick="showAdminPage('articles')">
           <span class="nav-icon">📝</span> 文章管理
         </div>
-        <div class="admin-nav-item" id="adminNav-editor" onclick="showAdminPage('editor')">
+        <div class="admin-nav-item" id="adminNav-editor" onclick="newPost()">
           <span class="nav-icon">✏️</span> 写作编辑器
         </div>
         <div class="admin-nav-item" id="adminNav-novels" onclick="showAdminPage('novels')">
@@ -450,7 +450,7 @@
           </div>
 
           <div class="admin-quick-links">
-            <div class="quick-link" onclick="showAdminPage('editor')"><div class="quick-link-icon">✏️</div><div class="quick-link-label">写新文章</div></div>
+            <div class="quick-link" onclick="newPost()"><div class="quick-link-icon">✏️</div><div class="quick-link-label">写新文章</div></div>
             <div class="quick-link" onclick="showAdminPage('comments')"><div class="quick-link-icon">💬</div><div class="quick-link-label">审核评论 (7)</div></div>
             <div class="quick-link" onclick="showAdminPage('novels')"><div class="quick-link-icon">📖</div><div class="quick-link-label">更新小说</div></div>
             <div class="quick-link" onclick="showAdminPage('settings')"><div class="quick-link-icon">⚙️</div><div class="quick-link-label">网站设置</div></div>
@@ -463,7 +463,7 @@
           <div class="admin-page-title">文章管理</div>
           <div class="admin-header-actions">
             <div class="admin-search"><span class="admin-search-icon">🔍</span><input placeholder="搜索文章…"></div>
-            <button class="btn btn-admin" onclick="showAdminPage('editor')">+ 新建文章</button>
+            <button class="btn btn-admin" onclick="newPost()">+ 新建文章</button>
           </div>
         </div>
         <div class="admin-content">
@@ -577,6 +577,26 @@
                 <thead><tr><th>小说名</th><th>类型</th><th>章节数</th><th>总字数</th><th>状态</th><th>最后更新</th><th>操作</th></tr></thead>
                 <tbody></tbody>
               </table>
+            </div>
+          </div>
+
+          <div class="table-card" id="novelChaptersCard" style="margin-top:1rem;display:none">
+            <div class="table-card-header" style="display:flex;align-items:center;justify-content:space-between;gap:12px">
+              <div class="table-card-title" id="novelChaptersTitle">章节管理</div>
+              <div style="display:flex;gap:.5rem">
+                <button class="btn btn-admin-outline btn-sm" onclick="newNovelChapter()">新建章节</button>
+                <button class="btn btn-admin btn-sm" onclick="saveNovelChapter()">保存章节</button>
+                <button class="btn btn-sm" style="color:var(--red);border:1px solid rgba(239,68,68,.3);border-radius:5px;padding:.3rem .7rem;font-size:12px;background:transparent" onclick="deleteNovelChapter()">删除章节</button>
+              </div>
+            </div>
+            <div style="display:grid;grid-template-columns:260px 1fr;gap:12px;padding:12px">
+              <div style="border:1px solid var(--admin-border);border-radius:8px;padding:10px;max-height:420px;overflow:auto">
+                <div id="novelChaptersList"></div>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:.6rem">
+                <input class="settings-input" id="novelChapterFilename" placeholder="章节文件名，如 001-第一章.md" />
+                <textarea class="editor-textarea" id="novelChapterContent" style="min-height:380px"></textarea>
+              </div>
             </div>
           </div>
         </div>

@@ -5,6 +5,9 @@ let CURRENT_USER = null;
 let currentEditingFile = null;
 let currentEditingSha = null;
 let currentEditingDate = null;
+let currentNovelId = null;
+let currentNovelChapterFile = null;
+let currentNovelChapterSha = null;
 
 function apiUrl(pathname) {
   const p = pathname.startsWith('/') ? pathname : `/${pathname}`;
@@ -145,6 +148,11 @@ function updateNavUser() {
     if (!actions) return;
     const initial = CURRENT_USER.name ? String(CURRENT_USER.name).slice(0, 1) : 'U';
     actions.innerHTML = `<div class="nav-avatar" onclick="setMode('admin')" title="进入后台">${escapeHtml(initial)}</div>`;
+
+    const adminName = document.querySelector('.admin-user-name');
+    const adminRole = document.querySelector('.admin-user-role');
+    if (adminName) adminName.textContent = CURRENT_USER.name || CURRENT_USER.username || 'User';
+    if (adminRole) adminRole.textContent = CURRENT_USER.role === 'admin' ? 'Administrator' : 'User';
   }
 }
 
@@ -246,6 +254,13 @@ async function editPost(filename) {
     console.error(err);
     showToast('加载文章失败');
   }
+}
+
+function newPost() {
+  currentEditingFile = null;
+  currentEditingSha = null;
+  currentEditingDate = null;
+  showAdminPage('editor');
 }
 
 async function savePost(publish = false) {
@@ -817,6 +832,7 @@ function showAdminPage(name) {
   if (name === 'articles') fetchPosts();
   if (name === 'novels') fetchNovels();
   if (name === 'comments') fetchAdminComments();
+  if (name === 'users') fetchAdminUsers();
   if (name === 'settings') fetchSettings();
   if (name === 'editor' && !currentEditingFile) {
      // Clear editor for new post
@@ -847,15 +863,22 @@ async function fetchSettings() {
       rows[1].value = data.description || '';
       rows[2].value = data.author || '';
     }
+    const toggle = document.querySelector('.settings-toggle');
+    if (toggle) {
+      const on = data.allowRegister !== false;
+      toggle.classList.toggle('on', on);
+    }
   } catch (err) { console.error(err); }
 }
 
 async function saveSettings() {
   const rows = document.querySelectorAll('.settings-row input');
+  const toggle = document.querySelector('.settings-toggle');
   const settings = {
     title: rows[0].value,
     description: rows[1].value,
-    author: rows[2].value
+    author: rows[2].value,
+    allowRegister: toggle ? toggle.classList.contains('on') : true
   };
   
   try {
@@ -871,7 +894,7 @@ async function saveSettings() {
 
 async function fetchAdminComments() {
   try {
-    const res = await fetch(apiUrl('/comments'));
+    const res = await fetch(apiUrl('/comments'), { headers: withAuthHeaders({}) });
     const comments = await safeJson(res) || [];
     
     // Update tabs
@@ -887,20 +910,16 @@ async function fetchAdminComments() {
       tabs[3].textContent = hidden;
     }
     
-    // Render list (showing all for now, or could filter)
     const container = document.querySelector('#adminPage-comments .admin-content');
-    // Keep header and tabs, remove old cards
+    if (!container) return;
     const oldCards = container.querySelectorAll('.comment-mod-card');
     oldCards.forEach(c => c.remove());
     
     comments.forEach(c => {
       const card = document.createElement('div');
       card.className = 'comment-mod-card';
-      if (c.status === 'pending') {
-        card.style.borderColor = 'rgba(251,191,36,.3)';
-        card.querySelector('.comment-mod-header')?.style.background = 'rgba(251,191,36,.05)';
-      }
       
+      const userName = c && c.user ? String(c.user) : 'Anonymous';
       const statusBadge = c.status === 'pending' ? '<span class="status-badge status-pending">⏳ 待审核</span>' :
                           c.status === 'approved' ? '<span class="status-badge status-published">已通过</span>' :
                           '<span class="status-badge status-hidden">⚠ 已隐藏</span>';
@@ -908,9 +927,9 @@ async function fetchAdminComments() {
       card.innerHTML = `
         <div class="comment-mod-header">
           <div class="comment-mod-user">
-            <div class="comment-mod-avatar" style="background:${getRandomGradient(c.user)}">${c.user[0]}</div>
+            <div class="comment-mod-avatar" style="background:${getRandomGradient(userName)}">${escapeHtml(userName.slice(0, 1) || 'U')}</div>
             <div>
-              <div class="comment-mod-name">${c.user}</div>
+              <div class="comment-mod-name">${escapeHtml(userName)}</div>
               <div class="comment-mod-meta">${new Date(c.date).toLocaleString()}</div>
             </div>
           </div>
@@ -926,10 +945,107 @@ async function fetchAdminComments() {
           <button class="btn btn-sm" style="color:var(--red);border:1px solid rgba(239,68,68,.3);background:transparent;border-radius:5px;padding:.3rem .7rem;font-size:12px" onclick="deleteComment('${c.id}')">删除</button>
         </div>
       `;
+
+      if (c.status === 'pending') {
+        card.style.borderColor = 'rgba(251,191,36,.3)';
+        const header = card.querySelector('.comment-mod-header');
+        if (header) header.style.background = 'rgba(251,191,36,.05)';
+      }
       container.appendChild(card);
     });
     
   } catch (err) { console.error(err); }
+}
+
+async function fetchAdminUsers() {
+  try {
+    const res = await fetch(apiUrl('/users'), { headers: withAuthHeaders({}) });
+    const users = await safeJson(res) || [];
+    const tbody = document.querySelector('#adminPage-users tbody');
+    if (!tbody) return;
+
+    tbody.innerHTML = users.map(u => {
+      const name = u && u.name ? String(u.name) : (u && u.username ? String(u.username) : 'User');
+      const username = u && u.username ? String(u.username) : '';
+      const role = u && u.role ? String(u.role) : 'user';
+      const created = u && u.createdAt ? new Date(u.createdAt).toLocaleDateString() : '-';
+      const id = u && u.id ? String(u.id) : username;
+      const roleBadge = role === 'admin'
+        ? '<span class="status-badge status-published">管理员</span>'
+        : '<span class="status-badge status-draft">用户</span>';
+
+      const toggleTo = role === 'admin' ? 'user' : 'admin';
+      const toggleLabel = role === 'admin' ? '降为用户' : '设为管理员';
+
+      return `
+        <tr>
+          <td>
+            <div style="display:flex;align-items:center;gap:.75rem">
+              <div class="comment-mod-avatar" style="background:${getRandomGradient(username || name)}">${escapeHtml((name || 'U').slice(0, 1))}</div>
+              <div>
+                <div style="font-size:13.5px;font-weight:600;color:var(--admin-text)">${escapeHtml(name)}</div>
+                <div style="font-size:12px;color:var(--admin-muted)">@${escapeHtml(username || '-') }</div>
+              </div>
+            </div>
+          </td>
+          <td style="font-family:'DM Mono',monospace;font-size:12px;color:var(--admin-muted)">${escapeHtml(username || '-')}</td>
+          <td>${roleBadge}</td>
+          <td><span class="status-badge status-published">正常</span></td>
+          <td style="font-family:'DM Mono',monospace;font-size:12px">-</td>
+          <td style="font-family:'DM Mono',monospace;font-size:12px;color:var(--admin-muted)">${created}</td>
+          <td>
+            <div style="display:flex;gap:.4rem">
+              <button class="btn btn-admin-outline btn-sm" onclick="setUserRole('${id}', '${toggleTo}')">${toggleLabel}</button>
+              <button class="btn btn-sm" style="color:var(--red);border:1px solid rgba(239,68,68,.3);border-radius:5px;padding:.3rem .7rem;font-size:12px;background:transparent" onclick="deleteUser('${id}')">删除</button>
+            </div>
+          </td>
+        </tr>
+      `;
+    }).join('');
+  } catch (err) {
+    console.error(err);
+    showToast('加载用户失败');
+  }
+}
+
+async function setUserRole(id, role) {
+  try {
+    const res = await fetch(apiUrl(`/user?id=${encodeURIComponent(id)}`), {
+      method: 'PUT',
+      headers: withAuthHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify({ role })
+    });
+    const data = await safeJson(res) || {};
+    if (!res.ok) {
+      showToast(data.error ? `操作失败: ${data.error}` : '操作失败');
+      return;
+    }
+    await fetchAdminUsers();
+    showToast('操作成功');
+  } catch (err) {
+    console.error(err);
+    showToast('操作失败');
+  }
+}
+
+async function deleteUser(id) {
+  if (!confirm('确定删除该用户？')) return;
+  try {
+    const res = await fetch(apiUrl(`/user?id=${encodeURIComponent(id)}`), {
+      method: 'DELETE',
+      headers: withAuthHeaders({ 'Content-Type': 'application/json' })
+    });
+    const data = await safeJson(res) || {};
+    if (!res.ok) {
+      showToast(data.error ? `删除失败: ${data.error}` : '删除失败');
+      return;
+    }
+    await fetchAdminUsers();
+    showToast('已删除');
+  } catch (err) {
+    console.error(err);
+    showToast('删除失败');
+  }
 }
 
 async function moderateComment(id, status) {
@@ -1014,12 +1130,144 @@ async function fetchNovels() {
         <td><span class="status-badge ${n.status === 'finished' ? 'status-completed' : 'status-ongoing'}">${n.status === 'finished' ? '✓ 已完结' : '● 连载中'}</span></td>
         <td style="font-family:'DM Mono',monospace;font-size:12px;color:var(--admin-muted)">${new Date(n.created || Date.now()).toLocaleDateString()}</td>
         <td><div style="display:flex;gap:.4rem">
-          <button class="btn btn-admin-outline btn-sm" onclick="alert('TODO: Add Chapter UI')">新增章节</button>
-          <button class="btn btn-admin-outline btn-sm">编辑</button>
+          <button class="btn btn-admin-outline btn-sm" onclick="openNovelChapters('${n.id}')">管理章节</button>
         </div></td>
       </tr>
     `).join('');
   } catch (err) { console.error(err); }
+}
+
+async function openNovelChapters(novelId) {
+  currentNovelId = novelId;
+  currentNovelChapterFile = null;
+  currentNovelChapterSha = null;
+
+  const card = document.getElementById('novelChaptersCard');
+  if (!card) {
+    showToast('章节面板缺失');
+    return;
+  }
+  card.style.display = 'block';
+
+  await refreshNovelChaptersList();
+}
+
+async function refreshNovelChaptersList() {
+  if (!currentNovelId) return;
+  const listEl = document.getElementById('novelChaptersList');
+  const titleEl = document.getElementById('novelChaptersTitle');
+  if (!listEl || !titleEl) return;
+
+  const res = await fetch(apiUrl(`/novel-chapter?novelId=${encodeURIComponent(currentNovelId)}`));
+  const data = await safeJson(res) || {};
+  const chapters = Array.isArray(data.chapters) ? data.chapters : [];
+  titleEl.textContent = data.novelTitle ? `章节管理 · ${data.novelTitle}` : '章节管理';
+
+  listEl.innerHTML = chapters.length
+    ? chapters.map(c => `<div class="chapter-toc-item" onclick="loadNovelChapterForEdit('${currentNovelId}','${c.filename}')">${escapeHtml(c.title || c.filename)}</div>`).join('')
+    : `<div style="color:var(--admin-muted);font-size:13px;padding:.5rem 0">暂无章节</div>`;
+
+  const filenameInput = document.getElementById('novelChapterFilename');
+  const contentInput = document.getElementById('novelChapterContent');
+  if (filenameInput) filenameInput.value = '';
+  if (contentInput) contentInput.value = '';
+}
+
+async function newNovelChapter() {
+  if (!currentNovelId) return;
+  const filename = prompt('请输入章节文件名（例如：001-第一章.md）');
+  if (!filename) return;
+  const normalized = filename.endsWith('.md') ? filename : `${filename}.md`;
+
+  currentNovelChapterFile = normalized;
+  currentNovelChapterSha = null;
+
+  const filenameInput = document.getElementById('novelChapterFilename');
+  const contentInput = document.getElementById('novelChapterContent');
+  if (filenameInput) filenameInput.value = normalized;
+  if (contentInput) contentInput.value = '';
+}
+
+async function loadNovelChapterForEdit(novelId, chapterFile) {
+  currentNovelId = novelId;
+  currentNovelChapterFile = chapterFile;
+  currentNovelChapterSha = null;
+
+  const filenameInput = document.getElementById('novelChapterFilename');
+  if (filenameInput) filenameInput.value = chapterFile;
+
+  const res = await fetch(apiUrl(`/novel-chapter?novelId=${encodeURIComponent(novelId)}&chapterFile=${encodeURIComponent(chapterFile)}`));
+  const data = await safeJson(res) || {};
+  const contentInput = document.getElementById('novelChapterContent');
+  if (contentInput) contentInput.value = String(data.content || '');
+  currentNovelChapterSha = data.sha || null;
+}
+
+async function saveNovelChapter() {
+  if (!currentNovelId) return;
+  const filenameInput = document.getElementById('novelChapterFilename');
+  const contentInput = document.getElementById('novelChapterContent');
+  const filename = filenameInput ? filenameInput.value.trim() : '';
+  const content = contentInput ? contentInput.value : '';
+  if (!filename) {
+    showToast('请填写章节文件名');
+    return;
+  }
+
+  const isCreate = !currentNovelChapterSha;
+  const method = isCreate ? 'POST' : 'PUT';
+  const res = await fetch(apiUrl('/novel-chapter'), {
+    method,
+    headers: withAuthHeaders({ 'Content-Type': 'application/json' }),
+    body: JSON.stringify({
+      novelId: currentNovelId,
+      filename,
+      content,
+      sha: currentNovelChapterSha || undefined
+    })
+  });
+  const data = await safeJson(res) || {};
+  if (!res.ok) {
+    showToast(data.error ? `保存失败: ${data.error}` : '保存失败');
+    return;
+  }
+
+  currentNovelChapterFile = data.filename || filename;
+  currentNovelChapterSha = data.sha || currentNovelChapterSha;
+  showToast('已保存');
+  await refreshNovelChaptersList();
+}
+
+async function deleteNovelChapter() {
+  if (!currentNovelId || !currentNovelChapterFile) {
+    showToast('请先选择章节');
+    return;
+  }
+  if (!confirm('确定删除该章节？')) return;
+
+  const res = await fetch(apiUrl('/novel-chapter'), {
+    method: 'DELETE',
+    headers: withAuthHeaders({ 'Content-Type': 'application/json' }),
+    body: JSON.stringify({
+      novelId: currentNovelId,
+      filename: currentNovelChapterFile,
+      sha: currentNovelChapterSha || undefined
+    })
+  });
+  const data = await safeJson(res) || {};
+  if (!res.ok) {
+    showToast(data.error ? `删除失败: ${data.error}` : '删除失败');
+    return;
+  }
+
+  currentNovelChapterFile = null;
+  currentNovelChapterSha = null;
+  const filenameInput = document.getElementById('novelChapterFilename');
+  const contentInput = document.getElementById('novelChapterContent');
+  if (filenameInput) filenameInput.value = '';
+  if (contentInput) contentInput.value = '';
+  showToast('已删除');
+  await refreshNovelChaptersList();
 }
 
 // ── MODE SWITCH ──
@@ -1074,9 +1322,18 @@ window.showAdminPage = showAdminPage;
 window.savePost = savePost;
 window.editPost = editPost;
 window.deletePost = deletePost;
+window.newPost = newPost;
 window.uploadMedia = uploadMedia;
 window.createNovel = createNovel;
+window.openNovelChapters = openNovelChapters;
+window.newNovelChapter = newNovelChapter;
+window.saveNovelChapter = saveNovelChapter;
+window.deleteNovelChapter = deleteNovelChapter;
+window.loadNovelChapterForEdit = loadNovelChapterForEdit;
 window.showToast = showToast;
 window.moderateComment = moderateComment;
 window.deleteComment = deleteComment;
 window.submitComment = submitComment;
+window.fetchAdminUsers = fetchAdminUsers;
+window.setUserRole = setUserRole;
+window.deleteUser = deleteUser;

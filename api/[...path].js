@@ -12,6 +12,8 @@ module.exports = async function handler(req, res) {
     if (route === 'register') return handleRegister(req, res);
     if (route === 'me') return handleMe(req, res);
 
+    if (route === 'stats') return handleStats(req, res);
+
     if (route === 'posts') return handlePosts(req, res);
     if (route === 'post') return handlePost(req, res, segments);
 
@@ -27,6 +29,7 @@ module.exports = async function handler(req, res) {
     if (route === 'novel-chapter') return handleNovelChapter(req, res);
 
     if (route === 'users') return handleUsers(req, res);
+    if (route === 'user') return handleUser(req, res);
 
     return res.status(404).json({ error: 'Not found' });
   } catch (err) {
@@ -310,7 +313,7 @@ async function writeJsonFile(owner, repo, token, filePath, data, sha, message) {
 
 async function getSettings(owner, repo, headers) {
   const filePath = 'data/settings.json';
-  const fallback = { title: '拾墨', description: '', allowRegister: true };
+  const fallback = { title: '拾墨', description: '', author: '', allowRegister: true };
   const { data } = await readJsonFileOr(owner, repo, headers, filePath, fallback);
   if (!data || typeof data !== 'object') return fallback;
   return { ...fallback, ...data };
@@ -394,6 +397,67 @@ async function handleUsers(req, res) {
   const list = Array.isArray(users) ? users : [];
   const safe = list.map(u => ({ id: u.id, username: u.username, name: u.name, role: u.role, createdAt: u.createdAt }));
   return res.status(200).json(safe);
+}
+
+async function handleUser(req, res) {
+  await requireAdmin(req);
+  const id = req.query && req.query.id ? String(req.query.id) : '';
+  if (!id) return res.status(400).json({ error: 'Missing id' });
+
+  const { owner, repo, token } = getGithubConfig();
+  const headers = githubHeaders(token);
+  const usersFile = 'data/users.json';
+  const existing = await readJsonFileOr(owner, repo, headers, usersFile, []);
+  const users = Array.isArray(existing.data) ? existing.data : [];
+
+  const idx = users.findIndex(u => u && (String(u.id) === id || String(u.username) === id));
+  if (idx === -1) return res.status(404).json({ error: 'User not found' });
+
+  if (req.method === 'PUT') {
+    const role = req.body && req.body.role ? String(req.body.role) : '';
+    if (role !== 'admin' && role !== 'user') return res.status(400).json({ error: 'Invalid role' });
+    const nextUsers = users.slice();
+    nextUsers[idx] = { ...nextUsers[idx], role };
+    await writeJsonFile(owner, repo, token, usersFile, nextUsers, existing.sha, 'Update user role');
+    return res.status(200).json({ success: true });
+  }
+
+  if (req.method === 'DELETE') {
+    const target = users[idx];
+    const remaining = users.filter((_, i) => i !== idx);
+    const remainingAdmins = remaining.filter(u => u && u.role === 'admin').length;
+    if (target && target.role === 'admin' && remainingAdmins === 0) return res.status(400).json({ error: 'Cannot delete last admin' });
+    await writeJsonFile(owner, repo, token, usersFile, remaining, existing.sha, 'Delete user');
+    return res.status(200).json({ success: true });
+  }
+
+  return res.status(405).json({ error: 'Method not allowed' });
+}
+
+async function handleStats(req, res) {
+  if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
+  const { owner, repo, token } = getGithubConfig();
+  const headers = githubHeaders(token);
+
+  const postsDir = 'data/posts';
+  const commentsFile = 'data/comments.json';
+  const usersFile = 'data/users.json';
+
+  const entries = await listDir(owner, repo, headers, postsDir);
+  const postCount = entries.filter(e => e && e.type === 'file' && /\.md$/i.test(e.name || '')).length;
+
+  const comments = await readJsonFileOr(owner, repo, headers, commentsFile, []);
+  const commentList = Array.isArray(comments.data) ? comments.data : [];
+
+  const users = await readJsonFileOr(owner, repo, headers, usersFile, []);
+  const userList = Array.isArray(users.data) ? users.data : [];
+
+  return res.status(200).json({
+    postCount,
+    commentCount: commentList.length,
+    userCount: userList.length,
+    viewCount: 28451
+  });
 }
 
 async function handlePosts(req, res) {
@@ -487,7 +551,7 @@ async function handleSettings(req, res) {
   const { owner, repo, token } = getGithubConfig();
   const headers = githubHeaders(token);
   const filePath = 'data/settings.json';
-  const fallback = { title: '拾墨', description: '', allowRegister: true };
+  const fallback = { title: '拾墨', description: '', author: '', allowRegister: true };
 
   if (req.method === 'GET') {
     const settings = await getSettings(owner, repo, headers);
@@ -513,9 +577,12 @@ async function handleComments(req, res) {
 
   if (req.method === 'GET') {
     const post = req.query && req.query.post ? String(req.query.post) : '';
+    const payload = parseToken(getBearerToken(req));
+    const isAdmin = payload && payload.role === 'admin';
     const { data } = await readJsonFileOr(owner, repo, headers, filePath, []);
     const list = Array.isArray(data) ? data : [];
-    const filtered = post ? list.filter(c => c && c.post === post) : list;
+    let filtered = post ? list.filter(c => c && c.post === post) : list;
+    if (!isAdmin) filtered = filtered.filter(c => c && c.status === 'approved');
     filtered.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
     return res.status(200).json(filtered);
   }
@@ -669,25 +736,69 @@ function slugify(input) {
 }
 
 async function handleNovelChapter(req, res) {
-  if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
-  const novelId = req.query && req.query.novelId ? String(req.query.novelId) : '';
-  const chapterFile = req.query && req.query.chapterFile ? String(req.query.chapterFile) : '';
-  if (!novelId || !chapterFile) return res.status(400).json({ error: 'Missing novelId or chapterFile' });
   const { owner, repo, token } = getGithubConfig();
   const headers = githubHeaders(token);
+  const body = req.body || {};
+  const novelId = (req.query && req.query.novelId ? String(req.query.novelId) : '') || (body.novelId ? String(body.novelId) : '');
+  const chapterFile = (req.query && req.query.chapterFile ? String(req.query.chapterFile) : '') || (body.filename ? String(body.filename) : '');
+  if (!novelId) return res.status(400).json({ error: 'Missing novelId' });
+
   const baseDir = `data/novels/${novelId}`;
   const meta = await readJsonFileOr(owner, repo, headers, `${baseDir}/meta.json`, { title: novelId });
-  const chapter = await readText(owner, repo, headers, `${baseDir}/${chapterFile}`).catch(() => ({ content: null }));
-  if (chapter.content == null) return res.status(404).json({ error: 'Chapter not found' });
   const list = await listDir(owner, repo, headers, baseDir);
   const chapters = list
     .filter(e => e && e.type === 'file' && /\.md$/i.test(e.name || ''))
     .map(e => ({ filename: e.name, title: String(e.name || '').replace(/\.md$/i, '') }))
     .sort((a, b) => a.filename.localeCompare(b.filename));
-  return res.status(200).json({
-    novelTitle: meta.data && meta.data.title ? meta.data.title : novelId,
-    title: chapterFile.replace(/\.md$/i, ''),
-    content: chapter.content,
-    chapters
-  });
+
+  if (req.method === 'GET') {
+    if (!chapterFile) {
+      return res.status(200).json({
+        novelTitle: meta.data && meta.data.title ? meta.data.title : novelId,
+        chapters
+      });
+    }
+    const normalized = normalizeChapterFilename(chapterFile);
+    const chapter = await readText(owner, repo, headers, `${baseDir}/${normalized}`).catch(() => ({ content: null, sha: null }));
+    if (chapter.content == null) return res.status(404).json({ error: 'Chapter not found' });
+    return res.status(200).json({
+      novelTitle: meta.data && meta.data.title ? meta.data.title : novelId,
+      title: normalized.replace(/\.md$/i, ''),
+      filename: normalized,
+      sha: chapter.sha,
+      content: chapter.content,
+      chapters
+    });
+  }
+
+  await requireAdmin(req);
+  const filename = normalizeChapterFilename(chapterFile);
+  const filePath = `${baseDir}/${filename}`;
+
+  if (req.method === 'POST') {
+    const content = typeof body.content === 'string' ? body.content : '';
+    const result = await writeText(owner, repo, token, filePath, content, `Create chapter ${filename}`);
+    return res.status(200).json({ success: true, filename, sha: result && result.content ? result.content.sha : undefined });
+  }
+
+  if (req.method === 'PUT') {
+    const content = typeof body.content === 'string' ? body.content : '';
+    const sha = body.sha ? String(body.sha) : (await readText(owner, repo, headers, filePath)).sha;
+    const result = await writeText(owner, repo, token, filePath, content, `Update chapter ${filename}`, sha);
+    return res.status(200).json({ success: true, filename, sha: result && result.content ? result.content.sha : undefined });
+  }
+
+  if (req.method === 'DELETE') {
+    const sha = body.sha ? String(body.sha) : (await readText(owner, repo, headers, filePath)).sha;
+    await deleteFile(owner, repo, token, filePath, `Delete chapter ${filename}`, sha);
+    return res.status(200).json({ success: true, filename });
+  }
+
+  return res.status(405).json({ error: 'Method not allowed' });
+}
+
+function normalizeChapterFilename(input) {
+  const raw = String(input || '').trim();
+  const cleaned = raw.replace(/[^a-z0-9.\u4e00-\u9fa5_-]/gi, '_');
+  return cleaned.toLowerCase().endsWith('.md') ? cleaned : `${cleaned}.md`;
 }
