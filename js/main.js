@@ -80,7 +80,8 @@ async function handleLogin() {
         }
       }, 500);
     } else {
-      showToast('登录失败: ' + data.message);
+      const msg = data.message || data.error || '登录失败';
+      showToast(`登录失败: ${msg}`);
     }
   } catch (err) {
     console.error(err);
@@ -134,7 +135,8 @@ async function handleRegister() {
       showToast('注册成功！请登录');
       showPage('login');
     } else {
-      showToast(data.message ? `注册失败: ${data.message}` : '注册失败');
+      const msg = data.message || data.error || '注册失败';
+      showToast(`注册失败: ${msg}`);
     }
   } catch (err) {
     console.error(err);
