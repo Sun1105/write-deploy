@@ -1,6 +1,5 @@
 {
   "version": 2,
-  "installCommand": "echo \"skip install\"",
-  "buildCommand": "echo \"skip build\"",
-  "outputDirectory": "."
+  "buildCommand": "npm run build",
+  "outputDirectory": "public"
 }

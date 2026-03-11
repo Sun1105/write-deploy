@@ -1,0 +1,673 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>归档 | 拾墨</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400;1,600&family=Source+Serif+4:ital,opsz,wght@0,8..60,300;0,8..60,400;0,8..60,600;1,8..60,300;1,8..60,400&family=DM+Mono:ital,wght@0,300;0,400;0,500;1,400&family=Noto+Sans+SC:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/custom.css">
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/dompurify/dist/purify.min.js"></script>
+
+</head>
+<body>
+  <div class="toast" id="toast"><span class="toast-icon">✓</span><span id="toastMsg">操作成功</span></div>
+
+  
+<div id="frontendApp">
+  <nav class="front-nav">
+    <div class="nav-logo" onclick="showPage('home')">拾<span>墨</span></div>
+    <div class="nav-links">
+      <div class="nav-link " id="navHome" onclick="showPage('home')">首页</div>
+      <div class="nav-link active" id="navArticles" onclick="showPage('articles')">文章</div>
+      <div class="nav-link " id="navNovels" onclick="showPage('novels')">小说</div>
+      <div class="nav-link " id="navAbout" onclick="showPage('about')">关于</div>
+    </div>
+    <div class="nav-actions">
+      <button class="btn btn-ghost btn-sm" onclick="showPage('login')">登录</button>
+      <button class="btn btn-primary btn-sm" onclick="showPage('register')">注册</button>
+    </div>
+  </nav>
+
+  <div class="page " id="page-home">
+    <section class="hero">
+      <div class="hero-inner">
+        <div>
+          <div class="hero-eyebrow">Personal Writing Platform</div>
+          <h1 class="hero-title">记录生命中的<br><em>每一刻灵光</em></h1>
+          <p class="hero-desc">文字是我与世界的桥梁。这里有我对生活的思考、对文学的探索，以及那些尚未完成的故事。</p>
+          <div class="hero-actions">
+            <button class="hero-btn-primary" onclick="showPage('articles')">浏览文章</button>
+            <button class="hero-btn-outline" onclick="showPage('novels')">阅读小说</button>
+          </div>
+        </div>
+        <div class="hero-side">
+          <div class="hero-card">
+            <div style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.12em;color:rgba(255,255,255,.4);margin-bottom:.75rem">LATEST WORK</div>
+            <div class="hero-card-title">《午后三时，光线斜切过窗棂》</div>
+            <div class="hero-card-meta">随笔 · 2024.03.15 · 3 分钟阅读</div>
+            <div class="hero-card-stats">
+              <div class="hero-stat"><span class="hero-stat-val">48</span><span class="hero-stat-lbl">ARTICLES</span></div>
+              <div class="hero-stat"><span class="hero-stat-val">5</span><span class="hero-stat-lbl">NOVELS</span></div>
+              <div class="hero-stat"><span class="hero-stat-val">2.1k</span><span class="hero-stat-lbl">READERS</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <div class="container">
+      <div class="section-header">
+        <div class="section-title">精选推荐</div>
+      </div>
+      <div class="featured-article" onclick="showPage('article')">
+        <div class="featured-body">
+          <div class="featured-label">Editor's Pick</div>
+          <h2 class="featured-title">在文字的迷宫里寻找出口——关于写作与存在的长篇思考</h2>
+          <p class="featured-excerpt">我们为什么要写作？不是为了被记住，不是为了留下什么，而是为了在那一刻，语言帮助我们厘清混沌，让那些浮动于意识边缘的感受变得真实而可触碰。这篇文章试图回答这个困扰我多年的问题……</p>
+          <div class="card-meta">
+            <span>2024-03-10</span>
+            <span>·</span>
+            <span>12 分钟阅读</span>
+            <span>·</span>
+            <span>3,241 次阅读</span>
+          </div>
+        </div>
+        <div class="featured-cover">📖</div>
+      </div>
+
+      <div class="cat-tabs">
+        <div class="cat-tab active">全部</div>
+        <div class="cat-tab">文章</div>
+        <div class="cat-tab">随笔</div>
+        <div class="cat-tab">评论</div>
+      </div>
+
+      <div class="articles-grid"></div>
+
+      <div class="section-header">
+        <div class="section-title">连载小说</div>
+        <div class="section-more" onclick="showPage('novels')">查看全部 →</div>
+      </div>
+      <div class="novels-grid"></div>
+    </div>
+
+    <footer class="front-footer">
+      <div class="footer-inner">
+        <div class="footer-logo">拾墨</div>
+        <p style="font-size:13px;margin-top:.5rem;max-width:360px;line-height:1.7">一个关于文字、思考与创作的私人空间。感谢你的到来。</p>
+        <div class="footer-bottom">
+          <span>© 2024 拾墨 · 保留所有权利</span>
+          <span>Powered by Next.js · Neon · Vercel</span>
+        </div>
+      </div>
+    </footer>
+  </div>
+
+  <div class="page " id="page-article">
+    <div class="container">
+      <div class="article-header">
+        <div class="article-breadcrumb">
+          <span onclick="showPage('home')">首页</span>
+          <span style="color:var(--border-2)">›</span>
+          <span>文章</span>
+        </div>
+        <div class="article-tags" style="margin-bottom:1rem"></div>
+        <h1 class="article-headline"></h1>
+        <div class="article-meta-row">
+          <div class="article-meta-item">📅 --</div>
+          <div class="article-meta-item">⏱ --</div>
+          <div class="article-meta-item">👁 --</div>
+          <div class="article-meta-item">💬 --</div>
+        </div>
+      </div>
+    </div>
+    <div class="container">
+      <div class="article-layout">
+        <div class="article-content"></div>
+        <div class="media-panel">
+          <div class="media-panel-label">配图与媒体</div>
+          <div class="media-item">
+            <div class="media-img">📚</div>
+            <div class="media-caption">媒体面板</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="container-sm">
+      <div class="comments-section">
+        <div class="comments-title">评论</div>
+        <div class="comment-input-area">
+          <textarea placeholder="写下你的想法……（登录后才能评论）" readonly onclick="showPage('login')"></textarea>
+          <div class="comment-input-footer">
+            <div class="comment-user-info">
+              <div class="comment-avatar">?</div>
+              <span>请先登录</span>
+            </div>
+            <button class="btn btn-primary btn-sm" onclick="showPage('login')">登录后评论</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="page " id="page-novels">
+    <div class="page-hero">
+      <div class="page-hero-inner">
+        <h1>连载小说</h1>
+        <p>正在进行中的故事，以及那些已经画上句号的世界</p>
+      </div>
+    </div>
+    <div class="container">
+      <div class="cat-tabs" style="padding-top:2rem">
+        <div class="cat-tab active">全部</div>
+        <div class="cat-tab">连载中</div>
+        <div class="cat-tab">已完结</div>
+        <div class="cat-tab">科幻</div>
+        <div class="cat-tab">奇幻</div>
+        <div class="cat-tab">现实主义</div>
+      </div>
+      <div class="novels-list-grid"></div>
+    </div>
+  </div>
+
+  <div class="page " id="page-chapter">
+    <div class="chapter-header">
+      <div class="chapter-back" onclick="showPage('novels')">← 返回目录</div>
+      <div class="chapter-title-bar">小说阅读</div>
+      <div class="chapter-nav-btns">
+        <button class="btn btn-outline btn-sm">← 上一章</button>
+        <button class="btn btn-primary btn-sm">下一章 →</button>
+      </div>
+    </div>
+    <div class="reading-progress"><div class="reading-progress-bar"></div></div>
+    <div class="chapter-reader-layout">
+      <div class="chapter-content-wrap">
+        <span class="chapter-num-label">章节</span>
+        <h1 class="chapter-title">章节标题</h1>
+        <div class="chapter-body"></div>
+        <div class="chapter-nav-footer">
+          <button class="btn btn-outline">← 上一章</button>
+          <button class="btn btn-primary">下一章 →</button>
+        </div>
+      </div>
+      <div>
+        <div class="chapter-toc">
+          <div class="chapter-toc-header">章节目录</div>
+          <div class="chapter-toc-list"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="page " id="page-about">
+    <div class="page-hero">
+      <div class="page-hero-inner">
+        <h1>关于作者</h1>
+        <p>一个喜欢用文字思考的人</p>
+      </div>
+    </div>
+    <div class="container-sm" style="padding:3rem 2rem 5rem">
+      <div style="display:flex;gap:3rem;align-items:flex-start;margin-bottom:3rem">
+        <div style="width:120px;height:120px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--gold));flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:2.5rem;color:white">✍</div>
+        <div>
+          <h2 style="font-family:'Playfair Display',serif;font-size:1.8rem;margin-bottom:.5rem">某位写作者</h2>
+          <p style="color:var(--ink-3);font-size:.9rem;margin-bottom:1rem;font-family:'DM Mono',monospace">作家 · 随笔作者 · 小说创作者</p>
+          <div style="display:flex;gap:.75rem;flex-wrap:wrap">
+            <span class="tag tag-green">文学</span>
+            <span class="tag tag-gold">哲学</span>
+            <span class="tag tag-blue">电影</span>
+            <span class="tag tag-gray">旅行</span>
+          </div>
+        </div>
+      </div>
+      <div style="font-size:1.02rem;line-height:1.9;color:var(--ink-2)">
+        <p>这是一个关于文字与思考的私人空间。</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="page active" id="page-articles">
+    <div class="page-hero">
+      <div class="page-hero-inner">
+        <h1>全部文章</h1>
+        <p>文章、随笔与评论</p>
+      </div>
+    </div>
+    <div class="container">
+      <div class="cat-tabs" style="padding-top:2rem">
+        <div class="cat-tab active">全部</div>
+        <div class="cat-tab">文章</div>
+        <div class="cat-tab">随笔</div>
+        <div class="cat-tab">评论</div>
+      </div>
+      <div class="articles-grid"></div>
+      <div class="pagination" style="border-color:var(--border)">
+        <button class="page-btn active" style="background:var(--accent);border-color:var(--accent);color:white">1</button>
+        <button class="page-btn" style="border-color:var(--border-2);color:var(--ink-3)">2</button>
+        <button class="page-btn" style="border-color:var(--border-2);color:var(--ink-3)">→</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="page " id="page-login">
+    <div class="auth-page">
+      <div class="auth-card">
+        <div class="auth-logo"><div class="auth-logo-text">拾墨</div></div>
+        <h2 class="auth-title">欢迎回来</h2>
+        <p class="auth-subtitle">登录你的账号，加入对话</p>
+        <div class="form-group">
+          <label class="form-label">邮箱地址</label>
+          <input type="text" id="loginUsername" class="form-input" placeholder="输入用户名">
+        </div>
+        <div class="form-group">
+          <label class="form-label">密码</label>
+          <input type="password" id="loginPassword" class="form-input" placeholder="输入密码">
+        </div>
+        <button class="form-submit" onclick="handleLogin()">登录</button>
+        <div class="auth-switch">还没有账号？<span onclick="showPage('register')">立即注册</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="page " id="page-register">
+    <div class="auth-page">
+      <div class="auth-card">
+        <div class="auth-logo"><div class="auth-logo-text">拾墨</div></div>
+        <h2 class="auth-title">创建账号</h2>
+        <p class="auth-subtitle">加入读者社区，参与内容讨论</p>
+        <div class="form-group">
+          <label class="form-label">昵称</label>
+          <input type="text" class="form-input" placeholder="你的显示名称">
+        </div>
+        <div class="form-group">
+          <label class="form-label">邮箱地址</label>
+          <input type="email" class="form-input" placeholder="your@email.com">
+        </div>
+        <div class="form-group">
+          <label class="form-label">密码</label>
+          <input type="password" class="form-input" placeholder="至少 8 位字符">
+        </div>
+        <div class="form-group">
+          <label class="form-label">确认密码</label>
+          <input type="password" class="form-input" placeholder="再次输入密码">
+        </div>
+        <button class="form-submit">注册</button>
+        <div class="auth-switch">已有账号？<span onclick="showPage('login')">直接登录</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+  <div id="adminApp" class="hidden">
+  <div class="admin-wrap">
+    <aside class="admin-sidebar">
+      <div class="admin-sidebar-logo">
+        <div class="admin-logo-text">拾墨</div>
+        <div class="admin-logo-sub">管理后台 · Admin</div>
+      </div>
+      <nav class="admin-nav">
+        <div class="admin-nav-section-label">内容管理</div>
+        <div class="admin-nav-item active" id="adminNav-dashboard" onclick="showAdminPage('dashboard')">
+          <span class="nav-icon">📊</span> 数据概览
+        </div>
+        <div class="admin-nav-item" id="adminNav-articles" onclick="showAdminPage('articles')">
+          <span class="nav-icon">📝</span> 文章管理
+        </div>
+        <div class="admin-nav-item" id="adminNav-editor" onclick="showAdminPage('editor')">
+          <span class="nav-icon">✏️</span> 写作编辑器
+        </div>
+        <div class="admin-nav-item" id="adminNav-novels" onclick="showAdminPage('novels')">
+          <span class="nav-icon">📖</span> 小说管理
+        </div>
+        <div class="admin-nav-section-label">社区管理</div>
+        <div class="admin-nav-item" id="adminNav-comments" onclick="showAdminPage('comments')">
+          <span class="nav-icon">💬</span> 评论审核
+          <span class="admin-nav-badge">7</span>
+        </div>
+        <div class="admin-nav-item" id="adminNav-users" onclick="showAdminPage('users')">
+          <span class="nav-icon">👥</span> 用户管理
+        </div>
+        <div class="admin-nav-section-label">系统</div>
+        <div class="admin-nav-item" id="adminNav-settings" onclick="showAdminPage('settings')">
+          <span class="nav-icon">⚙️</span> 网站设置
+        </div>
+        <div class="admin-nav-item" onclick="setMode('front')">
+          <span class="nav-icon">🌐</span> 前台预览
+        </div>
+      </nav>
+      <div class="admin-sidebar-footer">
+        <div class="admin-user-info">
+          <div class="admin-user-avatar">作</div>
+          <div>
+            <div class="admin-user-name">某位作者</div>
+            <div class="admin-user-role">Administrator</div>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <div class="admin-main">
+      <div class="admin-page active" id="adminPage-dashboard">
+        <div class="admin-header">
+          <div class="admin-page-title">数据概览</div>
+          <div style="margin-left:auto;font-family:'DM Mono',monospace;font-size:12px;color:var(--admin-muted)">最近 30 天 · 更新于 5 分钟前</div>
+        </div>
+        <div class="admin-content">
+          <div class="stats-grid">
+            <div class="stat-card">
+              <div class="stat-card-top">
+                <div class="stat-icon" style="background:rgba(16,185,129,.12);font-size:16px">👁</div>
+                <span class="stat-change stat-up">↑ 18.3%</span>
+              </div>
+              <div class="stat-value">28,451</div>
+              <div class="stat-label">总页面访问量</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-card-top">
+                <div class="stat-icon" style="background:rgba(59,130,246,.12)">👤</div>
+                <span class="stat-change stat-up">↑ 24.1%</span>
+              </div>
+              <div class="stat-value">1,284</div>
+              <div class="stat-label">注册用户</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-card-top">
+                <div class="stat-icon" style="background:rgba(251,191,36,.12)">💬</div>
+                <span class="stat-change stat-up">↑ 9.6%</span>
+              </div>
+              <div class="stat-value">342</div>
+              <div class="stat-label">评论总数</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-card-top">
+                <div class="stat-icon" style="background:rgba(239,68,68,.12)">📝</div>
+                <span class="stat-change stat-down">↓ 2.1%</span>
+              </div>
+              <div class="stat-value" id="statPostCount">--</div>
+              <div class="stat-label">已发布文章</div>
+            </div>
+          </div>
+
+          <div class="two-col-grid">
+            <div class="chart-card">
+              <div class="chart-header">
+                <div class="chart-title">访问量趋势</div>
+                <div class="chart-period">过去 14 天</div>
+              </div>
+              <div class="chart-bars">
+                <div class="chart-bar-wrap"><div class="chart-bar" style="height:45%"></div><div class="chart-bar-label">3/1</div></div>
+                <div class="chart-bar-wrap"><div class="chart-bar" style="height:60%"></div><div class="chart-bar-label">3/2</div></div>
+                <div class="chart-bar-wrap"><div class="chart-bar" style="height:38%"></div><div class="chart-bar-label">3/3</div></div>
+                <div class="chart-bar-wrap"><div class="chart-bar" style="height:72%"></div><div class="chart-bar-label">3/4</div></div>
+                <div class="chart-bar-wrap"><div class="chart-bar" style="height:85%"></div><div class="chart-bar-label">3/5</div></div>
+                <div class="chart-bar-wrap"><div class="chart-bar" style="height:55%"></div><div class="chart-bar-label">3/6</div></div>
+                <div class="chart-bar-wrap"><div class="chart-bar" style="height:48%"></div><div class="chart-bar-label">3/7</div></div>
+                <div class="chart-bar-wrap"><div class="chart-bar" style="height:92%"></div><div class="chart-bar-label">3/8</div></div>
+                <div class="chart-bar-wrap"><div class="chart-bar" style="height:78%"></div><div class="chart-bar-label">3/9</div></div>
+                <div class="chart-bar-wrap"><div class="chart-bar" style="height:65%"></div><div class="chart-bar-label">3/10</div></div>
+                <div class="chart-bar-wrap"><div class="chart-bar" style="height:50%"></div><div class="chart-bar-label">3/11</div></div>
+                <div class="chart-bar-wrap"><div class="chart-bar" style="height:88%"></div><div class="chart-bar-label">3/12</div></div>
+                <div class="chart-bar-wrap"><div class="chart-bar" style="height:95%"></div><div class="chart-bar-label">3/13</div></div>
+                <div class="chart-bar-wrap"><div class="chart-bar" style="height:100%;background:var(--admin-accent)"></div><div class="chart-bar-label">今天</div></div>
+              </div>
+            </div>
+
+            <div class="chart-card">
+              <div class="chart-header">
+                <div class="chart-title">热门文章 TOP 5</div>
+                <div class="chart-period">本月</div>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:.75rem">
+                <div style="display:flex;align-items:center;gap:.75rem">
+                  <span style="font-family:'DM Mono',monospace;font-size:11px;color:var(--admin-accent);width:20px">01</span>
+                  <div style="flex:1;font-size:13.5px;color:rgba(249,250,251,.8)">在文字的迷宫里寻找出口</div>
+                  <span style="font-family:'DM Mono',monospace;font-size:11.5px;color:var(--admin-muted)">3,241</span>
+                </div>
+                <div style="display:flex;align-items:center;gap:.75rem">
+                  <span style="font-family:'DM Mono',monospace;font-size:11px;color:rgba(16,185,129,.6);width:20px">02</span>
+                  <div style="flex:1;font-size:13.5px;color:rgba(249,250,251,.8)">论博尔赫斯的迷宫诗学</div>
+                  <span style="font-family:'DM Mono',monospace;font-size:11.5px;color:var(--admin-muted)">2,187</span>
+                </div>
+                <div style="display:flex;align-items:center;gap:.75rem">
+                  <span style="font-family:'DM Mono',monospace;font-size:11px;color:rgba(16,185,129,.4);width:20px">03</span>
+                  <div style="flex:1;font-size:13.5px;color:rgba(249,250,251,.8)">《奥本海默》影评</div>
+                  <span style="font-family:'DM Mono',monospace;font-size:11.5px;color:var(--admin-muted)">1,842</span>
+                </div>
+                <div style="display:flex;align-items:center;gap:.75rem">
+                  <span style="font-family:'DM Mono',monospace;font-size:11px;color:rgba(16,185,129,.3);width:20px">04</span>
+                  <div style="flex:1;font-size:13.5px;color:rgba(249,250,251,.8)">城市漫游者的孤独哲学</div>
+                  <span style="font-family:'DM Mono',monospace;font-size:11.5px;color:var(--admin-muted)">1,203</span>
+                </div>
+                <div style="display:flex;align-items:center;gap:.75rem">
+                  <span style="font-family:'DM Mono',monospace;font-size:11px;color:rgba(16,185,129,.2);width:20px">05</span>
+                  <div style="flex:1;font-size:13.5px;color:rgba(249,250,251,.8)">当音乐成为时间的容器</div>
+                  <span style="font-family:'DM Mono',monospace;font-size:11.5px;color:var(--admin-muted)">987</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="admin-quick-links">
+            <div class="quick-link" onclick="showAdminPage('editor')"><div class="quick-link-icon">✏️</div><div class="quick-link-label">写新文章</div></div>
+            <div class="quick-link" onclick="showAdminPage('comments')"><div class="quick-link-icon">💬</div><div class="quick-link-label">审核评论 (7)</div></div>
+            <div class="quick-link" onclick="showAdminPage('novels')"><div class="quick-link-icon">📖</div><div class="quick-link-label">更新小说</div></div>
+            <div class="quick-link" onclick="showAdminPage('settings')"><div class="quick-link-icon">⚙️</div><div class="quick-link-label">网站设置</div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="admin-page" id="adminPage-articles">
+        <div class="admin-header">
+          <div class="admin-page-title">文章管理</div>
+          <div class="admin-header-actions">
+            <div class="admin-search"><span class="admin-search-icon">🔍</span><input placeholder="搜索文章…"></div>
+            <button class="btn btn-admin" onclick="showAdminPage('editor')">+ 新建文章</button>
+          </div>
+        </div>
+        <div class="admin-content">
+          <div class="top-tabs">
+            <div class="top-tab active">全部 <span class="tab-count">48</span></div>
+            <div class="top-tab">已发布 <span class="tab-count">43</span></div>
+            <div class="top-tab">草稿 <span class="tab-count">4</span></div>
+            <div class="top-tab">已归档 <span class="tab-count">1</span></div>
+          </div>
+          <div class="table-card">
+            <div class="table-card-header">
+              <div class="table-card-title">文章列表</div>
+              <div style="display:flex;gap:.5rem">
+                <select style="padding:.3rem .6rem;background:var(--admin-bg);border:1px solid var(--admin-border);border-radius:5px;color:var(--admin-muted);font-size:12px">
+                  <option>全部分类</option><option>文章</option><option>随笔</option><option>评论</option>
+                </select>
+              </div>
+            </div>
+            <div class="table-wrap">
+              <table class="admin-table">
+                <thead><tr><th>标题</th><th>分类</th><th>状态</th><th>阅读量</th><th>评论</th><th>发布时间</th><th>操作</th></tr></thead>
+                <tbody id="articleListBody"></tbody>
+              </table>
+            </div>
+          </div>
+          <div class="pagination">
+            <button class="page-btn active">1</button>
+            <button class="page-btn">2</button>
+            <button class="page-btn">3</button>
+            <button class="page-btn">→</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="admin-page" id="adminPage-editor">
+        <div class="admin-header">
+          <div class="admin-page-title">写作编辑器</div>
+          <div class="admin-header-actions">
+            <button class="btn btn-admin-outline btn-sm" onclick="savePost()">保存</button>
+            <button class="btn btn-admin btn-sm" onclick="savePost(true)">发布</button>
+          </div>
+        </div>
+        <div class="admin-content">
+          <div class="editor-wrap">
+            <input class="editor-title-input" id="editorTitle" placeholder="输入文章标题…" value="">
+            <div class="editor-toolbar">
+              <button class="toolbar-btn active" title="加粗"><b>B</b></button>
+              <button class="toolbar-btn" title="斜体"><i>I</i></button>
+              <button class="toolbar-btn" title="下划线"><u>U</u></button>
+              <div class="toolbar-sep"></div>
+              <button class="toolbar-btn">H1</button>
+              <button class="toolbar-btn">H2</button>
+              <button class="toolbar-btn">H3</button>
+              <div class="toolbar-sep"></div>
+              <button class="toolbar-btn">≡</button>
+              <button class="toolbar-btn">❝</button>
+              <button class="toolbar-btn">&lt;/&gt;</button>
+              <div class="toolbar-sep"></div>
+              <button class="toolbar-btn">🔗</button>
+              <button class="toolbar-btn">—</button>
+              <div class="toolbar-sep"></div>
+              <button class="toolbar-btn" style="width:auto;padding:0 8px;font-size:11px;color:var(--admin-muted)">撤销</button>
+              <button class="toolbar-btn" style="width:auto;padding:0 8px;font-size:11px;color:var(--admin-muted)">重做</button>
+            </div>
+            <div class="editor-layout">
+              <div class="editor-body">
+                <textarea class="editor-textarea" id="editorContent" placeholder="开始写作…"></textarea>
+              </div>
+              <div class="editor-sidebar-panel">
+                <div class="editor-panel-title">文章设置</div>
+                <div class="editor-field">
+                  <label class="editor-label">分类</label>
+                  <input class="editor-input" id="editorCategory" placeholder="例如：文章, 随笔">
+                </div>
+                <div class="editor-field">
+                  <label class="editor-label">标签</label>
+                  <input class="editor-input" id="editorTags" placeholder="例如：写作, 随想">
+                </div>
+                <div class="editor-field">
+                  <label class="editor-label">摘要</label>
+                  <textarea class="editor-input" id="editorExcerpt" style="min-height:70px;resize:none;line-height:1.6" placeholder="用于列表与 SEO"></textarea>
+                </div>
+                <div class="editor-field">
+                  <label class="editor-label">文件名/Slug</label>
+                  <input class="editor-input" id="editorSlug" placeholder="例如：memory-and-forgetting">
+                </div>
+                <div class="editor-panel-title" style="margin-top:1.25rem">媒体上传</div>
+                <div class="upload-zone" onclick="document.getElementById('mediaInput').click()">
+                  <div class="upload-zone-icon">📁</div>
+                  <div class="upload-zone-text">点击或拖拽上传<br>图片 / GIF / 视频 (≤100MB)</div>
+                  <input type="file" id="mediaInput" hidden onchange="uploadMedia(this.files[0])">
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="admin-page" id="adminPage-novels">
+        <div class="admin-header">
+          <div class="admin-page-title">小说管理</div>
+          <div class="admin-header-actions">
+            <button class="btn btn-admin" onclick="createNovel()">+ 新建小说</button>
+          </div>
+        </div>
+        <div class="admin-content">
+          <div class="table-card">
+            <div class="table-card-header"><div class="table-card-title">小说列表</div></div>
+            <div class="table-wrap">
+              <table class="admin-table">
+                <thead><tr><th>小说名</th><th>类型</th><th>章节数</th><th>总字数</th><th>状态</th><th>最后更新</th><th>操作</th></tr></thead>
+                <tbody></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="admin-page" id="adminPage-comments">
+        <div class="admin-header">
+          <div class="admin-page-title">评论审核</div>
+          <div style="margin-left:auto;font-size:13px;color:var(--admin-muted)">7 条待审核</div>
+        </div>
+        <div class="admin-content">
+          <div class="top-tabs">
+            <div class="top-tab active">全部 <span class="tab-count">0</span></div>
+            <div class="top-tab">待审核 <span class="tab-count">0</span></div>
+            <div class="top-tab">已通过 <span class="tab-count">0</span></div>
+            <div class="top-tab">已隐藏 <span class="tab-count">0</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="admin-page" id="adminPage-users">
+        <div class="admin-header">
+          <div class="admin-page-title">用户管理</div>
+          <div class="admin-header-actions">
+            <div class="admin-search"><span class="admin-search-icon">🔍</span><input placeholder="搜索用户…"></div>
+          </div>
+        </div>
+        <div class="admin-content">
+          <div class="top-tabs">
+            <div class="top-tab active">全部用户 <span class="tab-count">1,284</span></div>
+            <div class="top-tab">正常 <span class="tab-count">1,278</span></div>
+            <div class="top-tab">已封禁 <span class="tab-count">6</span></div>
+          </div>
+          <div class="table-card">
+            <div class="table-wrap">
+              <table class="admin-table">
+                <thead><tr><th>用户</th><th>邮箱</th><th>角色</th><th>状态</th><th>评论数</th><th>注册时间</th><th>操作</th></tr></thead>
+                <tbody></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="admin-page" id="adminPage-settings">
+        <div class="admin-header">
+          <div class="admin-page-title">网站设置</div>
+          <div class="admin-header-actions">
+            <button class="btn btn-admin" onclick="saveSettings()">保存更改</button>
+          </div>
+        </div>
+        <div class="admin-content">
+          <div class="settings-section">
+            <div class="settings-section-header">
+              <div class="settings-section-title">基本信息</div>
+              <div class="settings-section-desc">网站名称、描述与联系方式</div>
+            </div>
+            <div class="settings-body">
+              <div class="settings-row">
+                <div class="settings-label-wrap"><div class="settings-label">网站名称</div><div class="settings-desc">显示在浏览器标签和网站 Logo 处</div></div>
+                <input class="settings-input" value="拾墨">
+              </div>
+              <div class="settings-row">
+                <div class="settings-label-wrap"><div class="settings-label">网站简介</div><div class="settings-desc">显示在 SEO meta description 和关于页</div></div>
+                <input class="settings-input" value="一个关于文字、思考与创作的私人空间">
+              </div>
+              <div class="settings-row">
+                <div class="settings-label-wrap"><div class="settings-label">作者名</div><div class="settings-desc">文章署名与关于页显示</div></div>
+                <input class="settings-input" value="某位写作者">
+              </div>
+            </div>
+          </div>
+
+          <div class="settings-section">
+            <div class="settings-section-header">
+              <div class="settings-section-title">功能开关</div>
+              <div class="settings-section-desc">控制前台功能的开启与关闭</div>
+            </div>
+            <div class="settings-body">
+              <div class="settings-row">
+                <div class="settings-label-wrap"><div class="settings-label">允许注册</div><div class="settings-desc">关闭后访客无法注册新账号</div></div>
+                <div class="settings-toggle-row"><div class="settings-toggle on" onclick="this.classList.toggle('on')"><div class="settings-toggle-knob"></div></div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+  <script src="/js/main.js"></script>
+</body>
+</html>

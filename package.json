@@ -3,7 +3,9 @@
   "private": true,
   "version": "0.0.0",
   "scripts": {
-    "install": "echo \"skip install\"",
-    "build": "echo \"skip build\""
+    "build": "node scripts/generate-static.cjs"
+  },
+  "dependencies": {
+    "ejs": "^3.1.10"
   }
 }
