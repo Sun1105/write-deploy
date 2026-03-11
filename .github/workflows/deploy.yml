@@ -19,8 +19,8 @@ jobs:
     strategy:
       matrix:
         repo:
-          - { name: "Sun1105/Sun1105.github.io", branch: "master" }  # GitHub Pages 仓库
-          - { name: "Sun1105/hexo-deploy", branch: "main" }         # 备份/CI 仓库
+          # - { name: "Sun1105/Sun1105.github.io", branch: "master" }   # GitHub Pages 仓库
+          - { name: "Sun1105/write-deploy", branch: "main" }         # 备份/CI 仓库
 
     steps:
       # 1️⃣ 拉取源码
