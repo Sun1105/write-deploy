@@ -1,7 +1,6 @@
 console.log("Main.js loaded successfully!");
 
-const IS_LOCAL = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
-const API_BASE = IS_LOCAL ? 'http://localhost:3002/api' : '/api';
+const API_BASE = '/api';
 let CURRENT_USER = null;
 let currentEditingFile = null;
 let currentEditingSha = null;
@@ -20,10 +19,21 @@ async function safeJson(res) {
   }
 }
 
+function getAuthToken() {
+  return localStorage.getItem('auth_token') || '';
+}
+
+function withAuthHeaders(headers) {
+  const token = getAuthToken();
+  if (!token) return headers || {};
+  return { ...(headers || {}), Authorization: `Bearer ${token}` };
+}
+
 // ── INIT ──
 window.addEventListener('DOMContentLoaded', () => {
   checkAuth();
   initEditorToolbar();
+  initRegisterForm();
   renderFrontendPosts();
   // If hash is present, route to it? For now default home
 });
@@ -60,7 +70,11 @@ async function handleLogin() {
       showToast('登录成功！欢迎回来 👋');
       updateNavUser();
       setTimeout(() => {
-        setMode('admin');
+        if (CURRENT_USER && CURRENT_USER.role === 'admin') {
+          setMode('admin');
+        } else {
+          setMode('front');
+        }
       }, 500);
     } else {
       showToast('登录失败: ' + data.message);
@@ -68,6 +82,60 @@ async function handleLogin() {
   } catch (err) {
     console.error(err);
     showToast('登录请求出错，请确保后台服务已启动');
+  }
+}
+
+function initRegisterForm() {
+  const page = document.getElementById('page-register');
+  if (!page) return;
+  const submit = page.querySelector('.form-submit');
+  if (!submit) return;
+  submit.onclick = handleRegister;
+}
+
+async function handleRegister() {
+  const page = document.getElementById('page-register');
+  if (!page) return;
+  const inputs = Array.from(page.querySelectorAll('input'));
+  const nameInput = inputs[0];
+  const usernameInput = inputs[1];
+  const passwordInput = inputs[2];
+  const confirmInput = inputs[3];
+
+  const name = nameInput ? nameInput.value.trim() : '';
+  const username = usernameInput ? usernameInput.value.trim() : '';
+  const password = passwordInput ? passwordInput.value : '';
+  const confirm = confirmInput ? confirmInput.value : '';
+
+  if (!username || !password) {
+    showToast('请填写用户名和密码');
+    return;
+  }
+  if (password.length < 6) {
+    showToast('密码至少 6 位');
+    return;
+  }
+  if (confirm && password !== confirm) {
+    showToast('两次密码不一致');
+    return;
+  }
+
+  try {
+    const res = await fetch(apiUrl('/register'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password, name })
+    });
+    const data = await safeJson(res) || {};
+    if (res.ok && data.success) {
+      showToast('注册成功！请登录');
+      showPage('login');
+    } else {
+      showToast(data.message ? `注册失败: ${data.message}` : '注册失败');
+    }
+  } catch (err) {
+    console.error(err);
+    showToast('注册请求出错');
   }
 }
 
@@ -222,7 +290,7 @@ async function savePost(publish = false) {
     if (currentEditingFile && filename !== currentEditingFile) {
       const createRes = await fetch(apiUrl('/post'), {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: withAuthHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify({
           filename,
           content,
@@ -237,7 +305,7 @@ async function savePost(publish = false) {
 
       await fetch(apiUrl(`/post?filename=${encodeURIComponent(currentEditingFile)}`), {
         method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
+        headers: withAuthHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify({ message: `Delete ${currentEditingFile} after rename` })
       }).catch(() => {});
 
@@ -253,7 +321,7 @@ async function savePost(publish = false) {
 
     const res = await fetch(isUpdate ? apiUrl(`/post?filename=${encodeURIComponent(filename)}`) : apiUrl('/post'), {
       method: isUpdate ? 'PUT' : 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: withAuthHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify({
         filename,
         content,
@@ -283,7 +351,7 @@ async function deletePost(filename) {
   try {
     const res = await fetch(apiUrl(`/post?filename=${encodeURIComponent(filename)}`), {
       method: 'DELETE',
-      headers: { 'Content-Type': 'application/json' },
+      headers: withAuthHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify({ message: `Delete ${filename}` })
     });
     const data = await safeJson(res) || {};
@@ -618,7 +686,7 @@ async function loadArticle(filename) {
      Array.from(list).forEach(el => el.remove());
      
      comments.forEach(c => {
-       if (c.status !== 'approved' && (!CURRENT_USER || CURRENT_USER.role !== 'Administrator')) return;
+      if (c.status !== 'approved' && (!CURRENT_USER || CURRENT_USER.role !== 'admin')) return;
        
        const div = document.createElement('div');
        div.className = 'comment-item';
@@ -650,8 +718,8 @@ async function loadArticle(filename) {
    try {
      const res = await fetch(apiUrl('/comments'), {
        method: 'POST',
-       headers: { 'Content-Type': 'application/json' },
-       body: JSON.stringify({ post: postId, content, user: CURRENT_USER ? CURRENT_USER.name : 'Anonymous' })
+      headers: withAuthHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify({ post: postId, content, user: CURRENT_USER ? CURRENT_USER.name : 'Anonymous' })
      });
      const data = await safeJson(res) || {};
      if (data.success) {
@@ -730,7 +798,7 @@ function getRandomIcon(str) {
 // ── ADMIN ROUTING ──
 function showAdminPage(name) {
   // Check auth for admin pages
-  if (!CURRENT_USER) {
+  if (!CURRENT_USER || CURRENT_USER.role !== 'admin') {
     showToast('请先登录');
     setMode('front');
     showPage('login');
@@ -793,7 +861,7 @@ async function saveSettings() {
   try {
     const res = await fetch(apiUrl('/settings'), {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
+      headers: withAuthHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify(settings)
     });
     if (res.ok) showToast('设置已保存');
@@ -868,7 +936,7 @@ async function moderateComment(id, status) {
   try {
     await fetch(apiUrl(`/comment?id=${encodeURIComponent(id)}`), {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
+      headers: withAuthHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify({ status })
     });
     fetchAdminComments();
@@ -879,7 +947,7 @@ async function moderateComment(id, status) {
 async function deleteComment(id) {
   if (!confirm('确定删除?')) return;
   try {
-    await fetch(apiUrl(`/comment?id=${encodeURIComponent(id)}`), { method: 'DELETE' });
+    await fetch(apiUrl(`/comment?id=${encodeURIComponent(id)}`), { method: 'DELETE', headers: withAuthHeaders({}) });
     fetchAdminComments();
     showToast('已删除');
   } catch (err) { showToast('操作失败'); }
@@ -893,7 +961,7 @@ async function uploadMedia(file) {
     try {
       const res = await fetch(apiUrl('/upload'), {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: withAuthHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify({ image: base64, filename: file.name })
       });
       const data = await safeJson(res) || {};
@@ -901,7 +969,7 @@ async function uploadMedia(file) {
         showToast('上传成功');
         const textarea = document.getElementById('editorContent');
         const url = data.url;
-        const fullUrl = IS_LOCAL ? `http://localhost:3002${url}` : url;
+        const fullUrl = url;
         insertText(textarea, `\n![${file.name}](${fullUrl})\n`, '');
       } else {
         showToast('上传失败');
@@ -918,7 +986,7 @@ async function createNovel() {
   try {
     const res = await fetch(apiUrl('/novel'), {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: withAuthHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify({ title, genre: '未分类' })
     });
     const data = await safeJson(res) || {};
@@ -956,7 +1024,7 @@ async function fetchNovels() {
 
 // ── MODE SWITCH ──
 function setMode(mode) {
-  if (mode === 'admin' && !CURRENT_USER) {
+  if (mode === 'admin' && (!CURRENT_USER || CURRENT_USER.role !== 'admin')) {
     showToast('需要管理员权限');
     showPage('login');
     return;
@@ -1000,6 +1068,7 @@ document.querySelectorAll('.chart-bar').forEach(bar => {
 // Expose functions to window for HTML onclick access
 window.showPage = showPage;
 window.handleLogin = handleLogin;
+window.handleRegister = handleRegister;
 window.setMode = setMode;
 window.showAdminPage = showAdminPage;
 window.savePost = savePost;
