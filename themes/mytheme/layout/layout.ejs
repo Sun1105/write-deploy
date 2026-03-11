@@ -1,0 +1,12 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <%- partial('_partial/head') %>
+</head>
+<body>
+  <%- partial('_partial/toast') %>
+  <%- partial('_partial/frontend', { initialPage: typeof initialPage !== 'undefined' ? initialPage : 'home' }) %>
+  <%- partial('_partial/admin') %>
+  <script src="/js/main.js"></script>
+</body>
+</html>

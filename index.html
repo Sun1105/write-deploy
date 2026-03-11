@@ -1,1578 +1,479 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>拾墨 · 个人创作平台 Demo</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400;1,600&family=Source+Serif+4:ital,opsz,wght@0,8..60,300;0,8..60,400;0,8..60,600;1,8..60,300;1,8..60,400&family=DM+Mono:ital,wght@0,300;0,400;0,500;1,400&family=Noto+Sans+SC:wght@300;400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/css/custom.css">
-<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/dompurify/dist/purify.min.js"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>拾墨</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400;1,600&family=Source+Serif+4:ital,opsz,wght@0,8..60,300;0,8..60,400;0,8..60,600;1,8..60,300;1,8..60,400&family=DM+Mono:ital,wght@0,300;0,400;0,500;1,400&family=Noto+Sans+SC:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/custom.css">
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/dompurify/dist/purify.min.js"></script>
 </head>
 <body>
+  <div class="toast" id="toast"><span class="toast-icon">✓</span><span id="toastMsg">操作成功</span></div>
 
-<!-- TOAST -->
-<div class="toast" id="toast"><span class="toast-icon">✓</span><span id="toastMsg">操作成功</span></div>
+  <div id="frontendApp">
+    <nav class="front-nav">
+      <div class="nav-logo" onclick="showPage('home')">拾<span>墨</span></div>
+      <div class="nav-links">
+        <div class="nav-link active" id="navHome" onclick="showPage('home')">首页</div>
+        <div class="nav-link" id="navArticles" onclick="showPage('articles')">文章</div>
+        <div class="nav-link" id="navNovels" onclick="showPage('novels')">小说</div>
+        <div class="nav-link" id="navAbout" onclick="showPage('about')">关于</div>
+      </div>
+      <div class="nav-actions">
+        <button class="btn btn-ghost btn-sm" onclick="showPage('login')">登录</button>
+        <button class="btn btn-primary btn-sm" onclick="showPage('register')">注册</button>
+      </div>
+    </nav>
 
-<!-- ════════════════════════════════════ FRONTEND ════════════════════════════════════ -->
-<div id="frontendApp">
-
-  <!-- NAVBAR -->
-  <nav class="front-nav">
-    <div class="nav-logo" onclick="showPage('home')">拾<span>墨</span></div>
-    <div class="nav-links">
-      <div class="nav-link active" id="navHome" onclick="showPage('home')">首页</div>
-      <div class="nav-link" id="navArticles" onclick="showPage('articles')">文章</div>
-      <div class="nav-link" id="navNovels" onclick="showPage('novels')">小说</div>
-      <div class="nav-link" id="navAbout" onclick="showPage('about')">关于</div>
-    </div>
-    <div class="nav-actions">
-      <button class="btn btn-ghost btn-sm" onclick="showPage('login')">登录</button>
-      <button class="btn btn-primary btn-sm" onclick="showPage('register')">注册</button>
-    </div>
-  </nav>
-
-  <!-- ─── HOME ─── -->
-  <div class="page active" id="page-home">
-    <!-- Hero -->
-    <section class="hero">
-      <div class="hero-inner">
-        <div>
-          <div class="hero-eyebrow">Personal Writing Platform</div>
-          <h1 class="hero-title">记录生命中的<br><em>每一刻灵光</em></h1>
-          <p class="hero-desc">文字是我与世界的桥梁。这里有我对生活的思考、对文学的探索，以及那些尚未完成的故事。</p>
-          <div class="hero-actions">
-            <button class="hero-btn-primary" onclick="showPage('articles')">浏览文章</button>
-            <button class="hero-btn-outline" onclick="showPage('novels')">阅读小说</button>
-          </div>
-        </div>
-        <div class="hero-side">
-          <div class="hero-card">
-            <div style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.12em;color:rgba(255,255,255,.4);margin-bottom:.75rem">LATEST WORK</div>
-            <div class="hero-card-title">《午后三时，光线斜切过窗棂》</div>
-            <div class="hero-card-meta">随笔 · 2024.03.15 · 3 分钟阅读</div>
-            <div class="hero-card-stats">
-              <div class="hero-stat"><span class="hero-stat-val">48</span><span class="hero-stat-lbl">ARTICLES</span></div>
-              <div class="hero-stat"><span class="hero-stat-val">5</span><span class="hero-stat-lbl">NOVELS</span></div>
-              <div class="hero-stat"><span class="hero-stat-val">2.1k</span><span class="hero-stat-lbl">READERS</span></div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- Featured -->
-    <div class="container">
-      <div class="section-header">
-        <div class="section-title">精选推荐</div>
-      </div>
-      <div class="featured-article" onclick="showPage('article')">
-        <div class="featured-body">
-          <div class="featured-label">Editor's Pick</div>
-          <h2 class="featured-title">在文字的迷宫里寻找出口——关于写作与存在的长篇思考</h2>
-          <p class="featured-excerpt">我们为什么要写作？不是为了被记住，不是为了留下什么，而是为了在那一刻，语言帮助我们厘清混沌，让那些浮动于意识边缘的感受变得真实而可触碰。这篇文章试图回答这个困扰我多年的问题……</p>
-          <div class="card-meta">
-            <span>2024-03-10</span>
-            <span>·</span>
-            <span>12 分钟阅读</span>
-            <span>·</span>
-            <span>3,241 次阅读</span>
-          </div>
-        </div>
-        <div class="featured-cover">📖</div>
-      </div>
-
-      <!-- Category tabs -->
-      <div class="cat-tabs">
-        <div class="cat-tab active">全部</div>
-        <div class="cat-tab">文章</div>
-        <div class="cat-tab">随笔</div>
-        <div class="cat-tab">评论</div>
-      </div>
-
-      <!-- Article grid -->
-      <div class="articles-grid">
-        <div class="article-card" onclick="showPage('article')">
-          <div class="card-cover">
-            <div class="card-category-badge">随笔</div>
-            🌿
-          </div>
-          <div class="card-body">
-            <h3 class="card-title">午后三时，光线斜切过窗棂</h3>
-            <p class="card-excerpt">有些时刻只能用文字才能留住。那种光，那种安静，那种无所事事却又充实的感觉……</p>
-            <div class="card-footer">
-              <div class="card-meta">
-                <span>2024-03-15</span>
-                <span>·</span>
-                <span>3 min</span>
-              </div>
-            </div>
-          </div>
-        </div>
-        <div class="article-card" onclick="showPage('article')">
-          <div class="card-cover" style="background:linear-gradient(135deg,#1a3a2e,#2d6b52)">
-            <div class="card-category-badge">文章</div>
-            🔭
-          </div>
-          <div class="card-body">
-            <h3 class="card-title">论博尔赫斯的迷宫诗学与无限文本</h3>
-            <p class="card-excerpt">博尔赫斯创造的不是故事，而是一整套关于存在与语言的哲学体系，每一个迷宫都是他对无限的隐喻……</p>
-            <div class="card-footer">
-              <div class="card-meta"><span>2024-03-08</span><span>·</span><span>10 min</span></div>
-            </div>
-          </div>
-        </div>
-        <div class="article-card" onclick="showPage('article')">
-          <div class="card-cover" style="background:linear-gradient(135deg,#3d2a1a,#7a4f2d)">
-            <div class="card-category-badge" style="background:var(--gold)">评论</div>
-            🎬
-          </div>
-          <div class="card-body">
-            <h3 class="card-title">《奥本海默》：在历史的褶皱里寻找人性</h3>
-            <p class="card-excerpt">诺兰再一次证明了他驾驭宏大叙事的能力，但这次他关注的不是时间，而是良知的重量……</p>
-            <div class="card-footer">
-              <div class="card-meta"><span>2024-02-28</span><span>·</span><span>7 min</span></div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Novels section -->
-      <div class="section-header">
-        <div class="section-title">连载小说</div>
-        <div class="section-more" onclick="showPage('novels')">查看全部 →</div>
-      </div>
-      <div class="novels-grid">
-        <div class="novel-card" onclick="showPage('chapter')">
-          <div class="novel-cover" style="background:linear-gradient(160deg,#0f2027,#203a43,#2c5364)">
-            <div class="novel-cover-bg">🌊</div>
-            <div class="novel-cover-title">深海之上<br>最后的灯塔</div>
-          </div>
-          <div class="novel-body">
-            <div class="novel-genre">科幻 · 冒险</div>
-            <div class="novel-stats"><span>18 章</span><span>·</span><span>连载中</span></div>
-          </div>
-        </div>
-        <div class="novel-card" onclick="showPage('chapter')">
-          <div class="novel-cover" style="background:linear-gradient(160deg,#1a0533,#3d1a6e,#6b3fa0)">
-            <div class="novel-cover-bg">🌙</div>
-            <div class="novel-cover-title">镜中<br>月光之城</div>
-          </div>
-          <div class="novel-body">
-            <div class="novel-genre">奇幻 · 文学</div>
-            <div class="novel-stats"><span>42 章</span><span>·</span><span>已完结</span></div>
-          </div>
-        </div>
-        <div class="novel-card" onclick="showPage('chapter')">
-          <div class="novel-cover" style="background:linear-gradient(160deg,#2d1515,#6b2d2d,#b44646)">
-            <div class="novel-cover-bg">🏙️</div>
-            <div class="novel-cover-title">城市<br>边界人</div>
-          </div>
-          <div class="novel-body">
-            <div class="novel-genre">现实主义</div>
-            <div class="novel-stats"><span>8 章</span><span>·</span><span>连载中</span></div>
-          </div>
-        </div>
-        <div class="novel-card" onclick="showPage('chapter')">
-          <div class="novel-cover" style="background:linear-gradient(160deg,#1a2a0a,#3d6622,#5a9e2a)">
-            <div class="novel-cover-bg">🌲</div>
-            <div class="novel-cover-title">林中<br>手记</div>
-          </div>
-          <div class="novel-body">
-            <div class="novel-genre">自然文学</div>
-            <div class="novel-stats"><span>24 章</span><span>·</span><span>已完结</span></div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Footer -->
-    <footer class="front-footer">
-      <div class="footer-inner">
-        <div class="footer-logo">拾墨</div>
-        <p style="font-size:13px;margin-top:.5rem;max-width:360px;line-height:1.7">一个关于文字、思考与创作的私人空间。感谢你的到来。</p>
-        <div class="footer-bottom">
-          <span>© 2024 拾墨 · 保留所有权利</span>
-          <span>Powered by Next.js · Neon · Vercel</span>
-        </div>
-      </div>
-    </footer>
-  </div>
-
-  <!-- ─── ARTICLE DETAIL ─── -->
-  <div class="page" id="page-article">
-    <div class="container">
-      <div class="article-header">
-        <div class="article-breadcrumb">
-          <span onclick="showPage('home')">首页</span>
-          <span style="color:var(--border-2)">›</span>
-          <span>文章</span>
-          <span style="color:var(--border-2)">›</span>
-          <span style="color:var(--ink-2)">在文字的迷宫里寻找出口</span>
-        </div>
-        <div class="article-tags" style="margin-bottom:1rem">
-          <span class="tag tag-green">文章</span>
-          <span class="tag tag-gray">写作</span>
-          <span class="tag tag-gray">哲学</span>
-        </div>
-        <h1 class="article-headline">在文字的迷宫里寻找出口——关于写作与存在的长篇思考</h1>
-        <div class="article-meta-row">
-          <div class="article-meta-item">📅 2024年3月10日</div>
-          <div class="article-meta-item">⏱ 12 分钟阅读</div>
-          <div class="article-meta-item">👁 3,241 次阅读</div>
-          <div class="article-meta-item">💬 18 条评论</div>
-        </div>
-      </div>
-    </div>
-
-    <div class="container">
-      <div class="article-layout">
-        <!-- Left: Text content -->
-        <div class="article-content">
-          <!-- Content will be loaded dynamically -->
-        </div>
-
-        <!-- Right: Media panel -->
-        <div class="media-panel">
-          <div class="media-panel-label">配图与媒体</div>
-          <div class="media-item">
-            <div class="media-img">📚</div>
-            <div class="media-caption">博尔赫斯《小径分岔的花园》初版封面，1941年</div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Comments -->
-    <div class="container-sm">
-      <div class="comments-section">
-        <div class="comments-title">评论</div>
-        <div class="comment-input-area">
-          <textarea placeholder="写下你的想法……（登录后才能评论）" readonly onclick="showPage('login')"></textarea>
-          <div class="comment-input-footer">
-            <div class="comment-user-info">
-              <div class="comment-avatar">?</div>
-              <span>请先登录</span>
-            </div>
-            <button class="btn btn-primary btn-sm" onclick="showPage('login')">登录后评论</button>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- ─── NOVELS PAGE ─── -->
-  <div class="page" id="page-novels">
-    <div class="page-hero">
-      <div class="page-hero-inner">
-        <h1>连载小说</h1>
-        <p>正在进行中的故事，以及那些已经画上句号的世界</p>
-      </div>
-    </div>
-    <div class="container">
-      <div class="cat-tabs" style="padding-top:2rem">
-        <div class="cat-tab active">全部</div>
-        <div class="cat-tab">连载中</div>
-        <div class="cat-tab">已完结</div>
-        <div class="cat-tab">科幻</div>
-        <div class="cat-tab">奇幻</div>
-        <div class="cat-tab">现实主义</div>
-      </div>
-      <div class="novels-list-grid">
-        <!-- Novels will be loaded dynamically -->
-      </div>
-    </div>
-  </div>
-
-  <!-- ─── CHAPTER READER ─── -->
-  <div class="page" id="page-chapter">
-    <div class="chapter-header">
-      <div class="chapter-back" onclick="showPage('novels')">← 返回目录</div>
-      <div class="chapter-title-bar">小说阅读</div>
-      <div class="chapter-nav-btns">
-        <button class="btn btn-outline btn-sm">← 上一章</button>
-        <button class="btn btn-primary btn-sm">下一章 →</button>
-      </div>
-    </div>
-    <div class="reading-progress"><div class="reading-progress-bar"></div></div>
-
-    <div class="chapter-reader-layout">
-      <div class="chapter-content-wrap">
-        <span class="chapter-num-label">章节</span>
-        <h1 class="chapter-title">章节标题</h1>
-        <div class="chapter-body">
-          <!-- Chapter content -->
-        </div>
-        <div class="chapter-nav-footer">
-          <button class="btn btn-outline">← 上一章</button>
-          <button class="btn btn-primary">下一章 →</button>
-        </div>
-      </div>
-
-      <!-- TOC sidebar -->
-      <div>
-        <div class="chapter-toc">
-          <div class="chapter-toc-header">章节目录</div>
-          <div class="chapter-toc-list">
-            <!-- TOC -->
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- ─── ABOUT ─── -->
-  <div class="page" id="page-about">
-    <div class="page-hero">
-      <div class="page-hero-inner">
-        <h1>关于作者</h1>
-        <p>一个喜欢用文字思考的人</p>
-      </div>
-    </div>
-    <div class="container-sm" style="padding:3rem 2rem 5rem">
-      <div style="display:flex;gap:3rem;align-items:flex-start;margin-bottom:3rem">
-        <div style="width:120px;height:120px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--gold));flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:2.5rem;color:white">✍</div>
-        <div>
-          <h2 style="font-family:'Playfair Display',serif;font-size:1.8rem;margin-bottom:.5rem">某位写作者</h2>
-          <p style="color:var(--ink-3);font-size:.9rem;margin-bottom:1rem;font-family:'DM Mono',monospace">作家 · 随笔作者 · 小说创作者</p>
-          <div style="display:flex;gap:.75rem;flex-wrap:wrap">
-            <span class="tag tag-green">文学</span>
-            <span class="tag tag-gold">哲学</span>
-            <span class="tag tag-blue">电影</span>
-            <span class="tag tag-gray">旅行</span>
-          </div>
-        </div>
-      </div>
-      <div style="font-size:1.02rem;line-height:1.9;color:var(--ink-2)">
-        <p>这是一个关于文字与思考的私人空间。我相信写作不仅是一种技艺，更是一种思维方式——通过语言，我们得以整理内心的混沌，与世界建立更清醒的联系。</p>
-        <p>我的写作涵盖文学随笔、文化评论和虚构叙事。在这里，你会看到我对日常生活的细微观察，对文学与电影的深度思考，以及那些正在进行中的故事。</p>
-        <p>如果你也相信语言的力量，欢迎留下你的评论与想法。</p>
-      </div>
-    </div>
-  </div>
-
-  <!-- ─── ARTICLES LIST ─── -->
-  <div class="page" id="page-articles">
-    <div class="page-hero">
-      <div class="page-hero-inner">
-        <h1>全部文章</h1>
-        <p>文章、随笔与评论</p>
-      </div>
-    </div>
-    <div class="container">
-      <div class="cat-tabs" style="padding-top:2rem">
-        <div class="cat-tab active">全部</div>
-        <div class="cat-tab">文章</div>
-        <div class="cat-tab">随笔</div>
-        <div class="cat-tab">评论</div>
-      </div>
-      <div class="articles-grid">
-        <!-- Articles will be loaded dynamically -->
-      </div>
-      <div class="pagination" style="border-color:var(--border)">
-        <button class="page-btn active" style="background:var(--accent);border-color:var(--accent);color:white">1</button>
-        <button class="page-btn" style="border-color:var(--border-2);color:var(--ink-3)">2</button>
-        <button class="page-btn" style="border-color:var(--border-2);color:var(--ink-3)">→</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- ─── LOGIN ─── -->
-  <div class="page" id="page-login">
-    <div class="auth-page">
-      <div class="auth-card">
-        <div class="auth-logo"><div class="auth-logo-text">拾墨</div></div>
-        <h2 class="auth-title">欢迎回来</h2>
-        <p class="auth-subtitle">登录你的账号，加入对话</p>
-        <div class="form-group">
-          <label class="form-label">邮箱地址</label>
-          <input type="text" id="loginUsername" class="form-input" placeholder="输入用户名">
-        </div>
-        <div class="form-group">
-          <label class="form-label">密码</label>
-          <input type="password" id="loginPassword" class="form-input" placeholder="输入密码">
-        </div>
-        <button class="form-submit" onclick="handleLogin()">登录</button>
-        <div class="auth-switch">还没有账号？<span onclick="showPage('register')">立即注册</span></div>
-      </div>
-    </div>
-  </div>
-
-  <!-- ─── REGISTER ─── -->
-  <div class="page" id="page-register">
-    <div class="auth-page">
-      <div class="auth-card">
-        <div class="auth-logo"><div class="auth-logo-text">拾墨</div></div>
-        <h2 class="auth-title">创建账号</h2>
-        <p class="auth-subtitle">加入读者社区，参与内容讨论</p>
-        <div class="form-group">
-          <label class="form-label">昵称</label>
-          <input type="text" class="form-input" placeholder="你的显示名称">
-        </div>
-        <div class="form-group">
-          <label class="form-label">邮箱地址</label>
-          <input type="email" class="form-input" placeholder="your@email.com">
-        </div>
-        <div class="form-group">
-          <label class="form-label">密码</label>
-          <input type="password" class="form-input" placeholder="至少 8 位字符">
-        </div>
-        <div class="form-group">
-          <label class="form-label">确认密码</label>
-          <input type="password" class="form-input" placeholder="再次输入密码">
-        </div>
-        <button class="form-submit" onclick="showToast('注册成功！欢迎加入拾墨 🎉')">注册</button>
-        <div class="auth-switch">已有账号？<span onclick="showPage('login')">直接登录</span></div>
-      </div>
-    </div>
-  </div>
-
-</div><!-- /frontendApp -->
-
-<!-- ════════════════════════════════════ ADMIN ════════════════════════════════════ -->
-<div id="adminApp" class="hidden">
-  <div class="admin-wrap">
-
-    <!-- Sidebar -->
-    <aside class="admin-sidebar">
-      <div class="admin-sidebar-logo">
-        <div class="admin-logo-text">拾墨</div>
-        <div class="admin-logo-sub">管理后台 · Admin</div>
-      </div>
-      <nav class="admin-nav">
-        <div class="admin-nav-section-label">内容管理</div>
-        <div class="admin-nav-item active" id="adminNav-dashboard" onclick="showAdminPage('dashboard')">
-          <span class="nav-icon">📊</span> 数据概览
-        </div>
-        <div class="admin-nav-item" id="adminNav-articles" onclick="showAdminPage('articles')">
-          <span class="nav-icon">📝</span> 文章管理
-        </div>
-        <div class="admin-nav-item" id="adminNav-editor" onclick="showAdminPage('editor')">
-          <span class="nav-icon">✏️</span> 写作编辑器
-        </div>
-        <div class="admin-nav-item" id="adminNav-novels" onclick="showAdminPage('novels')">
-          <span class="nav-icon">📖</span> 小说管理
-        </div>
-        <div class="admin-nav-section-label">社区管理</div>
-        <div class="admin-nav-item" id="adminNav-comments" onclick="showAdminPage('comments')">
-          <span class="nav-icon">💬</span> 评论审核
-          <span class="admin-nav-badge">7</span>
-        </div>
-        <div class="admin-nav-item" id="adminNav-users" onclick="showAdminPage('users')">
-          <span class="nav-icon">👥</span> 用户管理
-        </div>
-        <div class="admin-nav-section-label">系统</div>
-        <div class="admin-nav-item" id="adminNav-settings" onclick="showAdminPage('settings')">
-          <span class="nav-icon">⚙️</span> 网站设置
-        </div>
-        <div class="admin-nav-item" onclick="setMode('front')">
-          <span class="nav-icon">🌐</span> 前台预览
-        </div>
-      </nav>
-      <div class="admin-sidebar-footer">
-        <div class="admin-user-info">
-          <div class="admin-user-avatar">作</div>
+    <div class="page active" id="page-home">
+      <section class="hero">
+        <div class="hero-inner">
           <div>
-            <div class="admin-user-name">某位作者</div>
-            <div class="admin-user-role">Administrator</div>
+            <div class="hero-eyebrow">Personal Writing Platform</div>
+            <h1 class="hero-title">记录生命中的<br><em>每一刻灵光</em></h1>
+            <p class="hero-desc">文字是我与世界的桥梁。这里有我对生活的思考、对文学的探索，以及那些尚未完成的故事。</p>
+            <div class="hero-actions">
+              <button class="hero-btn-primary" onclick="showPage('articles')">浏览文章</button>
+              <button class="hero-btn-outline" onclick="showPage('novels')">阅读小说</button>
+            </div>
+          </div>
+          <div class="hero-side">
+            <div class="hero-card">
+              <div style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.12em;color:rgba(255,255,255,.4);margin-bottom:.75rem">LATEST WORK</div>
+              <div class="hero-card-title">《午后三时，光线斜切过窗棂》</div>
+              <div class="hero-card-meta">随笔 · 2024.03.15 · 3 分钟阅读</div>
+              <div class="hero-card-stats">
+                <div class="hero-stat"><span class="hero-stat-val">48</span><span class="hero-stat-lbl">ARTICLES</span></div>
+                <div class="hero-stat"><span class="hero-stat-val">5</span><span class="hero-stat-lbl">NOVELS</span></div>
+                <div class="hero-stat"><span class="hero-stat-val">2.1k</span><span class="hero-stat-lbl">READERS</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <div class="container">
+        <div class="section-header">
+          <div class="section-title">精选推荐</div>
+        </div>
+        <div class="featured-article" onclick="showPage('article')">
+          <div class="featured-body">
+            <div class="featured-label">Editor's Pick</div>
+            <h2 class="featured-title">在文字的迷宫里寻找出口——关于写作与存在的长篇思考</h2>
+            <p class="featured-excerpt">我们为什么要写作？不是为了被记住，不是为了留下什么，而是为了在那一刻，语言帮助我们厘清混沌，让那些浮动于意识边缘的感受变得真实而可触碰。这篇文章试图回答这个困扰我多年的问题……</p>
+            <div class="card-meta">
+              <span>2024-03-10</span>
+              <span>·</span>
+              <span>12 分钟阅读</span>
+              <span>·</span>
+              <span>3,241 次阅读</span>
+            </div>
+          </div>
+          <div class="featured-cover">📖</div>
+        </div>
+
+        <div class="cat-tabs">
+          <div class="cat-tab active">全部</div>
+          <div class="cat-tab">文章</div>
+          <div class="cat-tab">随笔</div>
+          <div class="cat-tab">评论</div>
+        </div>
+
+        <div class="articles-grid"></div>
+
+        <div class="section-header">
+          <div class="section-title">连载小说</div>
+          <div class="section-more" onclick="showPage('novels')">查看全部 →</div>
+        </div>
+        <div class="novels-grid"></div>
+      </div>
+
+      <footer class="front-footer">
+        <div class="footer-inner">
+          <div class="footer-logo">拾墨</div>
+          <p style="font-size:13px;margin-top:.5rem;max-width:360px;line-height:1.7">一个关于文字、思考与创作的私人空间。感谢你的到来。</p>
+          <div class="footer-bottom">
+            <span>© 2024 拾墨 · 保留所有权利</span>
+            <span>Powered by Next.js · Neon · Vercel</span>
+          </div>
+        </div>
+      </footer>
+    </div>
+
+    <div class="page" id="page-article">
+      <div class="container">
+        <div class="article-header">
+          <div class="article-breadcrumb">
+            <span onclick="showPage('home')">首页</span>
+            <span style="color:var(--border-2)">›</span>
+            <span>文章</span>
+          </div>
+          <div class="article-tags" style="margin-bottom:1rem"></div>
+          <h1 class="article-headline"></h1>
+          <div class="article-meta-row">
+            <div class="article-meta-item">📅 --</div>
+            <div class="article-meta-item">⏱ --</div>
+            <div class="article-meta-item">👁 --</div>
+            <div class="article-meta-item">💬 --</div>
           </div>
         </div>
       </div>
-    </aside>
-
-    <!-- Main area -->
-    <div class="admin-main">
-
-      <!-- ─── DASHBOARD ─── -->
-      <div class="admin-page active" id="adminPage-dashboard">
-        <div class="admin-header">
-          <div class="admin-page-title">数据概览</div>
-          <div style="margin-left:auto;font-family:'DM Mono',monospace;font-size:12px;color:var(--admin-muted)">最近 30 天 · 更新于 5 分钟前</div>
-        </div>
-        <div class="admin-content">
-          <div class="stats-grid">
-            <div class="stat-card">
-              <div class="stat-card-top">
-                <div class="stat-icon" style="background:rgba(16,185,129,.12);font-size:16px">👁</div>
-                <span class="stat-change stat-up">↑ 18.3%</span>
-              </div>
-              <div class="stat-value">28,451</div>
-              <div class="stat-label">总页面访问量</div>
-            </div>
-            <div class="stat-card">
-              <div class="stat-card-top">
-                <div class="stat-icon" style="background:rgba(59,130,246,.12)">👤</div>
-                <span class="stat-change stat-up">↑ 24.1%</span>
-              </div>
-              <div class="stat-value">1,284</div>
-              <div class="stat-label">注册用户</div>
-            </div>
-            <div class="stat-card">
-              <div class="stat-card-top">
-                <div class="stat-icon" style="background:rgba(251,191,36,.12)">💬</div>
-                <span class="stat-change stat-up">↑ 9.6%</span>
-              </div>
-              <div class="stat-value">342</div>
-              <div class="stat-label">评论总数</div>
-            </div>
-            <div class="stat-card">
-              <div class="stat-card-top">
-                <div class="stat-icon" style="background:rgba(239,68,68,.12)">📝</div>
-                <span class="stat-change stat-down">↓ 2.1%</span>
-              </div>
-              <div class="stat-value" id="statPostCount">--</div>
-              <div class="stat-label">已发布文章</div>
-            </div>
-          </div>
-
-          <div class="two-col-grid">
-            <div class="chart-card">
-              <div class="chart-header">
-                <div class="chart-title">访问量趋势</div>
-                <div class="chart-period">过去 14 天</div>
-              </div>
-              <div class="chart-bars">
-                <div class="chart-bar-wrap"><div class="chart-bar" style="height:45%"></div><div class="chart-bar-label">3/1</div></div>
-                <div class="chart-bar-wrap"><div class="chart-bar" style="height:60%"></div><div class="chart-bar-label">3/2</div></div>
-                <div class="chart-bar-wrap"><div class="chart-bar" style="height:38%"></div><div class="chart-bar-label">3/3</div></div>
-                <div class="chart-bar-wrap"><div class="chart-bar" style="height:72%"></div><div class="chart-bar-label">3/4</div></div>
-                <div class="chart-bar-wrap"><div class="chart-bar" style="height:85%"></div><div class="chart-bar-label">3/5</div></div>
-                <div class="chart-bar-wrap"><div class="chart-bar" style="height:55%"></div><div class="chart-bar-label">3/6</div></div>
-                <div class="chart-bar-wrap"><div class="chart-bar" style="height:48%"></div><div class="chart-bar-label">3/7</div></div>
-                <div class="chart-bar-wrap"><div class="chart-bar" style="height:92%"></div><div class="chart-bar-label">3/8</div></div>
-                <div class="chart-bar-wrap"><div class="chart-bar" style="height:78%"></div><div class="chart-bar-label">3/9</div></div>
-                <div class="chart-bar-wrap"><div class="chart-bar" style="height:65%"></div><div class="chart-bar-label">3/10</div></div>
-                <div class="chart-bar-wrap"><div class="chart-bar" style="height:50%"></div><div class="chart-bar-label">3/11</div></div>
-                <div class="chart-bar-wrap"><div class="chart-bar" style="height:88%"></div><div class="chart-bar-label">3/12</div></div>
-                <div class="chart-bar-wrap"><div class="chart-bar" style="height:95%"></div><div class="chart-bar-label">3/13</div></div>
-                <div class="chart-bar-wrap"><div class="chart-bar" style="height:100%;background:var(--admin-accent)"></div><div class="chart-bar-label">今天</div></div>
-              </div>
-            </div>
-
-            <div class="chart-card">
-              <div class="chart-header">
-                <div class="chart-title">热门文章 TOP 5</div>
-                <div class="chart-period">本月</div>
-              </div>
-              <div style="display:flex;flex-direction:column;gap:.75rem">
-                <div style="display:flex;align-items:center;gap:.75rem">
-                  <span style="font-family:'DM Mono',monospace;font-size:11px;color:var(--admin-accent);width:20px">01</span>
-                  <div style="flex:1;font-size:13.5px;color:rgba(249,250,251,.8)">在文字的迷宫里寻找出口</div>
-                  <span style="font-family:'DM Mono',monospace;font-size:11.5px;color:var(--admin-muted)">3,241</span>
-                </div>
-                <div style="display:flex;align-items:center;gap:.75rem">
-                  <span style="font-family:'DM Mono',monospace;font-size:11px;color:rgba(16,185,129,.6);width:20px">02</span>
-                  <div style="flex:1;font-size:13.5px;color:rgba(249,250,251,.8)">论博尔赫斯的迷宫诗学</div>
-                  <span style="font-family:'DM Mono',monospace;font-size:11.5px;color:var(--admin-muted)">2,187</span>
-                </div>
-                <div style="display:flex;align-items:center;gap:.75rem">
-                  <span style="font-family:'DM Mono',monospace;font-size:11px;color:rgba(16,185,129,.4);width:20px">03</span>
-                  <div style="flex:1;font-size:13.5px;color:rgba(249,250,251,.8)">《奥本海默》影评</div>
-                  <span style="font-family:'DM Mono',monospace;font-size:11.5px;color:var(--admin-muted)">1,842</span>
-                </div>
-                <div style="display:flex;align-items:center;gap:.75rem">
-                  <span style="font-family:'DM Mono',monospace;font-size:11px;color:rgba(16,185,129,.3);width:20px">04</span>
-                  <div style="flex:1;font-size:13.5px;color:rgba(249,250,251,.8)">城市漫游者的孤独哲学</div>
-                  <span style="font-family:'DM Mono',monospace;font-size:11.5px;color:var(--admin-muted)">1,203</span>
-                </div>
-                <div style="display:flex;align-items:center;gap:.75rem">
-                  <span style="font-family:'DM Mono',monospace;font-size:11px;color:rgba(16,185,129,.2);width:20px">05</span>
-                  <div style="flex:1;font-size:13.5px;color:rgba(249,250,251,.8)">当音乐成为时间的容器</div>
-                  <span style="font-family:'DM Mono',monospace;font-size:11.5px;color:var(--admin-muted)">987</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div class="admin-quick-links">
-            <div class="quick-link" onclick="showAdminPage('editor')"><div class="quick-link-icon">✏️</div><div class="quick-link-label">写新文章</div></div>
-            <div class="quick-link" onclick="showAdminPage('comments')"><div class="quick-link-icon">💬</div><div class="quick-link-label">审核评论 (7)</div></div>
-            <div class="quick-link" onclick="showAdminPage('novels')"><div class="quick-link-icon">📖</div><div class="quick-link-label">更新小说</div></div>
-            <div class="quick-link" onclick="showAdminPage('settings')"><div class="quick-link-icon">⚙️</div><div class="quick-link-label">网站设置</div></div>
-          </div>
-        </div>
-      </div>
-
-      <!-- ─── ARTICLES ─── -->
-      <div class="admin-page" id="adminPage-articles">
-        <div class="admin-header">
-          <div class="admin-page-title">文章管理</div>
-          <div class="admin-header-actions">
-            <div class="admin-search"><span class="admin-search-icon">🔍</span><input placeholder="搜索文章…"></div>
-            <button class="btn btn-admin" onclick="showAdminPage('editor')">+ 新建文章</button>
-          </div>
-        </div>
-        <div class="admin-content">
-          <div class="top-tabs">
-            <div class="top-tab active">全部 <span class="tab-count">48</span></div>
-            <div class="top-tab">已发布 <span class="tab-count">43</span></div>
-            <div class="top-tab">草稿 <span class="tab-count">4</span></div>
-            <div class="top-tab">已归档 <span class="tab-count">1</span></div>
-          </div>
-          <div class="table-card">
-            <div class="table-card-header">
-              <div class="table-card-title">文章列表</div>
-              <div style="display:flex;gap:.5rem">
-                <select style="padding:.3rem .6rem;background:var(--admin-bg);border:1px solid var(--admin-border);border-radius:5px;color:var(--admin-muted);font-size:12px">
-                  <option>全部分类</option><option>文章</option><option>随笔</option><option>评论</option>
-                </select>
-              </div>
-            </div>
-            <div class="table-wrap">
-              <table class="admin-table">
-                <thead><tr><th>标题</th><th>分类</th><th>状态</th><th>阅读量</th><th>评论</th><th>发布时间</th><th>操作</th></tr></thead>
-                <tbody id="articleListBody">
-                  <!-- Populated by JS -->
-                </tbody>
-              </table>
-            </div>
-          </div>
-          <div class="pagination">
-            <button class="page-btn active">1</button>
-            <button class="page-btn">2</button>
-            <button class="page-btn">3</button>
-            <button class="page-btn">→</button>
-          </div>
-        </div>
-      </div>
-
-      <!-- ─── EDITOR ─── -->
-      <div class="admin-page" id="adminPage-editor">
-        <div class="admin-header">
-          <div class="admin-page-title">写作编辑器</div>
-          <div class="admin-header-actions">
-            <button class="btn btn-admin-outline btn-sm" onclick="savePost()">保存</button>
-            <button class="btn btn-admin btn-sm" onclick="savePost(true)">发布</button>
-          </div>
-        </div>
-        <div class="admin-content">
-          <div class="editor-wrap">
-            <input class="editor-title-input" id="editorTitle" placeholder="输入文章标题…" value="">
-            <div class="editor-toolbar">
-              <button class="toolbar-btn active" title="加粗"><b>B</b></button>
-              <button class="toolbar-btn" title="斜体"><i>I</i></button>
-              <button class="toolbar-btn" title="下划线"><u>U</u></button>
-              <div class="toolbar-sep"></div>
-              <button class="toolbar-btn">H1</button>
-              <button class="toolbar-btn">H2</button>
-              <button class="toolbar-btn">H3</button>
-              <div class="toolbar-sep"></div>
-              <button class="toolbar-btn">≡</button>
-              <button class="toolbar-btn">❝</button>
-              <button class="toolbar-btn">&lt;/&gt;</button>
-              <div class="toolbar-sep"></div>
-              <button class="toolbar-btn">🔗</button>
-              <button class="toolbar-btn">—</button>
-              <div class="toolbar-sep"></div>
-              <button class="toolbar-btn" style="width:auto;padding:0 8px;font-size:11px;color:var(--admin-muted)">撤销</button>
-              <button class="toolbar-btn" style="width:auto;padding:0 8px;font-size:11px;color:var(--admin-muted)">重做</button>
-            </div>
-            <div class="editor-layout">
-              <div class="editor-body">
-                <textarea class="editor-textarea" id="editorContent" placeholder="开始写作…"></textarea>
-              </div>
-              <div class="editor-sidebar-panel">
-                <div class="editor-panel-title">文章设置</div>
-                <div class="editor-field">
-                  <label class="editor-label">分类</label>
-                  <select class="editor-select">
-                    <option>文章</option><option>随笔</option><option>评论</option>
-                  </select>
-                </div>
-                <div class="editor-field">
-                  <label class="editor-label">标签</label>
-                  <input class="editor-input" value="记忆, 心理学, 随想">
-                </div>
-                <div class="editor-field">
-                  <label class="editor-label">摘要</label>
-                  <textarea class="editor-input" style="min-height:70px;resize:none;line-height:1.6">记忆不是一台录像机，而是一个会说谎的叙述者……</textarea>
-                </div>
-                <div class="editor-field">
-                  <label class="editor-label">URL 别名</label>
-                  <input class="editor-input" value="memory-and-forgetting">
-                </div>
-                <div class="editor-panel-title" style="margin-top:1.25rem">媒体上传</div>
-                <div class="upload-zone" onclick="document.getElementById('mediaInput').click()">
-                  <div class="upload-zone-icon">📁</div>
-                  <div class="upload-zone-text">点击或拖拽上传<br>图片 / GIF / 视频 (≤100MB)</div>
-                  <input type="file" id="mediaInput" hidden onchange="uploadMedia(this.files[0])">
-                </div>
-                <div class="media-uploaded">
-                  <!-- Uploaded items -->
-                </div>
-              </div>
+      <div class="container">
+        <div class="article-layout">
+          <div class="article-content"></div>
+          <div class="media-panel">
+            <div class="media-panel-label">配图与媒体</div>
+            <div class="media-item">
+              <div class="media-img">📚</div>
+              <div class="media-caption">媒体面板</div>
             </div>
           </div>
         </div>
       </div>
-
-      <!-- ─── NOVELS ADMIN ─── -->
-      <div class="admin-page" id="adminPage-novels">
-        <div class="admin-header">
-          <div class="admin-page-title">小说管理</div>
-          <div class="admin-header-actions">
-            <button class="btn btn-admin" onclick="createNovel()">+ 新建小说</button>
-          </div>
-        </div>
-        <div class="admin-content">
-          <div class="table-card">
-            <div class="table-card-header"><div class="table-card-title">小说列表</div></div>
-            <div class="table-wrap">
-              <table class="admin-table">
-                <thead><tr><th>小说名</th><th>类型</th><th>章节数</th><th>总字数</th><th>状态</th><th>最后更新</th><th>操作</th></tr></thead>
-                <tbody>
-                  <!-- Populated by JS -->
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- ─── COMMENTS ─── -->
-      <div class="admin-page" id="adminPage-comments">
-        <div class="admin-header">
-          <div class="admin-page-title">评论审核</div>
-          <div style="margin-left:auto;font-size:13px;color:var(--admin-muted)">7 条待审核</div>
-        </div>
-        <div class="admin-content">
-          <div class="top-tabs">
-            <div class="top-tab active">全部 <span class="tab-count">342</span></div>
-            <div class="top-tab">待审核 <span class="tab-count" style="background:rgba(239,68,68,.2);color:#f87171">7</span></div>
-            <div class="top-tab">已通过 <span class="tab-count">328</span></div>
-            <div class="top-tab">已隐藏 <span class="tab-count">7</span></div>
-          </div>
-          <!-- Comments list populated by JS -->
-        </div>
-      </div>
-
-      <!-- ─── USERS ─── -->
-      <div class="admin-page" id="adminPage-users">
-        <div class="admin-header">
-          <div class="admin-page-title">用户管理</div>
-          <div class="admin-header-actions">
-            <div class="admin-search"><span class="admin-search-icon">🔍</span><input placeholder="搜索用户…"></div>
-          </div>
-        </div>
-        <div class="admin-content">
-          <div class="top-tabs">
-            <div class="top-tab active">全部用户 <span class="tab-count">1,284</span></div>
-            <div class="top-tab">正常 <span class="tab-count">1,278</span></div>
-            <div class="top-tab">已封禁 <span class="tab-count">6</span></div>
-          </div>
-          <div class="table-card">
-            <div class="table-wrap">
-              <table class="admin-table">
-                <thead><tr><th>用户</th><th>邮箱</th><th>角色</th><th>状态</th><th>评论数</th><th>注册时间</th><th>操作</th></tr></thead>
-                <tbody>
-                  <tr>
-                    <td><div style="display:flex;align-items:center;gap:.75rem"><div class="user-avatar-table" style="background:linear-gradient(135deg,#1a5c4a,#2d8a6a)">林</div><span style="color:var(--admin-text);font-weight:500">林晚星</span></div></td>
-                    <td style="font-family:'DM Mono',monospace;font-size:12px;color:var(--admin-muted)">lin@example.com</td>
-                    <td><span class="tag tag-gray" style="font-size:11px">用户</span></td>
-                    <td><span class="status-badge status-active">● 正常</span></td>
-                    <td style="font-family:'DM Mono',monospace;font-size:12px">24</td>
-                    <td style="font-family:'DM Mono',monospace;font-size:12px;color:var(--admin-muted)">2024-01-15</td>
-                    <td><button class="btn btn-admin-outline btn-sm" onclick="showToast('查看用户详情')">详情</button></td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- ─── SETTINGS ─── -->
-      <div class="admin-page" id="adminPage-settings">
-        <div class="admin-header">
-          <div class="admin-page-title">网站设置</div>
-          <div class="admin-header-actions">
-            <button class="btn btn-admin" onclick="saveSettings()">保存更改</button>
-          </div>
-        </div>
-        <div class="admin-content">
-          <div class="settings-section">
-            <div class="settings-section-header">
-              <div class="settings-section-title">基本信息</div>
-              <div class="settings-section-desc">网站名称、描述与联系方式</div>
-            </div>
-            <div class="settings-body">
-              <div class="settings-row">
-                <div class="settings-label-wrap"><div class="settings-label">网站名称</div><div class="settings-desc">显示在浏览器标签和网站 Logo 处</div></div>
-                <input class="settings-input" value="拾墨">
+      <div class="container-sm">
+        <div class="comments-section">
+          <div class="comments-title">评论</div>
+          <div class="comment-input-area">
+            <textarea placeholder="写下你的想法……（登录后才能评论）" readonly onclick="showPage('login')"></textarea>
+            <div class="comment-input-footer">
+              <div class="comment-user-info">
+                <div class="comment-avatar">?</div>
+                <span>请先登录</span>
               </div>
-              <div class="settings-row">
-                <div class="settings-label-wrap"><div class="settings-label">网站简介</div><div class="settings-desc">显示在 SEO meta description 和关于页</div></div>
-                <input class="settings-input" value="一个关于文字、思考与创作的私人空间">
-              </div>
-              <div class="settings-row">
-                <div class="settings-label-wrap"><div class="settings-label">作者名</div><div class="settings-desc">文章署名与关于页显示</div></div>
-                <input class="settings-input" value="某位写作者">
-              </div>
-            </div>
-          </div>
-
-          <div class="settings-section">
-            <div class="settings-section-header">
-              <div class="settings-section-title">功能开关</div>
-              <div class="settings-section-desc">控制前台功能的开启与关闭</div>
-            </div>
-            <div class="settings-body">
-              <div class="settings-row">
-                <div class="settings-label-wrap"><div class="settings-label">允许注册</div><div class="settings-desc">关闭后访客无法注册新账号</div></div>
-                <div class="settings-toggle-row"><div class="settings-toggle on" onclick="this.classList.toggle('on')"><div class="settings-toggle-knob"></div></div></div>
-              </div>
+              <button class="btn btn-primary btn-sm" onclick="showPage('login')">登录后评论</button>
             </div>
           </div>
         </div>
       </div>
+    </div>
 
-    </div><!-- /admin-main -->
-  </div><!-- /admin-wrap -->
-</div><!-- /adminApp -->
-
-<script src="/js/main.js">
-// ── CONSTANTS ──
-const API_BASE = 'http://localhost:3002/api';
-let CURRENT_USER = null;
-let currentEditingFile = null;
-
-// ── INIT ──
-window.addEventListener('DOMContentLoaded', () => {
-  checkAuth();
-  initEditorToolbar();
-  renderFrontendPosts();
-});
-
-// ── AUTH ──
-function checkAuth() {
-  const token = localStorage.getItem('auth_token');
-  if (token) {
-    try {
-      CURRENT_USER = JSON.parse(localStorage.getItem('user_info') || '{}');
-      updateNavUser();
-    } catch (e) {
-      console.error('Auth parse error', e);
-    }
-  }
-}
-
-async function handleLogin() {
-  const usernameInput = document.getElementById('loginUsername');
-  const passwordInput = document.getElementById('loginPassword');
-  
-  if (!usernameInput || !passwordInput) return;
-  
-  const username = usernameInput.value;
-  const password = passwordInput.value;
-  
-  try {
-    const res = await fetch(`${API_BASE}/login`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username, password })
-    });
-    const data = await res.json();
-    
-    if (data.success) {
-      localStorage.setItem('auth_token', data.token);
-      localStorage.setItem('user_info', JSON.stringify(data.user));
-      CURRENT_USER = data.user;
-      showToast('登录成功！欢迎回来 👋');
-      updateNavUser();
-      setTimeout(() => {
-        setMode('admin');
-      }, 500);
-    } else {
-      showToast('登录失败: ' + data.message);
-    }
-  } catch (err) {
-    console.error(err);
-    showToast('登录请求出错，请确保后台服务已启动');
-  }
-}
-
-function updateNavUser() {
-  if (CURRENT_USER) {
-    const actions = document.querySelector('.nav-actions');
-    if (actions) {
-      actions.innerHTML = `<div class="nav-avatar" onclick="setMode('admin')" title="进入后台">${CURRENT_USER.name ? CURRENT_USER.name[0] : 'U'}</div>`;
-    }
-  }
-}
-
-// ── DATA FETCHING ──
-async function fetchStats() {
-  try {
-    const res = await fetch(`${API_BASE}/stats`);
-    const data = await res.json();
-    if (document.getElementById('statPostCount')) document.getElementById('statPostCount').textContent = data.postCount;
-    if (document.getElementById('statViewCount')) document.getElementById('statViewCount').textContent = data.viewCount.toLocaleString();
-  } catch (err) { console.error('Failed to fetch stats', err); }
-}
-
-async function fetchPosts() {
-  try {
-    const res = await fetch(`${API_BASE}/posts`);
-    const posts = await res.json();
-    const tbody = document.getElementById('articleListBody');
-    if (!tbody) return;
-    tbody.innerHTML = '';
-    
-    posts.forEach(post => {
-      const tr = document.createElement('tr');
-      const statusClass = post.published ? 'status-published' : 'status-draft';
-      const statusText = post.published ? '● 已发布' : '○ 草稿';
-      
-      tr.innerHTML = `
-        <td><div style="display:flex;align-items:center;gap:.75rem"><div class="article-thumb">📄</div><div style="font-size:13.5px;font-weight:500;color:var(--admin-text)">${post.title}</div></div></td>
-        <td><span class="tag tag-gray" style="font-size:11px">文章</span></td>
-        <td><span class="status-badge ${statusClass}">${statusText}</span></td>
-        <td style="font-family:'DM Mono',monospace;font-size:12px">-</td>
-        <td style="font-family:'DM Mono',monospace;font-size:12px">-</td>
-        <td style="font-family:'DM Mono',monospace;font-size:12px;color:var(--admin-muted)">${new Date(post.date).toLocaleDateString()}</td>
-        <td><div style="display:flex;gap:.4rem">
-          <button class="btn btn-admin-outline btn-sm" onclick="editPost('${post.filename}')">编辑</button>
-          <button class="btn btn-sm" style="color:var(--red);border:1px solid rgba(239,68,68,.3);border-radius:5px;padding:.3rem .7rem;font-size:12px;background:transparent" onclick="deletePost('${post.filename}')">删除</button>
-        </div></td>
-      `;
-      tbody.appendChild(tr);
-    });
-  } catch (err) { console.error('Failed to fetch posts', err); }
-}
-
-async function editPost(filename) {
-  currentEditingFile = filename;
-  try {
-    const res = await fetch(`${API_BASE}/post/${filename}`);
-    const data = await res.json();
-    
-    const content = data.content;
-    let title = filename;
-    
-    const fmMatch = content.match(/^---\n([\s\S]*?)\n---\n/);
-    if (fmMatch) {
-        const fm = fmMatch[1];
-        const titleMatch = fm.match(/title:\s*(.*)/);
-        if (titleMatch) title = titleMatch[1].trim();
-    }
-    
-    document.getElementById('editorTitle').value = title;
-    document.getElementById('editorContent').value = content;
-    
-    showAdminPage('editor');
-  } catch (err) { console.error(err); showToast('加载文章失败'); }
-}
-
-async function savePost(publish = false) {
-  const title = document.getElementById('editorTitle').value;
-  const content = document.getElementById('editorContent').value;
-  
-  if (!title || !content) {
-    showToast('标题和内容不能为空');
-    return;
-  }
-  
-  const url = currentEditingFile ? `${API_BASE}/post/${currentEditingFile}` : `${API_BASE}/post`;
-  const method = currentEditingFile ? 'PUT' : 'POST';
-  
-  try {
-    const res = await fetch(url, {
-      method,
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ title, content })
-    });
-    const data = await res.json();
-    
-    if (data.success || data.filename) {
-      showToast('保存成功');
-      if (!currentEditingFile) currentEditingFile = data.filename;
-      showAdminPage('articles');
-      fetchPosts();
-    } else {
-      showToast('保存失败');
-    }
-  } catch (err) { 
-    console.error(err); 
-    showToast('保存请求出错');
-  }
-}
-
-async function deletePost(filename) {
-  if (!confirm('确定要删除这篇文章吗？此操作不可恢复。')) return;
-  try {
-    const res = await fetch(`${API_BASE}/post/${filename}`, { method: 'DELETE' });
-    const data = await res.json();
-    if (data.success) {
-      showToast('已删除');
-      fetchPosts();
-    }
-  } catch (err) { console.error(err); showToast('删除失败'); }
-}
-
-function initEditorToolbar() {
-  const toolbar = document.querySelector('.editor-toolbar');
-  if (!toolbar) return;
-  
-  toolbar.addEventListener('click', (e) => {
-    const btn = e.target.closest('.toolbar-btn');
-    if (!btn) return;
-    
-    const title = btn.title || btn.textContent.trim();
-    const textarea = document.getElementById('editorContent');
-    
-    if (title.includes('加粗') || title === 'B') insertText(textarea, '**', '**');
-    else if (title.includes('斜体') || title === 'I') insertText(textarea, '*', '*');
-    else if (title.includes('下划线') || title === 'U') insertText(textarea, '<u>', '</u>');
-    else if (title === 'H1') insertText(textarea, '# ', '');
-    else if (title === 'H2') insertText(textarea, '## ', '');
-    else if (title === 'H3') insertText(textarea, '### ', '');
-    else if (title === '❝') insertText(textarea, '> ', '');
-    else if (title === '</>') insertText(textarea, '```\\n', '\\n```');
-    else if (title === '🔗') insertText(textarea, '[链接文字](', ')');
-    else if (title === '—') insertText(textarea, '\\n---\\n', '');
-  });
-}
-
-function insertText(textarea, before, after) {
-  const start = textarea.selectionStart;
-  const end = textarea.selectionEnd;
-  const text = textarea.value;
-  const selected = text.substring(start, end);
-  
-  const replacement = before + selected + after;
-  textarea.value = text.substring(0, start) + replacement + text.substring(end);
-  
-  textarea.focus();
-  textarea.selectionStart = start + before.length;
-  textarea.selectionEnd = start + replacement.length - after.length;
-}
-
-// ── PAGE ROUTING ──
-async function showPage(name, param) {
-  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-  const target = document.getElementById('page-' + name);
-  if (target) {
-    target.classList.add('active');
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  }
-  
-  document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
-  const navMap = { home:'navHome', articles:'navArticles', novels:'navNovels', about:'navAbout' };
-  if (navMap[name] && document.getElementById(navMap[name])) {
-    document.getElementById(navMap[name]).classList.add('active');
-  }
-
-  if (name === 'article' && param) {
-    await loadArticle(param);
-  }
-  if (name === 'chapter' && param) {
-    const [novelId, chapterFile] = param.split('/');
-    await loadChapter(novelId, chapterFile);
-  }
-  if (name === 'articles' || name === 'home') {
-    renderFrontendPosts();
-  }
-  if (name === 'novels') {
-    renderFrontendNovels();
-  }
-}
-
-async function loadChapter(novelId, chapterFile) {
-  try {
-    const res = await fetch(`${API_BASE}/novel/${novelId}/chapter/${chapterFile}`);
-    const data = await res.json();
-    
-    document.querySelector('.chapter-title-bar').textContent = data.novelTitle;
-    document.querySelector('.chapter-title').textContent = data.title;
-    if (window.marked && window.DOMPurify) {
-        document.querySelector('.chapter-body').innerHTML = DOMPurify.sanitize(marked.parse(data.content));
-    } else {
-        document.querySelector('.chapter-body').textContent = data.content;
-    }
-    
-    const tocList = document.querySelector('.chapter-toc-list');
-    tocList.innerHTML = data.chapters.map(c => `
-      <div class="chapter-toc-item ${c.filename === chapterFile ? 'current' : ''}" onclick="showPage('chapter', '${novelId}/${c.filename}')">
-        <span class="chapter-toc-num">#</span>${c.title}
-      </div>
-    `).join('');
-    
-  } catch (err) { showToast('章节加载失败'); }
-}
-
-async function renderFrontendNovels() {
-  try {
-    const res = await fetch(`${API_BASE}/novels`);
-    const novels = await res.json();
-    const grid = document.querySelector('.novels-list-grid');
-    if (!grid) return;
-    
-    grid.innerHTML = novels.map(n => `
-      <div class="novel-list-card" onclick="alert('Select a chapter')">
-        <div class="novel-list-cover" style="background:${getRandomGradient(n.title)}">
-          <div class="novel-list-cover-icon">📖</div>
-          <div class="novel-list-cover-overlay"><div class="novel-list-title">${n.title}</div></div>
+    <div class="page" id="page-novels">
+      <div class="page-hero">
+        <div class="page-hero-inner">
+          <h1>连载小说</h1>
+          <p>正在进行中的故事，以及那些已经画上句号的世界</p>
         </div>
-        <div class="novel-list-body">
-          <div style="display:flex;align-items:center;justify-content:space-between"><span class="tag tag-blue">${n.genre || '未分类'}</span><span class="tag tag-green" style="font-size:10px">${n.status === 'finished' ? '已完结' : '连载中'}</span></div>
-          <div class="novel-info-row">
-            <span class="novel-chapters-count">${n.chapters} 章</span>
-            ${n.firstChapter ? 
-              `<button class="btn btn-primary btn-sm" onclick="event.stopPropagation();showPage('chapter', '${n.id}/${n.firstChapter}')">开始阅读</button>` :
-              `<button class="btn btn-outline btn-sm" disabled>暂无章节</button>`
-            }
+      </div>
+      <div class="container">
+        <div class="cat-tabs" style="padding-top:2rem">
+          <div class="cat-tab active">全部</div>
+          <div class="cat-tab">连载中</div>
+          <div class="cat-tab">已完结</div>
+          <div class="cat-tab">科幻</div>
+          <div class="cat-tab">奇幻</div>
+          <div class="cat-tab">现实主义</div>
+        </div>
+        <div class="novels-list-grid"></div>
+      </div>
+    </div>
+
+    <div class="page" id="page-chapter">
+      <div class="chapter-header">
+        <div class="chapter-back" onclick="showPage('novels')">← 返回目录</div>
+        <div class="chapter-title-bar">小说阅读</div>
+        <div class="chapter-nav-btns">
+          <button class="btn btn-outline btn-sm">← 上一章</button>
+          <button class="btn btn-primary btn-sm">下一章 →</button>
+        </div>
+      </div>
+      <div class="reading-progress"><div class="reading-progress-bar"></div></div>
+      <div class="chapter-reader-layout">
+        <div class="chapter-content-wrap">
+          <span class="chapter-num-label">章节</span>
+          <h1 class="chapter-title">章节标题</h1>
+          <div class="chapter-body"></div>
+          <div class="chapter-nav-footer">
+            <button class="btn btn-outline">← 上一章</button>
+            <button class="btn btn-primary">下一章 →</button>
+          </div>
+        </div>
+        <div>
+          <div class="chapter-toc">
+            <div class="chapter-toc-header">章节目录</div>
+            <div class="chapter-toc-list"></div>
           </div>
         </div>
       </div>
-    `).join('');
-  } catch (err) { console.error(err); }
-}
+    </div>
 
-async function loadArticle(filename) {
-  try {
-    const res = await fetch(`${API_BASE}/post/${filename}`);
-    const data = await res.json();
-    
-    const content = data.content;
-    const fmEnd = content.indexOf('\\n---\\n', 3);
-    let body = content;
-    let title = filename.replace('.md', '');
-    let date = new Date().toLocaleDateString();
-    let tags = [];
-    
-    if (content.startsWith('---') && fmEnd !== -1) {
-      const fm = content.substring(3, fmEnd);
-      body = content.substring(fmEnd + 5);
-      
-      const titleMatch = fm.match(/title:\\s*(.*)/);
-      if (titleMatch) title = titleMatch[1].trim();
-      
-      const dateMatch = fm.match(/date:\\s*(.*)/);
-      if (dateMatch) date = new Date(dateMatch[1]).toLocaleDateString();
-      
-      const tagsMatch = fm.match(/tags:\\s*\\[(.*)\\]/);
-      if (tagsMatch) tags = tagsMatch[1].split(',').map(t => t.trim());
-    }
-    
-    document.querySelector('.article-headline').textContent = title;
-    if (window.marked && window.DOMPurify) {
-        document.querySelector('.article-content').innerHTML = DOMPurify.sanitize(marked.parse(body));
-    } else {
-        document.querySelector('.article-content').textContent = body;
-    }
-    
-    const metaItems = document.querySelectorAll('.article-meta-item');
-    if (metaItems[0]) metaItems[0].textContent = `📅 ${date}`;
-    
-     const tagContainer = document.querySelector('.article-tags');
-     tagContainer.innerHTML = tags.map(t => `<span class="tag tag-gray">${t}</span>`).join('');
-     
-     loadComments(filename);
-
-   } catch (err) {
-     console.error(err);
-     showToast('文章加载失败');
-   }
- }
-
- async function loadComments(postId) {
-   const container = document.querySelector('.comments-section');
-   const textarea = container.querySelector('textarea');
-   const footer = container.querySelector('.comment-input-footer');
-   
-   if (CURRENT_USER) {
-     textarea.readOnly = false;
-     textarea.onclick = null;
-     textarea.placeholder = "写下你的想法……";
-     footer.innerHTML = `
-       <div class="comment-user-info">
-         <div class="comment-avatar">${CURRENT_USER.name ? CURRENT_USER.name[0] : 'U'}</div>
-         <span>${CURRENT_USER.name}</span>
-       </div>
-       <button class="btn btn-primary btn-sm" onclick="submitComment('${postId}')">发布评论</button>
-     `;
-   } else {
-     textarea.readOnly = true;
-     textarea.onclick = () => showPage('login');
-     textarea.placeholder = "写下你的想法……（登录后才能评论）";
-     footer.innerHTML = `
-       <div class="comment-user-info">
-         <div class="comment-avatar">?</div>
-         <span>请先登录</span>
-       </div>
-       <button class="btn btn-primary btn-sm" onclick="showPage('login')">登录后评论</button>
-     `;
-   }
-
-   try {
-     const res = await fetch(`${API_BASE}/comments?post=${postId}`);
-     const comments = await res.json();
-     
-     document.querySelector('.comments-title').textContent = `评论 · ${comments.length}`;
-     
-     const list = container.querySelectorAll('.comment-item');
-     Array.from(list).forEach(el => el.remove());
-     
-     comments.forEach(c => {
-       if (c.status !== 'approved' && (!CURRENT_USER || CURRENT_USER.role !== 'Administrator')) return;
-       
-       const div = document.createElement('div');
-       div.className = 'comment-item';
-       div.innerHTML = `
-         <div class="comment-avatar-lg" style="background:${getRandomGradient(c.user)}">${c.user[0]}</div>
-         <div class="comment-body">
-           <div class="comment-header">
-             <span class="comment-name">${c.user}</span>
-             <span class="comment-time">${new Date(c.date).toLocaleDateString()} ${c.status === 'pending' ? '(待审核)' : ''}</span>
-           </div>
-           <div class="comment-text">${window.DOMPurify ? DOMPurify.sanitize(c.content) : c.content}</div>
-           <div class="comment-actions">
-             <div class="comment-action">👍 0</div>
-             <div class="comment-action" onclick="showPage('login')">回复</div>
-           </div>
-         </div>
-       `;
-       container.appendChild(div);
-     });
-     
-   } catch (err) { console.error(err); }
- }
-
- async function submitComment(postId) {
-   const textarea = document.querySelector('.comments-section textarea');
-   const content = textarea.value.trim();
-   if (!content) return showToast('评论内容不能为空');
-   
-   try {
-     const res = await fetch(`${API_BASE}/comments`, {
-       method: 'POST',
-       headers: { 'Content-Type': 'application/json' },
-       body: JSON.stringify({ post: postId, content, user: CURRENT_USER.name })
-     });
-     const data = await res.json();
-     if (data.success) {
-       showToast('评论已提交，等待审核');
-       textarea.value = '';
-       loadComments(postId);
-     }
-   } catch (err) { showToast('评论提交失败'); }
- }
-
- async function renderFrontendPosts() {
-  try {
-    const res = await fetch(`${API_BASE}/posts`);
-    const posts = await res.json();
-    
-    const homeGrid = document.querySelector('#page-home .articles-grid');
-    if (homeGrid) {
-      homeGrid.innerHTML = posts.slice(0, 6).map(post => `
-        <div class="article-card" onclick="showPage('article', '${post.filename}')">
-          <div class="card-cover" style="background:${getRandomGradient(post.title)}">
-            <div class="card-category-badge">文章</div>
-            ${getRandomIcon(post.title)}
-          </div>
-          <div class="card-body">
-            <h3 class="card-title">${post.title}</h3>
-            <p class="card-excerpt">点击阅读全文...</p>
-            <div class="card-footer">
-              <div class="card-meta">
-                <span>${new Date(post.date).toLocaleDateString()}</span>
-              </div>
+    <div class="page" id="page-about">
+      <div class="page-hero">
+        <div class="page-hero-inner">
+          <h1>关于作者</h1>
+          <p>一个喜欢用文字思考的人</p>
+        </div>
+      </div>
+      <div class="container-sm" style="padding:3rem 2rem 5rem">
+        <div style="display:flex;gap:3rem;align-items:flex-start;margin-bottom:3rem">
+          <div style="width:120px;height:120px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--gold));flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:2.5rem;color:white">✍</div>
+          <div>
+            <h2 style="font-family:'Playfair Display',serif;font-size:1.8rem;margin-bottom:.5rem">某位写作者</h2>
+            <p style="color:var(--ink-3);font-size:.9rem;margin-bottom:1rem;font-family:'DM Mono',monospace">作家 · 随笔作者 · 小说创作者</p>
+            <div style="display:flex;gap:.75rem;flex-wrap:wrap">
+              <span class="tag tag-green">文学</span>
+              <span class="tag tag-gold">哲学</span>
+              <span class="tag tag-blue">电影</span>
+              <span class="tag tag-gray">旅行</span>
             </div>
           </div>
         </div>
-      `).join('');
-    }
-
-    const articlesGrid = document.querySelector('#page-articles .articles-grid');
-    if (articlesGrid && document.getElementById('page-articles').classList.contains('active')) {
-      articlesGrid.innerHTML = posts.map(post => `
-        <div class="article-card" onclick="showPage('article', '${post.filename}')">
-          <div class="card-cover" style="background:${getRandomGradient(post.title)}">
-            <div class="card-category-badge">文章</div>
-            ${getRandomIcon(post.title)}
-          </div>
-          <div class="card-body">
-            <h3 class="card-title">${post.title}</h3>
-            <div class="card-footer">
-              <div class="card-meta"><span>${new Date(post.date).toLocaleDateString()}</span></div>
-            </div>
-          </div>
+        <div style="font-size:1.02rem;line-height:1.9;color:var(--ink-2)">
+          <p>这是一个关于文字与思考的私人空间。</p>
         </div>
-      `).join('');
-    }
-    
-  } catch (err) { console.error('Failed to load posts', err); }
-}
+      </div>
+    </div>
 
-function getRandomGradient(str) {
-  const colors = [
-    'linear-gradient(135deg,#1a3a2e,#2d6b52)',
-    'linear-gradient(135deg,#3d2a1a,#7a4f2d)',
-    'linear-gradient(135deg,#0a1a2a,#1a3a5c)',
-    'linear-gradient(135deg,#1a0a2a,#3d1a5c)',
-    'linear-gradient(135deg,#1a2a0a,#3d5c1a)'
-  ];
-  return colors[(str || '').length % colors.length];
-}
+    <div class="page" id="page-articles">
+      <div class="page-hero">
+        <div class="page-hero-inner">
+          <h1>全部文章</h1>
+          <p>文章、随笔与评论</p>
+        </div>
+      </div>
+      <div class="container">
+        <div class="cat-tabs" style="padding-top:2rem">
+          <div class="cat-tab active">全部</div>
+          <div class="cat-tab">文章</div>
+          <div class="cat-tab">随笔</div>
+          <div class="cat-tab">评论</div>
+        </div>
+        <div class="articles-grid"></div>
+        <div class="pagination" style="border-color:var(--border)">
+          <button class="page-btn active" style="background:var(--accent);border-color:var(--accent);color:white">1</button>
+          <button class="page-btn" style="border-color:var(--border-2);color:var(--ink-3)">2</button>
+          <button class="page-btn" style="border-color:var(--border-2);color:var(--ink-3)">→</button>
+        </div>
+      </div>
+    </div>
 
-function getRandomIcon(str) {
-  const icons = ['🌿', '🔭', '🎬', '🌃', '🎵', '☕', '📚', '💭'];
-  return icons[(str || '').length % icons.length];
-}
+    <div class="page" id="page-login">
+      <div class="auth-page">
+        <div class="auth-card">
+          <div class="auth-logo"><div class="auth-logo-text">拾墨</div></div>
+          <h2 class="auth-title">欢迎回来</h2>
+          <p class="auth-subtitle">登录你的账号，加入对话</p>
+          <div class="form-group">
+            <label class="form-label">邮箱地址</label>
+            <input type="text" id="loginUsername" class="form-input" placeholder="输入用户名">
+          </div>
+          <div class="form-group">
+            <label class="form-label">密码</label>
+            <input type="password" id="loginPassword" class="form-input" placeholder="输入密码">
+          </div>
+          <button class="form-submit" onclick="handleLogin()">登录</button>
+          <div class="auth-switch">还没有账号？<span onclick="showPage('register')">立即注册</span></div>
+        </div>
+      </div>
+    </div>
 
-// ── ADMIN ROUTING ──
-function showAdminPage(name) {
-  if (!CURRENT_USER) {
-    showToast('请先登录');
-    setMode('front');
-    showPage('login');
-    return;
-  }
+    <div class="page" id="page-register">
+      <div class="auth-page">
+        <div class="auth-card">
+          <div class="auth-logo"><div class="auth-logo-text">拾墨</div></div>
+          <h2 class="auth-title">创建账号</h2>
+          <p class="auth-subtitle">加入读者社区，参与内容讨论</p>
+          <div class="form-group">
+            <label class="form-label">昵称</label>
+            <input type="text" class="form-input" placeholder="你的显示名称">
+          </div>
+          <div class="form-group">
+            <label class="form-label">邮箱地址</label>
+            <input type="email" class="form-input" placeholder="your@email.com">
+          </div>
+          <div class="form-group">
+            <label class="form-label">密码</label>
+            <input type="password" class="form-input" placeholder="至少 8 位字符">
+          </div>
+          <div class="form-group">
+            <label class="form-label">确认密码</label>
+            <input type="password" class="form-input" placeholder="再次输入密码">
+          </div>
+          <button class="form-submit">注册</button>
+          <div class="auth-switch">已有账号？<span onclick="showPage('login')">直接登录</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
 
-  document.querySelectorAll('.admin-page').forEach(p => p.classList.remove('active'));
-  const target = document.getElementById('adminPage-' + name);
-  if (target) target.classList.add('active');
-  document.querySelectorAll('.admin-nav-item').forEach(i => i.classList.remove('active'));
-  const navItem = document.getElementById('adminNav-' + name);
-  if (navItem) navItem.classList.add('active');
-  
-  if (name === 'dashboard') fetchStats();
-  if (name === 'articles') fetchPosts();
-  if (name === 'novels') fetchNovels();
-  if (name === 'comments') fetchAdminComments();
-  if (name === 'settings') fetchSettings();
-  if (name === 'editor' && !currentEditingFile) {
-     document.getElementById('editorTitle').value = '';
-     document.getElementById('editorContent').value = '';
-  }
-}
-
-async function fetchSettings() {
-  try {
-    const res = await fetch(`${API_BASE}/settings`);
-    const data = await res.json();
-    const rows = document.querySelectorAll('.settings-row input');
-    if (rows.length >= 3) {
-      rows[0].value = data.title || '';
-      rows[1].value = data.description || '';
-      rows[2].value = data.author || '';
-    }
-  } catch (err) { console.error(err); }
-}
-
-async function saveSettings() {
-  const rows = document.querySelectorAll('.settings-row input');
-  const settings = {
-    title: rows[0].value,
-    description: rows[1].value,
-    author: rows[2].value
-  };
-  
-  try {
-    const res = await fetch(`${API_BASE}/settings`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(settings)
-    });
-    if (res.ok) showToast('设置已保存');
-    else showToast('保存失败');
-  } catch (err) { showToast('保存出错'); }
-}
-
-async function fetchAdminComments() {
-  try {
-    const res = await fetch(`${API_BASE}/comments`);
-    const comments = await res.json();
-    
-    const pending = comments.filter(c => c.status === 'pending').length;
-    const approved = comments.filter(c => c.status === 'approved').length;
-    const hidden = comments.filter(c => c.status === 'hidden').length;
-    
-    const tabs = document.querySelectorAll('#adminPage-comments .top-tab .tab-count');
-    if (tabs.length >= 4) {
-      tabs[0].textContent = comments.length;
-      tabs[1].textContent = pending;
-      tabs[2].textContent = approved;
-      tabs[3].textContent = hidden;
-    }
-    
-    const container = document.querySelector('#adminPage-comments .admin-content');
-    const oldCards = container.querySelectorAll('.comment-mod-card');
-    oldCards.forEach(c => c.remove());
-    
-    comments.forEach(c => {
-      const card = document.createElement('div');
-      card.className = 'comment-mod-card';
-      if (c.status === 'pending') {
-        card.style.borderColor = 'rgba(251,191,36,.3)';
-        const header = card.querySelector('.comment-mod-header');
-        if(header) header.style.background = 'rgba(251,191,36,.05)';
-      }
-      
-      const statusBadge = c.status === 'pending' ? '<span class="status-badge status-pending">⏳ 待审核</span>' :
-                          c.status === 'approved' ? '<span class="status-badge status-published">已通过</span>' :
-                          '<span class="status-badge status-hidden">⚠ 已隐藏</span>';
-                          
-      card.innerHTML = `
-        <div class="comment-mod-header">
-          <div class="comment-mod-user">
-            <div class="comment-mod-avatar" style="background:${getRandomGradient(c.user)}">${c.user[0]}</div>
+  <div id="adminApp" class="hidden">
+    <div class="admin-wrap">
+      <aside class="admin-sidebar">
+        <div class="admin-sidebar-logo">
+          <div class="admin-logo-text">拾墨</div>
+          <div class="admin-logo-sub">管理后台 · Admin</div>
+        </div>
+        <nav class="admin-nav">
+          <div class="admin-nav-section-label">内容管理</div>
+          <div class="admin-nav-item active" id="adminNav-dashboard" onclick="showAdminPage('dashboard')">
+            <span class="nav-icon">📊</span> 数据概览
+          </div>
+          <div class="admin-nav-item" id="adminNav-articles" onclick="showAdminPage('articles')">
+            <span class="nav-icon">📝</span> 文章管理
+          </div>
+          <div class="admin-nav-item" id="adminNav-editor" onclick="showAdminPage('editor')">
+            <span class="nav-icon">✏️</span> 写作编辑器
+          </div>
+          <div class="admin-nav-item" id="adminNav-novels" onclick="showAdminPage('novels')">
+            <span class="nav-icon">📖</span> 小说管理
+          </div>
+          <div class="admin-nav-section-label">社区管理</div>
+          <div class="admin-nav-item" id="adminNav-comments" onclick="showAdminPage('comments')">
+            <span class="nav-icon">💬</span> 评论审核
+            <span class="admin-nav-badge">7</span>
+          </div>
+          <div class="admin-nav-item" id="adminNav-users" onclick="showAdminPage('users')">
+            <span class="nav-icon">👥</span> 用户管理
+          </div>
+          <div class="admin-nav-section-label">系统</div>
+          <div class="admin-nav-item" id="adminNav-settings" onclick="showAdminPage('settings')">
+            <span class="nav-icon">⚙️</span> 网站设置
+          </div>
+          <div class="admin-nav-item" onclick="setMode('front')">
+            <span class="nav-icon">🌐</span> 前台预览
+          </div>
+        </nav>
+        <div class="admin-sidebar-footer">
+          <div class="admin-user-info">
+            <div class="admin-user-avatar">作</div>
             <div>
-              <div class="comment-mod-name">${c.user}</div>
-              <div class="comment-mod-meta">${new Date(c.date).toLocaleString()}</div>
+              <div class="admin-user-name">某位作者</div>
+              <div class="admin-user-role">Administrator</div>
             </div>
           </div>
-          ${statusBadge}
         </div>
-        <div class="comment-mod-body">
-          <div class="comment-mod-target">📝 文章：${c.post}</div>
-          ${window.DOMPurify ? DOMPurify.sanitize(c.content) : c.content}
+      </aside>
+
+      <div class="admin-main">
+        <div class="admin-page active" id="adminPage-dashboard">
+          <div class="admin-header">
+            <div class="admin-page-title">数据概览</div>
+            <div style="margin-left:auto;font-family:'DM Mono',monospace;font-size:12px;color:var(--admin-muted)">最近 30 天 · 更新于 5 分钟前</div>
+          </div>
+          <div class="admin-content">
+            <div class="stats-grid">
+              <div class="stat-card">
+                <div class="stat-card-top">
+                  <div class="stat-icon" style="background:rgba(16,185,129,.12);font-size:16px">👁</div>
+                  <span class="stat-change stat-up">↑ 18.3%</span>
+                </div>
+                <div class="stat-value">28,451</div>
+                <div class="stat-label">总页面访问量</div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-card-top">
+                  <div class="stat-icon" style="background:rgba(59,130,246,.12)">👤</div>
+                  <span class="stat-change stat-up">↑ 24.1%</span>
+                </div>
+                <div class="stat-value">1,284</div>
+                <div class="stat-label">注册用户</div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-card-top">
+                  <div class="stat-icon" style="background:rgba(251,191,36,.12)">💬</div>
+                  <span class="stat-change stat-up">↑ 9.6%</span>
+                </div>
+                <div class="stat-value">342</div>
+                <div class="stat-label">评论总数</div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-card-top">
+                  <div class="stat-icon" style="background:rgba(239,68,68,.12)">📝</div>
+                  <span class="stat-change stat-down">↓ 2.1%</span>
+                </div>
+                <div class="stat-value" id="statPostCount">--</div>
+                <div class="stat-label">已发布文章</div>
+              </div>
+            </div>
+          </div>
         </div>
-        <div class="comment-mod-actions">
-          ${c.status !== 'approved' ? `<button class="btn btn-admin btn-sm" onclick="moderateComment('${c.id}', 'approved')">通过</button>` : ''}
-          ${c.status !== 'hidden' ? `<button class="btn btn-sm" style="color:#f87171;border:1px solid rgba(239,68,68,.3);background:transparent;border-radius:5px;padding:.3rem .7rem;font-size:12px" onclick="moderateComment('${c.id}', 'hidden')">隐藏</button>` : ''}
-          <button class="btn btn-sm" style="color:var(--red);border:1px solid rgba(239,68,68,.3);background:transparent;border-radius:5px;padding:.3rem .7rem;font-size:12px" onclick="deleteComment('${c.id}')">删除</button>
+
+        <div class="admin-page" id="adminPage-articles">
+          <div class="admin-header">
+            <div class="admin-page-title">文章管理</div>
+            <div class="admin-header-actions">
+              <div class="admin-search"><span class="admin-search-icon">🔍</span><input placeholder="搜索文章…"></div>
+              <button class="btn btn-admin" onclick="showAdminPage('editor')">+ 新建文章</button>
+            </div>
+          </div>
+          <div class="admin-content">
+            <div class="table-card">
+              <div class="table-wrap">
+                <table class="admin-table">
+                  <thead><tr><th>标题</th><th>分类</th><th>状态</th><th>阅读量</th><th>评论</th><th>发布时间</th><th>操作</th></tr></thead>
+                  <tbody id="articleListBody"></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
         </div>
-      `;
-      container.appendChild(card);
-    });
-    
-  } catch (err) { console.error(err); }
-}
 
-async function moderateComment(id, status) {
-  try {
-    await fetch(`${API_BASE}/comment/${id}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ status })
-    });
-    fetchAdminComments();
-    showToast('操作成功');
-  } catch (err) { showToast('操作失败'); }
-}
+        <div class="admin-page" id="adminPage-editor">
+          <div class="admin-header">
+            <div class="admin-page-title">写作编辑器</div>
+            <div class="admin-header-actions">
+              <button class="btn btn-admin-outline btn-sm" onclick="savePost()">保存</button>
+              <button class="btn btn-admin btn-sm" onclick="savePost(true)">发布</button>
+            </div>
+          </div>
+          <div class="admin-content">
+            <div class="editor-wrap">
+              <input class="editor-title-input" id="editorTitle" placeholder="输入文章标题…" value="">
+              <div class="editor-toolbar"></div>
+              <div class="editor-layout">
+                <div class="editor-body">
+                  <textarea class="editor-textarea" id="editorContent" placeholder="开始写作…"></textarea>
+                </div>
+                <div class="editor-sidebar-panel">
+                  <div class="editor-panel-title">文章设置</div>
+                  <div class="editor-field">
+                    <label class="editor-label">分类</label>
+                    <input class="editor-input" id="editorCategory" placeholder="例如：文章, 随笔">
+                  </div>
+                  <div class="editor-field">
+                    <label class="editor-label">标签</label>
+                    <input class="editor-input" id="editorTags" placeholder="例如：写作, 随想">
+                  </div>
+                  <div class="editor-field">
+                    <label class="editor-label">摘要</label>
+                    <textarea class="editor-input" id="editorExcerpt" style="min-height:70px;resize:none;line-height:1.6" placeholder="用于列表与 SEO"></textarea>
+                  </div>
+                  <div class="editor-field">
+                    <label class="editor-label">文件名/Slug</label>
+                    <input class="editor-input" id="editorSlug" placeholder="例如：memory-and-forgetting">
+                  </div>
+                  <div class="editor-panel-title" style="margin-top:1.25rem">媒体上传</div>
+                  <div class="upload-zone" onclick="document.getElementById('mediaInput').click()">
+                    <div class="upload-zone-icon">📁</div>
+                    <div class="upload-zone-text">点击或拖拽上传<br>图片 / GIF / 视频 (≤100MB)</div>
+                    <input type="file" id="mediaInput" hidden onchange="uploadMedia(this.files[0])">
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
 
-async function deleteComment(id) {
-  if (!confirm('确定删除?')) return;
-  try {
-    await fetch(`${API_BASE}/comment/${id}`, { method: 'DELETE' });
-    fetchAdminComments();
-    showToast('已删除');
-  } catch (err) { showToast('操作失败'); }
-}
+        <div class="admin-page" id="adminPage-comments">
+          <div class="admin-header"><div class="admin-page-title">评论审核</div></div>
+          <div class="admin-content"></div>
+        </div>
 
-async function uploadMedia(file) {
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onload = async (e) => {
-    const base64 = e.target.result;
-    try {
-      const res = await fetch(`${API_BASE}/upload`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ image: base64, filename: file.name })
-      });
-      const data = await res.json();
-      if (data.success) {
-        showToast('上传成功');
-        const textarea = document.getElementById('editorContent');
-        const url = data.url; 
-        const fullUrl = `http://localhost:3002${url}`;
-        insertText(textarea, `\\n![${file.name}](${fullUrl})\\n`, '');
-      } else {
-        showToast('上传失败');
-      }
-    } catch (err) { showToast('上传出错'); }
-  };
-  reader.readAsDataURL(file);
-}
+        <div class="admin-page" id="adminPage-settings">
+          <div class="admin-header">
+            <div class="admin-page-title">网站设置</div>
+            <div class="admin-header-actions">
+              <button class="btn btn-admin" onclick="saveSettings()">保存更改</button>
+            </div>
+          </div>
+          <div class="admin-content"></div>
+        </div>
+      </div>
+    </div>
+  </div>
 
-async function createNovel() {
-  const title = prompt("请输入小说标题：");
-  if (!title) return;
-  
-  try {
-    const res = await fetch(`${API_BASE}/novel`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ title, genre: '未分类' })
-    });
-    const data = await res.json();
-    if (data.success) {
-      showToast('创建成功');
-      fetchNovels();
-    } else {
-      showToast('创建失败: ' + data.error);
-    }
-  } catch (err) { showToast('请求出错'); }
-}
-
-async function fetchNovels() {
-  try {
-    const res = await fetch(`${API_BASE}/novels`);
-    const novels = await res.json();
-    const tbody = document.querySelector('#adminPage-novels tbody');
-    if (!tbody) return;
-    tbody.innerHTML = novels.map(n => `
-      <tr>
-        <td style="font-weight:500;color:var(--admin-text)">${n.title}</td>
-        <td><span class="tag tag-blue" style="font-size:11px">${n.genre || '未分类'}</span></td>
-        <td style="font-family:'DM Mono',monospace;font-size:12px">${n.chapters}</td>
-        <td style="font-family:'DM Mono',monospace;font-size:12px">--</td>
-        <td><span class="status-badge ${n.status === 'finished' ? 'status-completed' : 'status-ongoing'}">${n.status === 'finished' ? '✓ 已完结' : '● 连载中'}</span></td>
-        <td style="font-family:'DM Mono',monospace;font-size:12px;color:var(--admin-muted)">${new Date(n.created || Date.now()).toLocaleDateString()}</td>
-        <td><div style="display:flex;gap:.4rem">
-          <button class="btn btn-admin-outline btn-sm" onclick="alert('TODO: Add Chapter UI')">新增章节</button>
-          <button class="btn btn-admin-outline btn-sm">编辑</button>
-        </div></td>
-      </tr>
-    `).join('');
-  } catch (err) { console.error(err); }
-}
-
-// ── MODE SWITCH ──
-function setMode(mode) {
-  if (mode === 'admin' && !CURRENT_USER) {
-    showToast('需要管理员权限');
-    showPage('login');
-    return;
-  }
-
-  const front = document.getElementById('frontendApp');
-  const admin = document.getElementById('adminApp');
-  
-  if (mode === 'front') {
-    front.classList.remove('hidden');
-    admin.classList.add('hidden');
-  } else {
-    front.classList.add('hidden');
-    admin.classList.remove('hidden');
-    showAdminPage('dashboard');
-  }
-  window.scrollTo({ top: 0 });
-}
-
-function showToast(msg) {
-  const t = document.getElementById('toast');
-  if(t) {
-      const msgEl = document.getElementById('toastMsg');
-      if(msgEl) msgEl.textContent = msg;
-      t.classList.add('show');
-      setTimeout(() => t.classList.remove('show'), 2800);
-  }
-}
-
-// Chart hover
-document.querySelectorAll('.chart-bar').forEach(bar => {
-  bar.addEventListener('mouseenter', function(e) {
-    this.style.opacity = '0.85';
-  });
-  bar.addEventListener('mouseleave', function() {
-    this.style.opacity = '';
-  });
-});
-</script>
+  <script src="/js/main.js"></script>
 </body>
 </html>
