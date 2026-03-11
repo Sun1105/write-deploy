@@ -53,6 +53,28 @@ jobs:
           npx hexo clean
           npx hexo generate
 
+      - name: Add Vercel static deployment files
+        run: |
+          cat > ./public/package.json <<'EOF'
+          {
+            "name": "hexo-static-export",
+            "private": true,
+            "version": "0.0.0",
+            "scripts": {
+              "build": "echo \"skip build\"",
+              "install": "echo \"skip install\""
+            }
+          }
+          EOF
+          cat > ./public/vercel.json <<'EOF'
+          {
+            "version": 2,
+            "installCommand": "echo \"skip install\"",
+            "buildCommand": "echo \"skip build\"",
+            "outputDirectory": "."
+          }
+          EOF
+
       # 5️⃣ 部署到不同仓库（矩阵控制）
       - name: Deploy to ${{ matrix.repo.name }}
         uses: peaceiris/actions-gh-pages@v4
