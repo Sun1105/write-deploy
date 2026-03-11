@@ -1,0 +1,61 @@
+:root {
+  /* 更鲜艳的色彩系统 */
+  --color-primary: #3b82f6;       /* Vibrant Blue */
+  --color-primary-dark: #2563eb;
+  --color-secondary: #8b5cf6;     /* Vibrant Violet */
+  --color-accent: #f59e0b;        /* Amber for highlights */
+  
+  /* 渐变变量 */
+  --gradient-primary: linear-gradient(135deg, var(--color-primary), var(--color-secondary));
+  --gradient-hover: linear-gradient(135deg, var(--color-primary-dark), #7c3aed);
+  
+  --color-bg: #f8fafc;            /* Cooler, lighter gray */
+  --color-surface: #ffffff;
+  --color-text: #1e293b;          /* Slate 800 */
+  --color-text-secondary: #64748b;/* Slate 500 */
+  
+  --radius: 12px;
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.05), 0 1px 2px rgba(0,0,0,0.06);
+  --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -1px rgba(0,0,0,0.03);
+  --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.05), 0 4px 6px -2px rgba(0,0,0,0.025);
+  
+  --transition-fast: 0.2s ease;
+  --transition-normal: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  font-family: "Inter", "Noto Sans SC", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Microsoft YaHei", sans-serif;
+  color: var(--color-text);
+  background: var(--color-bg);
+  height: 100%;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* 增加一点微妙的背景纹理或渐变 */
+body::before {
+  content: '';
+  position: fixed;
+  top: 0; left: 0; width: 100vw; height: 100vh;
+  background: radial-gradient(circle at top left, rgba(59, 130, 246, 0.03), transparent 40%),
+              radial-gradient(circle at bottom right, rgba(139, 92, 246, 0.03), transparent 40%);
+  z-index: -1;
+  pointer-events: none;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+a {
+  color: var(--color-primary);
+  text-decoration: none;
+  transition: var(--transition-fast);
+}
+
+a:hover {
+  color: var(--color-secondary); /* Link hover effect changes to secondary color */
+}

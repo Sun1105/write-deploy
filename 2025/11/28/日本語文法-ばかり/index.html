@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>📖 ばかり | Sun Blog</title>
+  <meta name="description" content="一个记录开发、学习与生活点滴的博客">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400;1,600&family=Source+Serif+4:ital,opsz,wght@0,8..60,300;0,8..60,400;0,8..60,600;1,8..60,300;1,8..60,400&family=DM+Mono:ital,wght@0,300;0,400;0,500;1,400&family=Noto+Sans+SC:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/custom.css">
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/dompurify/dist/purify.min.js"></script>
+<meta name="generator" content="Hexo 8.1.1"></head>
+<body>
+  <div class="toast" id="toast"><span class="toast-icon">✓</span><span id="toastMsg">操作成功</span></div>
+
+  <div id="frontendApp">
+    <nav class="front-nav">
+      <div class="nav-logo" onclick="showPage('home')">拾<span>墨</span></div>
+      <div class="nav-links">
+        <div class="nav-link active" id="navHome" onclick="showPage('home')">首页</div>
+        <div class="nav-link" id="navArticles" onclick="showPage('articles')">文章</div>
+        <div class="nav-link" id="navNovels" onclick="showPage('novels')">小说</div>
+        <div class="nav-link" id="navAbout" onclick="showPage('about')">关于</div>
+      </div>
+      <div class="nav-actions">
+        <button class="btn btn-ghost btn-sm" onclick="showPage('login')">登录</button>
+        <button class="btn btn-primary btn-sm" onclick="showPage('register')">注册</button>
+      </div>
+    </nav>
+
+    <div class="page active" id="page-home">
+      <section class="hero">
+        <div class="hero-inner">
+          <div>
+            <div class="hero-eyebrow">Personal Writing Platform</div>
+            <h1 class="hero-title">记录生命中的<br><em>每一刻灵光</em></h1>
+            <p class="hero-desc">文字是我与世界的桥梁。</p>
+            <div class="hero-actions">
+              <button class="hero-btn-primary" onclick="showPage('articles')">浏览文章</button>
+              <button class="hero-btn-outline" onclick="showPage('novels')">阅读小说</button>
+            </div>
+          </div>
+        </div>
+      </section>
+      <div class="container">
+        <div class="section-header">
+          <div class="section-title">最新文章</div>
+        </div>
+        <div class="articles-grid"></div>
+      </div>
+      <footer class="front-footer">
+        <div class="footer-inner">
+          <div class="footer-logo">拾墨</div>
+          <div class="footer-bottom">
+            <span>© 2026 拾墨 · 保留所有权利</span>
+          </div>
+        </div>
+      </footer>
+    </div>
+
+    <div class="page" id="page-articles">
+      <div class="page-hero">
+        <div class="page-hero-inner">
+          <h1>全部文章</h1>
+          <p>文章、随笔与评论</p>
+        </div>
+      </div>
+      <div class="container">
+        <div class="articles-grid"></div>
+      </div>
+    </div>
+
+    <div class="page" id="page-article">
+      <div class="container">
+        <div class="article-header">
+          <div class="article-breadcrumb">
+            <span onclick="showPage('home')">首页</span>
+            <span style="color:var(--border-2)">›</span>
+            <span>文章</span>
+          </div>
+          <div class="article-tags" style="margin-bottom:1rem"></div>
+          <h1 class="article-headline"></h1>
+          <div class="article-meta-row">
+            <div class="article-meta-item">📅 --</div>
+            <div class="article-meta-item">⏱ --</div>
+            <div class="article-meta-item">👁 --</div>
+            <div class="article-meta-item">💬 --</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="container">
+        <div class="article-layout">
+          <div class="article-content"></div>
+          <div class="media-panel">
+            <div class="media-panel-label">配图与媒体</div>
+            <div class="media-item">
+              <div class="media-img">📚</div>
+              <div class="media-caption">媒体面板</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="container-sm">
+        <div class="comments-section">
+          <div class="comments-title">评论</div>
+          <div class="comment-input-area">
+            <textarea placeholder="写下你的想法……（登录后才能评论）" readonly onclick="showPage('login')"></textarea>
+            <div class="comment-input-footer">
+              <div class="comment-user-info">
+                <div class="comment-avatar">?</div>
+                <span>请先登录</span>
+              </div>
+              <button class="btn btn-primary btn-sm" onclick="showPage('login')">登录后评论</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="page" id="page-novels">
+      <div class="page-hero">
+        <div class="page-hero-inner">
+          <h1>连载小说</h1>
+          <p>正在进行中的故事，以及那些已经画上句号的世界</p>
+        </div>
+      </div>
+      <div class="container">
+        <div class="novels-list-grid"></div>
+      </div>
+    </div>
+
+    <div class="page" id="page-chapter">
+      <div class="chapter-header">
+        <div class="chapter-back" onclick="showPage('novels')">← 返回目录</div>
+        <div class="chapter-title-bar">小说阅读</div>
+        <div class="chapter-nav-btns">
+          <button class="btn btn-outline btn-sm">← 上一章</button>
+          <button class="btn btn-primary btn-sm">下一章 →</button>
+        </div>
+      </div>
+      <div class="reading-progress"><div class="reading-progress-bar"></div></div>
+
+      <div class="chapter-reader-layout">
+        <div class="chapter-content-wrap">
+          <span class="chapter-num-label">章节</span>
+          <h1 class="chapter-title">章节标题</h1>
+          <div class="chapter-body"></div>
+          <div class="chapter-nav-footer">
+            <button class="btn btn-outline">← 上一章</button>
+            <button class="btn btn-primary">下一章 →</button>
+          </div>
+        </div>
+        <div>
+          <div class="chapter-toc">
+            <div class="chapter-toc-header">章节目录</div>
+            <div class="chapter-toc-list"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="page" id="page-about">
+      <div class="page-hero">
+        <div class="page-hero-inner">
+          <h1>关于作者</h1>
+          <p>一个记录开发、学习与生活点滴的博客</p>
+        </div>
+      </div>
+      <div class="container-sm" style="padding:3rem 2rem 5rem">
+        <div style="font-size:1.02rem;line-height:1.9;color:var(--ink-2)">
+          <p>这是一个关于文字与思考的私人空间。</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="page" id="page-login">
+      <div class="auth-page">
+        <div class="auth-card">
+          <div class="auth-logo"><div class="auth-logo-text">拾墨</div></div>
+          <h2 class="auth-title">欢迎回来</h2>
+          <p class="auth-subtitle">登录你的账号，加入对话</p>
+          <div class="form-group">
+            <label class="form-label">邮箱地址</label>
+            <input type="text" id="loginUsername" class="form-input" placeholder="输入用户名">
+          </div>
+          <div class="form-group">
+            <label class="form-label">密码</label>
+            <input type="password" id="loginPassword" class="form-input" placeholder="输入密码">
+          </div>
+          <button class="form-submit" onclick="handleLogin()">登录</button>
+          <div class="auth-switch">还没有账号？<span onclick="showPage('register')">立即注册</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="page" id="page-register">
+      <div class="auth-page">
+        <div class="auth-card">
+          <div class="auth-logo"><div class="auth-logo-text">拾墨</div></div>
+          <h2 class="auth-title">创建账号</h2>
+          <p class="auth-subtitle">加入读者社区，参与内容讨论</p>
+          <div class="form-group">
+            <label class="form-label">昵称</label>
+            <input type="text" class="form-input" placeholder="你的显示名称">
+          </div>
+          <div class="form-group">
+            <label class="form-label">邮箱地址</label>
+            <input type="email" class="form-input" placeholder="your@email.com">
+          </div>
+          <div class="form-group">
+            <label class="form-label">密码</label>
+            <input type="password" class="form-input" placeholder="至少 8 位字符">
+          </div>
+          <div class="form-group">
+            <label class="form-label">确认密码</label>
+            <input type="password" class="form-input" placeholder="再次输入密码">
+          </div>
+          <button class="form-submit" onclick="showToast('注册成功！欢迎加入拾墨 🎉')">注册</button>
+          <div class="auth-switch">已有账号？<span onclick="showPage('login')">直接登录</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="adminApp" class="hidden">
+    <div class="admin-wrap">
+      <aside class="admin-sidebar">
+        <div class="admin-sidebar-logo">
+          <div class="admin-logo-text">拾墨</div>
+          <div class="admin-logo-sub">管理后台 · Admin</div>
+        </div>
+        <nav class="admin-nav">
+          <div class="admin-nav-section-label">内容管理</div>
+          <div class="admin-nav-item active" id="adminNav-dashboard" onclick="showAdminPage('dashboard')"><span class="nav-icon">📊</span> 数据概览</div>
+          <div class="admin-nav-item" id="adminNav-articles" onclick="showAdminPage('articles')"><span class="nav-icon">📝</span> 文章管理</div>
+          <div class="admin-nav-item" id="adminNav-editor" onclick="showAdminPage('editor')"><span class="nav-icon">✏️</span> 写作编辑器</div>
+          <div class="admin-nav-item" id="adminNav-novels" onclick="showAdminPage('novels')"><span class="nav-icon">📖</span> 小说管理</div>
+          <div class="admin-nav-section-label">社区管理</div>
+          <div class="admin-nav-item" id="adminNav-comments" onclick="showAdminPage('comments')"><span class="nav-icon">💬</span> 评论审核</div>
+          <div class="admin-nav-item" id="adminNav-users" onclick="showAdminPage('users')"><span class="nav-icon">👥</span> 用户管理</div>
+          <div class="admin-nav-section-label">系统</div>
+          <div class="admin-nav-item" id="adminNav-settings" onclick="showAdminPage('settings')"><span class="nav-icon">⚙️</span> 网站设置</div>
+          <div class="admin-nav-item" onclick="setMode('front')"><span class="nav-icon">🌐</span> 前台预览</div>
+        </nav>
+      </aside>
+
+      <div class="admin-main">
+        <div class="admin-page active" id="adminPage-dashboard">
+          <div class="admin-header">
+            <div class="admin-page-title">数据概览</div>
+          </div>
+          <div class="admin-content">
+            <div class="stats-grid">
+              <div class="stat-card">
+                <div class="stat-value" id="statPostCount">--</div>
+                <div class="stat-label">已发布文章</div>
+              </div>
+            </div>
+            <div class="chart-bars">
+              <div class="chart-bar-wrap"><div class="chart-bar" style="height:45%"></div><div class="chart-bar-label">1</div></div>
+              <div class="chart-bar-wrap"><div class="chart-bar" style="height:60%"></div><div class="chart-bar-label">2</div></div>
+              <div class="chart-bar-wrap"><div class="chart-bar" style="height:38%"></div><div class="chart-bar-label">3</div></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="admin-page" id="adminPage-articles">
+          <div class="admin-header">
+            <div class="admin-page-title">文章管理</div>
+            <div class="admin-header-actions">
+              <button class="btn btn-admin" onclick="showAdminPage('editor')">+ 新建文章</button>
+            </div>
+          </div>
+          <div class="admin-content">
+            <div class="table-card">
+              <div class="table-wrap">
+                <table class="admin-table">
+                  <thead><tr><th>标题</th><th>分类</th><th>状态</th><th>阅读量</th><th>评论</th><th>发布时间</th><th>操作</th></tr></thead>
+                  <tbody id="articleListBody"></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="admin-page" id="adminPage-editor">
+          <div class="admin-header">
+            <div class="admin-page-title">写作编辑器</div>
+            <div class="admin-header-actions">
+              <button class="btn btn-admin-outline btn-sm" onclick="savePost()">保存</button>
+              <button class="btn btn-admin btn-sm" onclick="savePost(true)">发布</button>
+            </div>
+          </div>
+          <div class="admin-content">
+            <div class="editor-wrap">
+              <input class="editor-title-input" id="editorTitle" placeholder="输入文章标题…" value="">
+              <div class="editor-toolbar">
+                <button class="toolbar-btn active" title="加粗"><b>B</b></button>
+                <button class="toolbar-btn" title="斜体"><i>I</i></button>
+                <button class="toolbar-btn" title="下划线"><u>U</u></button>
+                <div class="toolbar-sep"></div>
+                <button class="toolbar-btn">H1</button>
+                <button class="toolbar-btn">H2</button>
+                <button class="toolbar-btn">H3</button>
+                <div class="toolbar-sep"></div>
+                <button class="toolbar-btn">❝</button>
+                <button class="toolbar-btn">&lt;/&gt;</button>
+                <div class="toolbar-sep"></div>
+                <button class="toolbar-btn">🔗</button>
+                <button class="toolbar-btn">—</button>
+              </div>
+              <div class="editor-layout">
+                <div class="editor-body">
+                  <textarea class="editor-textarea" id="editorContent" placeholder="开始写作…"></textarea>
+                </div>
+                <div class="editor-sidebar-panel">
+                  <div class="editor-panel-title">文章设置</div>
+                  <div class="editor-field">
+                    <label class="editor-label">分类</label>
+                    <input class="editor-input" id="editorCategory" placeholder="例如：文章, 随笔">
+                  </div>
+                  <div class="editor-field">
+                    <label class="editor-label">标签</label>
+                    <input class="editor-input" id="editorTags" placeholder="例如：写作, 随想">
+                  </div>
+                  <div class="editor-field">
+                    <label class="editor-label">摘要</label>
+                    <textarea class="editor-input" id="editorExcerpt" style="min-height:70px;resize:none;line-height:1.6" placeholder="用于列表与 SEO"></textarea>
+                  </div>
+                  <div class="editor-field">
+                    <label class="editor-label">文件名/Slug</label>
+                    <input class="editor-input" id="editorSlug" placeholder="例如：memory-and-forgetting">
+                  </div>
+                  <div class="editor-panel-title">媒体上传</div>
+                  <div class="upload-zone" onclick="document.getElementById('mediaInput').click()">
+                    <div class="upload-zone-icon">📁</div>
+                    <div class="upload-zone-text">点击上传</div>
+                    <input type="file" id="mediaInput" hidden onchange="uploadMedia(this.files[0])">
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="admin-page" id="adminPage-novels">
+          <div class="admin-header">
+            <div class="admin-page-title">小说管理</div>
+            <div class="admin-header-actions">
+              <button class="btn btn-admin" onclick="createNovel()">+ 新建小说</button>
+            </div>
+          </div>
+          <div class="admin-content">
+            <div class="table-card">
+              <div class="table-wrap">
+                <table class="admin-table">
+                  <thead><tr><th>小说名</th><th>类型</th><th>章节数</th><th>总字数</th><th>状态</th><th>最后更新</th><th>操作</th></tr></thead>
+                  <tbody></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="admin-page" id="adminPage-comments">
+          <div class="admin-header">
+            <div class="admin-page-title">评论审核</div>
+          </div>
+          <div class="admin-content">
+            <div class="top-tabs">
+              <div class="top-tab active">全部 <span class="tab-count">0</span></div>
+              <div class="top-tab">待审核 <span class="tab-count">0</span></div>
+              <div class="top-tab">已通过 <span class="tab-count">0</span></div>
+              <div class="top-tab">已隐藏 <span class="tab-count">0</span></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="admin-page" id="adminPage-users">
+          <div class="admin-header">
+            <div class="admin-page-title">用户管理</div>
+          </div>
+          <div class="admin-content"></div>
+        </div>
+
+        <div class="admin-page" id="adminPage-settings">
+          <div class="admin-header">
+            <div class="admin-page-title">网站设置</div>
+            <div class="admin-header-actions">
+              <button class="btn btn-admin" onclick="saveSettings()">保存更改</button>
+            </div>
+          </div>
+          <div class="admin-content">
+            <div class="settings-section">
+              <div class="settings-body">
+                <div class="settings-row">
+                  <div class="settings-label-wrap"><div class="settings-label">网站名称</div></div>
+                  <input class="settings-input" value="">
+                </div>
+                <div class="settings-row">
+                  <div class="settings-label-wrap"><div class="settings-label">网站简介</div></div>
+                  <input class="settings-input" value="">
+                </div>
+                <div class="settings-row">
+                  <div class="settings-label-wrap"><div class="settings-label">作者名</div></div>
+                  <input class="settings-input" value="">
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  
+<div id="spa-route" style="display:none" data-page="article" data-param="日本語文法-ばかり.md"></div>
+
+
+  <script src="/js/main.js"></script>
+  <script>
+    window.addEventListener('load', function() {
+      const routeEl = document.getElementById('spa-route');
+      const pageName = routeEl && routeEl.dataset && routeEl.dataset.page ? routeEl.dataset.page : null;
+      const pageParam = routeEl && routeEl.dataset ? routeEl.dataset.param : null;
+      const mode = routeEl && routeEl.dataset ? routeEl.dataset.mode : null;
+      const adminPage = routeEl && routeEl.dataset ? routeEl.dataset.adminPage : null;
+
+      if (typeof showPage !== 'function') {
+        return;
+      }
+
+      if (mode === 'admin') {
+        setMode('admin');
+        if (adminPage && typeof showAdminPage === 'function') {
+          showAdminPage(adminPage);
+        }
+        return;
+      }
+
+      if (typeof setMode === 'function') {
+        setMode('front');
+      }
+
+      if (pageName) {
+        showPage(pageName, pageParam || undefined);
+        return;
+      }
+
+      const p = location.pathname.replace(/\/+$/, '') || '/';
+      if (p === '/' || p === '') return;
+      if (p.startsWith('/about')) return showPage('about');
+      if (p.startsWith('/login')) return showPage('login');
+      if (p.startsWith('/register')) return showPage('register');
+      if (p.startsWith('/archives') || p.startsWith('/categories') || p.startsWith('/tags')) return showPage('articles');
+    });
+  </script>
+</body>
+</html>

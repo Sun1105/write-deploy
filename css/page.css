@@ -1,0 +1,120 @@
+/* ================================
+   page.css
+   用于 Hexo 主题的通用页面样式
+   对应 layout/page.ejs
+   ================================ */
+
+/* 页面整体容器 */
+.page-article {
+  max-width: 1200px;                 /* 页面主体最大宽度 */
+  margin: auto auto;                 /* 上下 40px 外边距，左右居中 */
+  padding-top: 20px;
+  padding-right: 32px;
+  padding-bottom: 32px;
+  padding-left: 32px;
+  background: #fff;                  /* 背景色：白色 */
+  border-radius: 10px;               /* 圆角边框，半径 10px */
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08); /* 阴影，提升层次感 */
+  transition: box-shadow 0.3s;       /* 阴影过渡动画 */
+}
+/* 鼠标悬停时阴影增强 */
+.page-article:hover {
+  box-shadow: 0 6px 18px rgba(0,0,0,0.12);
+}
+
+/* 标题区 */
+.page-header {
+  margin-bottom: 24px;               /* 与正文的间距 */
+  border-bottom: 2px solid #f0f0f0;  /* 底部分隔线 */
+  padding-bottom: 12px;              /* 分隔线与文字的间距 */
+  /* text-align: center;                居中显示标题 */
+}
+
+/* 页面标题 */
+.page-title {
+  font-size: 2.2rem;                 /* 标题字号 */
+  font-weight: 700;                  /* 加粗 */
+  color: #222;                       /* 深灰色 */
+  margin: 0;                         /* 去掉默认外边距 */
+}
+
+/* 页面副标题 */
+.page-subtitle {
+  font-size: 1.1rem;                 /* 字号稍小 */
+  color: #666;                       /* 中灰色 */
+  margin-top: 6px;                   /* 与标题的间距 */
+}
+
+/* 页面元信息（日期等） */
+.page-meta {
+  color: #999;                       /* 浅灰色 */
+  font-size: 0.85rem;                /* 字号更小 */
+  margin-top: 8px;                   /* 与副标题的间距 */
+}
+
+/* 页面正文 */
+.page-content {
+  line-height: 1.8;                  /* 行高，提升可读性 */
+  font-size: 1.05rem;                /* 正文字号 */
+  color: #333;                       /* 正文颜色 */
+}
+/* 正文内的二级、三级标题 */
+.page-content h2, .page-content h3 {
+  margin-top: 1.6em;                 /* 上间距 */
+  margin-bottom: 0.8em;              /* 下间距 */
+  font-weight: 600;                  /* 半粗体 */
+}
+/* 正文段落 */
+.page-content p {
+  margin: 0.8em 0;                   /* 段落上下间距 */
+}
+/* 正文链接 */
+.page-content a {
+  color: #0078d7;                    /* 链接颜色：蓝色 */
+  text-decoration: none;             /* 去掉下划线 */
+  border-bottom: 1px dashed #0078d7; /* 虚线下划线 */
+}
+/* 链接悬停效果 */
+.page-content a:hover {
+  color: #005a9e;                    /* 深蓝色 */
+  border-bottom-color: #005a9e;      /* 下划线颜色加深 */
+}
+
+/* 页脚 */
+.page-footer {
+  margin-top: 40px;                  /* 与正文的间距 */
+  padding-top: 16px;                 /* 内边距 */
+  border-top: 1px solid #eee;        /* 顶部分隔线 */
+  font-size: 0.9rem;                 /* 字号稍小 */
+  color: #666;                       /* 中灰色 */
+  text-align: center;                /* 居中显示 */
+}
+/* 页脚链接 */
+.page-footer a {
+  color: #0078d7;                    /* 蓝色 */
+  text-decoration: none;             /* 去掉下划线 */
+}
+/* 页脚链接悬停效果 */
+.page-footer a:hover {
+  text-decoration: underline;        /* 悬停时加下划线 */
+}
+
+/* ================================
+   响应式优化
+   在小屏幕（≤768px）时调整排版
+   ================================ */
+@media (max-width: 768px) {
+  .page-article {
+    max-width: 95%;                  /* 页面宽度几乎占满屏幕 */
+    padding: 20px;                   /* 内边距缩小 */
+    border-radius: 0;                /* 去掉圆角，更贴合手机屏幕 */
+    box-shadow: none;                /* 移除阴影，简洁清爽 */
+  }
+  .page-title {
+    font-size: 1.6rem;               /* 标题字号缩小 */
+  }
+  .page-content {
+    font-size: 0.95rem;              /* 正文字号缩小 */
+    line-height: 1.6;                /* 行高略微收紧 */
+  }
+}

@@ -1,0 +1,111 @@
+/* 时间轴整体容器 */
+.archive-timeline {
+  max-width: 800px;
+  margin: 40px auto;
+  padding: 20px;
+}
+
+/* 年份标题 */
+.archive-year h2 {
+  font-size: 1.6rem;
+  font-weight: bold;
+  margin: 30px 0 20px;
+  color: #0078d7;
+}
+
+/* 时间轴竖线 */
+.timeline {
+  position: relative;
+  margin-left: 20px;
+  padding-left: 20px;
+  border-left: 2px solid #ddd;
+}
+
+/* 单个时间节点 */
+.timeline-item {
+  position: relative;
+  margin-bottom: 25px;
+}
+
+/* 时间节点圆点 */
+.timeline-dot {
+  position: absolute;
+  left: -11px;
+  top: 5px;
+  width: 12px;
+  height: 12px;
+  background: #0078d7;
+  border-radius: 50%;
+  border: 2px solid #fff;
+  box-shadow: 0 0 0 2px #ddd;
+}
+
+/* 节点内容 */
+.timeline-content {
+  margin-left: 20px;
+  background: #fff;
+  padding: 10px 15px;
+  border-radius: 6px;
+  border: 1px solid #eee;
+  transition: box-shadow 0.3s;
+}
+.timeline-content:hover {
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+}
+
+/* 日期 */
+.timeline-date {
+  font-size: 0.85rem;
+  color: #666;
+  margin-right: 8px;
+}
+
+/* 标题 */
+.timeline-title {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #222;
+  text-decoration: none;
+}
+.timeline-title:hover {
+  color: #0078d7;
+}
+
+/* 摘要 */
+.timeline-excerpt {
+  font-size: 0.9rem;
+  color: #444;
+  margin-top: 6px;
+}
+
+/* 响应式优化：小屏幕下调整布局 */
+@media (max-width: 600px) {
+  .timeline {
+    border-left: none;         /* 去掉竖直线 */
+    padding-left: 0;           /* 去掉左侧缩进 */
+    margin-left: 0;
+  }
+
+  .timeline-item {
+    margin-bottom: 20px;
+    padding-left: 0;           /* 去掉左侧空间 */
+  }
+
+  .timeline-dot {
+    display: none;             /* 隐藏圆点，简化视觉 */
+  }
+
+  .timeline-content {
+    margin-left: 0;            /* 内容全宽展示 */
+    border-left: 4px solid #0078d7; /* 用左边框代替竖线，保持层次感 */
+    padding: 10px 12px;
+  }
+
+  .timeline-title {
+    font-size: 1rem;           /* 字体稍微缩小，适配小屏 */
+  }
+
+  .timeline-excerpt {
+    font-size: 0.85rem;        /* 摘要字体缩小 */
+  }
+}
