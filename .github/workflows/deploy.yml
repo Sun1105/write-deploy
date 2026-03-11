@@ -1,6 +1,9 @@
-name: Deploy Hexo Blog to Multiple Repos
+name: Deploy Site to Repo
 
 on:
+  push:
+    branches:
+      - main
   workflow_dispatch:   # 支持手动触发
 
 concurrency:
@@ -51,44 +54,20 @@ jobs:
           fi
 
       # 4️⃣ 构建 Hexo 静态文件
-      - name: Generate site (Hexo)
+      - name: Build site
         run: |
-          if [ -f _config.yml ]; then
-            npx hexo clean
-            npx hexo generate
+          if [ -f package.json ]; then
+            npm run build
           else
-            echo "skip hexo generate (no _config.yml)"
+            echo "skip build (no package.json)"
           fi
-
-      - name: Add Vercel static deployment files
-        run: |
-          mkdir -p ./public
-          cat > ./public/package.json <<'EOF'
-          {
-            "name": "hexo-static-export",
-            "private": true,
-            "version": "0.0.0",
-            "scripts": {
-              "build": "echo \"skip build\"",
-              "install": "echo \"skip install\""
-            }
-          }
-          EOF
-          cat > ./public/vercel.json <<'EOF'
-          {
-            "version": 2,
-            "installCommand": "echo \"skip install\"",
-            "buildCommand": "echo \"skip build\"",
-            "outputDirectory": "."
-          }
-          EOF
 
       # 5️⃣ 部署到不同仓库（矩阵控制）
       - name: Deploy to ${{ matrix.repo.name }}
         uses: peaceiris/actions-gh-pages@v4
         with:
           personal_token: ${{ secrets.PUBLISH_TOKEN }}   # PAT，需对两个仓库有写权限
-          publish_dir: ./public                          # Hexo 输出目录
+          publish_dir: .                                 # 发布整个仓库，包含 api
           external_repository: ${{ matrix.repo.name }}   # 目标仓库
           publish_branch: ${{ matrix.repo.branch }}     # 目标分支
           commit_message: "🚀 Deploy ${{ github.sha }} to ${{ matrix.repo.name }} (run ${{ github.run_number }})"

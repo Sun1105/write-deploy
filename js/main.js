@@ -169,7 +169,12 @@ async function fetchStats() {
 async function fetchPosts() {
   try {
     const res = await fetch(apiUrl('/posts'));
-    const posts = await safeJson(res) || [];
+    const raw = await safeJson(res);
+    if (!res.ok) {
+      showToast(raw && raw.error ? `加载文章失败: ${raw.error}` : '加载文章失败');
+      return;
+    }
+    const posts = Array.isArray(raw) ? raw : [];
     const tbody = document.getElementById('articleListBody');
     if (!tbody) return;
     tbody.innerHTML = '';
@@ -590,7 +595,12 @@ async function loadChapter(novelId, chapterFile) {
 async function renderFrontendNovels() {
   try {
     const res = await fetch(apiUrl('/novels'));
-    const novels = await safeJson(res) || [];
+    const raw = await safeJson(res);
+    if (!res.ok) {
+      showToast(raw && raw.error ? `加载小说失败: ${raw.error}` : '加载小说失败');
+      return;
+    }
+    const novels = Array.isArray(raw) ? raw : [];
     const grid = document.querySelector('.novels-list-grid');
     if (!grid) return;
     
@@ -690,7 +700,8 @@ async function loadArticle(filename) {
 
    try {
      const res = await fetch(apiUrl(`/comments?post=${encodeURIComponent(postId)}`));
-     const comments = await safeJson(res) || [];
+     const raw = await safeJson(res);
+     const comments = Array.isArray(raw) ? raw : [];
      
      // Update count
      document.querySelector('.comments-title').textContent = `评论 · ${comments.length}`;
@@ -748,7 +759,12 @@ async function loadArticle(filename) {
  async function renderFrontendPosts() {
   try {
     const res = await fetch(apiUrl('/posts'));
-    const posts = await safeJson(res) || [];
+    const raw = await safeJson(res);
+    if (!res.ok) {
+      showToast(raw && raw.error ? `加载文章失败: ${raw.error}` : '加载文章失败');
+      return;
+    }
+    const posts = Array.isArray(raw) ? raw : [];
     
     // Update Home Page Grid
     const homeGrid = document.querySelector('#page-home .articles-grid');
@@ -895,7 +911,12 @@ async function saveSettings() {
 async function fetchAdminComments() {
   try {
     const res = await fetch(apiUrl('/comments'), { headers: withAuthHeaders({}) });
-    const comments = await safeJson(res) || [];
+    const raw = await safeJson(res);
+    if (!res.ok) {
+      showToast(raw && raw.error ? `加载评论失败: ${raw.error}` : '加载评论失败');
+      return;
+    }
+    const comments = Array.isArray(raw) ? raw : [];
     
     // Update tabs
     const pending = comments.filter(c => c.status === 'pending').length;
@@ -960,7 +981,12 @@ async function fetchAdminComments() {
 async function fetchAdminUsers() {
   try {
     const res = await fetch(apiUrl('/users'), { headers: withAuthHeaders({}) });
-    const users = await safeJson(res) || [];
+    const raw = await safeJson(res);
+    if (!res.ok) {
+      showToast(raw && raw.error ? `加载用户失败: ${raw.error}` : '加载用户失败');
+      return;
+    }
+    const users = Array.isArray(raw) ? raw : [];
     const tbody = document.querySelector('#adminPage-users tbody');
     if (!tbody) return;
 
@@ -1118,7 +1144,12 @@ async function createNovel() {
 async function fetchNovels() {
   try {
     const res = await fetch(apiUrl('/novels'));
-    const novels = await safeJson(res) || [];
+    const raw = await safeJson(res);
+    if (!res.ok) {
+      showToast(raw && raw.error ? `加载小说失败: ${raw.error}` : '加载小说失败');
+      return;
+    }
+    const novels = Array.isArray(raw) ? raw : [];
     const tbody = document.querySelector('#adminPage-novels tbody');
     if (!tbody) return;
     tbody.innerHTML = novels.map(n => `
