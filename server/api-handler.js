@@ -465,6 +465,8 @@ async function handlePosts(req, res) {
   const { owner, repo, token } = getGithubConfig();
   const headers = githubHeaders(token);
   const dirPath = 'data/posts';
+  const payload = parseToken(getBearerToken(req));
+  const isAdmin = payload && payload.role === 'admin';
   try {
     const entries = await listDir(owner, repo, headers, dirPath);
     const files = entries.filter(e => e && e.type === 'file' && /\\.md$/i.test(e.name || ''));
@@ -500,7 +502,8 @@ async function handlePosts(req, res) {
       })
     );
     results.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-    return res.status(200).json(results);
+    const visible = isAdmin ? results : results.filter(p => p && p.published !== false);
+    return res.status(200).json(visible);
   } catch {
     return res.status(200).json([]);
   }
@@ -515,6 +518,11 @@ async function handlePost(req, res, segments) {
   if (req.method === 'GET') {
     if (!filename) return res.status(400).json({ error: 'Missing filename' });
     const { content, sha } = await readText(owner, repo, headers, `${postsDir}/${filename}`);
+    const payload = parseToken(getBearerToken(req));
+    const isAdmin = payload && payload.role === 'admin';
+    const parsed = extractFrontMatter(String(content || ''));
+    const published = parsed.frontMatter && typeof parsed.frontMatter.published === 'boolean' ? parsed.frontMatter.published : true;
+    if (!isAdmin && published === false) return res.status(404).json({ error: 'Not found' });
     return res.status(200).json({ filename, sha, content });
   }
 

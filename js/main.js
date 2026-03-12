@@ -8,6 +8,7 @@ let currentEditingDate = null;
 let currentNovelId = null;
 let currentNovelChapterFile = null;
 let currentNovelChapterSha = null;
+let cachedNovelsForEditor = null;
 
 function apiUrl(pathname) {
   const p = pathname.startsWith('/') ? pathname : `/${pathname}`;
@@ -36,6 +37,7 @@ function withAuthHeaders(headers) {
 window.addEventListener('DOMContentLoaded', () => {
   checkAuth();
   initEditorToolbar();
+  initEditorMode();
   initRegisterForm();
   renderFrontendPosts();
   // If hash is present, route to it? For now default home
@@ -170,7 +172,7 @@ async function fetchStats() {
 
 async function fetchPosts() {
   try {
-    const res = await fetch(apiUrl('/posts'));
+    const res = await fetch(apiUrl('/posts'), { headers: withAuthHeaders({}) });
     const raw = await safeJson(res);
     if (!res.ok) {
       showToast(raw && raw.error ? `加载文章失败: ${raw.error}` : '加载文章失败');
@@ -220,6 +222,7 @@ function escapeHtml(str) {
 }
 
 async function editPost(filename) {
+  setEditorModeValue('post');
   currentEditingFile = filename;
   currentEditingSha = null;
   currentEditingDate = null;
@@ -264,6 +267,7 @@ async function editPost(filename) {
 }
 
 function newPost() {
+  setEditorModeValue('post');
   currentEditingFile = null;
   currentEditingSha = null;
   currentEditingDate = null;
@@ -302,7 +306,7 @@ async function savePost(publish = false) {
     tags,
     categories,
     description,
-    published: publish ? undefined : false,
+    published: publish ? true : false,
     body
   });
 
@@ -336,8 +340,9 @@ async function savePost(publish = false) {
       currentEditingDate = date;
 
       showToast('保存成功');
-      showAdminPage('articles');
       fetchPosts();
+      renderFrontendPosts();
+      if (publish) showAdminPage('articles');
       return;
     }
 
@@ -357,13 +362,138 @@ async function savePost(publish = false) {
       showToast('保存成功');
       currentEditingFile = filename;
       if (data.sha) currentEditingSha = data.sha;
-      showAdminPage('articles');
       fetchPosts();
+      renderFrontendPosts();
+      if (publish) showAdminPage('articles');
     } else {
       showToast(data.error ? `保存失败: ${data.error}` : '保存失败');
     }
   } catch (err) { 
     console.error(err); 
+    showToast('保存请求出错');
+  }
+}
+
+function initEditorMode() {
+  const modeEl = document.getElementById('editorMode');
+  if (!modeEl) return;
+  modeEl.onchange = () => {
+    const mode = getEditorModeValue();
+    syncEditorModeUI(mode);
+  };
+  syncEditorModeUI(getEditorModeValue());
+}
+
+function getEditorModeValue() {
+  const modeEl = document.getElementById('editorMode');
+  const v = modeEl ? String(modeEl.value || '') : '';
+  return v === 'novel' ? 'novel' : 'post';
+}
+
+function setEditorModeValue(mode) {
+  const modeEl = document.getElementById('editorMode');
+  if (modeEl) modeEl.value = mode === 'novel' ? 'novel' : 'post';
+  syncEditorModeUI(mode === 'novel' ? 'novel' : 'post');
+}
+
+function syncEditorModeUI(mode) {
+  const postFields = document.getElementById('editorPostFields');
+  const novelFields = document.getElementById('editorNovelFields');
+  if (postFields) postFields.style.display = mode === 'post' ? '' : 'none';
+  if (novelFields) novelFields.style.display = mode === 'novel' ? '' : 'none';
+
+  if (mode === 'novel') {
+    ensureEditorNovelsLoaded().catch(() => {});
+  } else {
+    currentNovelId = null;
+    currentNovelChapterFile = null;
+    currentNovelChapterSha = null;
+  }
+}
+
+async function ensureEditorNovelsLoaded() {
+  const select = document.getElementById('editorNovelId');
+  if (!select) return;
+  if (Array.isArray(cachedNovelsForEditor)) {
+    renderEditorNovelsSelect(cachedNovelsForEditor);
+    return;
+  }
+  const res = await fetch(apiUrl('/novels'));
+  const raw = await safeJson(res);
+  const novels = Array.isArray(raw) ? raw : [];
+  cachedNovelsForEditor = novels;
+  renderEditorNovelsSelect(novels);
+}
+
+function renderEditorNovelsSelect(novels) {
+  const select = document.getElementById('editorNovelId');
+  if (!select) return;
+  const current = select.value;
+  const options = ['<option value="">选择小说…</option>']
+    .concat(novels.map(n => `<option value="${escapeHtml(String(n.id || ''))}">${escapeHtml(String(n.title || n.id || ''))}</option>`));
+  select.innerHTML = options.join('');
+  if (current) {
+    select.value = current;
+  } else if (novels.length) {
+    select.value = String(novels[0].id || '');
+  }
+}
+
+async function saveEditor(publish = false) {
+  const mode = getEditorModeValue();
+  if (mode === 'novel') {
+    await saveNovelChapterFromEditor();
+    return;
+  }
+  await savePost(publish);
+}
+
+async function saveNovelChapterFromEditor() {
+  const novelEl = document.getElementById('editorNovelId');
+  const fileEl = document.getElementById('editorChapterFilename');
+  const contentEl = document.getElementById('editorContent');
+
+  const novelId = novelEl ? String(novelEl.value || '').trim() : '';
+  const filename = fileEl ? String(fileEl.value || '').trim() : '';
+  const content = contentEl ? String(contentEl.value || '') : '';
+
+  if (!novelId) {
+    showToast('请选择小说');
+    return;
+  }
+  if (!filename) {
+    showToast('请填写章节文件名');
+    return;
+  }
+
+  const isUpdate = currentNovelId === novelId && currentNovelChapterFile === filename && Boolean(currentNovelChapterSha);
+  const method = isUpdate ? 'PUT' : 'POST';
+
+  try {
+    const res = await fetch(apiUrl('/novel-chapter'), {
+      method,
+      headers: withAuthHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify({
+        novelId,
+        filename,
+        content,
+        sha: isUpdate ? currentNovelChapterSha : undefined
+      })
+    });
+    const data = await safeJson(res) || {};
+    if (!res.ok) {
+      showToast(data.error ? `保存失败: ${data.error}` : '保存失败');
+      return;
+    }
+
+    currentNovelId = novelId;
+    currentNovelChapterFile = data.filename || filename;
+    currentNovelChapterSha = data.sha || currentNovelChapterSha;
+    showToast('保存成功');
+    await fetchNovels();
+    await openNovelChapters(novelId);
+  } catch (err) {
+    console.error(err);
     showToast('保存请求出错');
   }
 }
@@ -852,22 +982,35 @@ function showAdminPage(name) {
   if (name === 'comments') fetchAdminComments();
   if (name === 'users') fetchAdminUsers();
   if (name === 'settings') fetchSettings();
-  if (name === 'editor' && !currentEditingFile) {
-     // Clear editor for new post
-     const titleEl = document.getElementById('editorTitle');
-     const contentEl = document.getElementById('editorContent');
-     const tagsEl = document.getElementById('editorTags');
-     const catEl = document.getElementById('editorCategory');
-     const excerptEl = document.getElementById('editorExcerpt');
-     const slugEl = document.getElementById('editorSlug');
-     if (titleEl) titleEl.value = '';
-     if (contentEl) contentEl.value = '';
-     if (tagsEl) tagsEl.value = '';
-     if (catEl) catEl.value = '';
-     if (excerptEl) excerptEl.value = '';
-     if (slugEl) slugEl.value = '';
-     currentEditingSha = null;
-     currentEditingDate = null;
+  if (name === 'editor') {
+    const mode = getEditorModeValue();
+    syncEditorModeUI(mode);
+
+    if (mode === 'post' && !currentEditingFile) {
+      const titleEl = document.getElementById('editorTitle');
+      const contentEl = document.getElementById('editorContent');
+      const tagsEl = document.getElementById('editorTags');
+      const catEl = document.getElementById('editorCategory');
+      const excerptEl = document.getElementById('editorExcerpt');
+      const slugEl = document.getElementById('editorSlug');
+      if (titleEl) titleEl.value = '';
+      if (contentEl) contentEl.value = '';
+      if (tagsEl) tagsEl.value = '';
+      if (catEl) catEl.value = '';
+      if (excerptEl) excerptEl.value = '';
+      if (slugEl) slugEl.value = '';
+      currentEditingSha = null;
+      currentEditingDate = null;
+    }
+
+    if (mode === 'novel') {
+      const novelEl = document.getElementById('editorNovelId');
+      const chapterEl = document.getElementById('editorChapterFilename');
+      if (novelEl && !novelEl.value && Array.isArray(cachedNovelsForEditor) && cachedNovelsForEditor.length) {
+        novelEl.value = String(cachedNovelsForEditor[0].id || '');
+      }
+      if (chapterEl && !chapterEl.value) chapterEl.value = '';
+    }
   }
 }
 
@@ -1136,6 +1279,7 @@ async function createNovel() {
     const data = await safeJson(res) || {};
     if (data.success) {
       showToast('创建成功');
+      cachedNovelsForEditor = null;
       fetchNovels();
     } else {
       showToast('创建失败: ' + data.error);
@@ -1152,6 +1296,7 @@ async function fetchNovels() {
       return;
     }
     const novels = Array.isArray(raw) ? raw : [];
+    cachedNovelsForEditor = novels;
     const tbody = document.querySelector('#adminPage-novels tbody');
     if (!tbody) return;
     tbody.innerHTML = novels.map(n => `
@@ -1352,6 +1497,7 @@ window.handleLogin = handleLogin;
 window.handleRegister = handleRegister;
 window.setMode = setMode;
 window.showAdminPage = showAdminPage;
+window.saveEditor = saveEditor;
 window.savePost = savePost;
 window.editPost = editPost;
 window.deletePost = deletePost;
