@@ -18,6 +18,10 @@ let adminPostsUiBound = false;
 let adminCommentsCache = [];
 let adminCommentFilter = 'all';
 let adminCommentsUiBound = false;
+let adminUsersCache = [];
+let adminUserFilter = 'all';
+let adminUserSearch = '';
+let adminUsersUiBound = false;
 
 function apiUrl(pathname) {
   const p = pathname.startsWith('/') ? pathname : `/${pathname}`;
@@ -172,11 +176,202 @@ function updateNavUser() {
 // ── DATA FETCHING ──
 async function fetchStats() {
   try {
-    const res = await fetch(apiUrl('/stats'));
+    const res = await fetch(apiUrl('/stats'), { headers: withAuthHeaders({}) });
     const data = await safeJson(res) || {};
-    if (document.getElementById('statPostCount')) document.getElementById('statPostCount').textContent = data.postCount;
-    if (document.getElementById('statViewCount')) document.getElementById('statViewCount').textContent = Number(data.viewCount || 0).toLocaleString();
+    if (!res.ok) return;
+
+    const viewCount = Number(data.viewCount || 0);
+    const userCount = Number(data.userCount || 0);
+    const commentCount = Number(data.commentCount || 0);
+    const publishedPostCount = Number(data.publishedPostCount ?? data.postCount ?? 0);
+    const pendingCommentCount = Number(data.pendingCommentCount || 0);
+
+    const viewEl = document.getElementById('statViewCount');
+    const userEl = document.getElementById('statUserCount');
+    const commentEl = document.getElementById('statCommentCount');
+    const postEl = document.getElementById('statPostCount');
+
+    if (viewEl) viewEl.textContent = viewCount.toLocaleString();
+    if (userEl) userEl.textContent = userCount.toLocaleString();
+    if (commentEl) commentEl.textContent = commentCount.toLocaleString();
+    if (postEl) postEl.textContent = publishedPostCount.toLocaleString();
+
+    const updatedAt = document.getElementById('dashboardUpdatedAt');
+    if (updatedAt) updatedAt.textContent = `最近 30 天 · 更新于 ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+
+    updatePendingCommentBadges(pendingCommentCount);
+
+    const bars = document.getElementById('dashboardActivityBars');
+    const activity = Array.isArray(data.activity14Days) ? data.activity14Days : [];
+    if (bars) {
+      const max = Math.max(1, ...activity.map(d => Number(d && d.value ? d.value : 0)));
+      bars.innerHTML = activity
+        .map(d => {
+          const v = Number(d && d.value ? d.value : 0);
+          const h = Math.max(6, Math.round((v / max) * 100));
+          const label = d && d.label ? String(d.label) : '';
+          return `<div class="chart-bar-wrap"><div class="chart-bar" style="height:${h}%"></div><div class="chart-bar-label">${escapeHtml(label)}</div></div>`;
+        })
+        .join('');
+    }
+
+    const topWrap = document.getElementById('dashboardTopPosts');
+    const topPosts = Array.isArray(data.topPosts) ? data.topPosts : [];
+    if (topWrap) {
+      const colors = ['var(--admin-accent)', 'rgba(16,185,129,.6)', 'rgba(16,185,129,.4)', 'rgba(16,185,129,.3)', 'rgba(16,185,129,.2)'];
+      topWrap.innerHTML = topPosts.length
+        ? topPosts
+            .map((p, idx) => {
+              const title = p && p.title ? String(p.title) : '';
+              const count = Number(p && p.count ? p.count : 0);
+              const no = String(idx + 1).padStart(2, '0');
+              const color = colors[idx] || 'var(--admin-accent)';
+              return `
+                <div style="display:flex;align-items:center;gap:.75rem">
+                  <span style="font-family:'DM Mono',monospace;font-size:11px;color:${color};width:20px">${no}</span>
+                  <div style="flex:1;font-size:13.5px;color:rgba(249,250,251,.8)">${escapeHtml(title)}</div>
+                  <span style="font-family:'DM Mono',monospace;font-size:11.5px;color:var(--admin-muted)">${count}</span>
+                </div>
+              `;
+            })
+            .join('')
+        : `<div style="color:var(--admin-muted);font-size:13px">暂无数据</div>`;
+    }
+
+    const recentPostsWrap = document.getElementById('dashboardRecentPosts');
+    const recentPosts = Array.isArray(data.recentPosts) ? data.recentPosts : [];
+    if (recentPostsWrap) {
+      recentPostsWrap.innerHTML = recentPosts.length
+        ? recentPosts
+            .map(p => {
+              const filename = p && p.filename ? String(p.filename) : '';
+              const title = p && p.title ? String(p.title) : filename.replace(/\.md$/i, '');
+              const date = p && p.date ? new Date(p.date).toLocaleString() : '-';
+              const published = p && p.published !== false;
+              const archived = p && p.archived === true;
+              const statusText = archived ? '已归档' : (published ? '已发布' : '草稿');
+              const statusColor = archived ? 'var(--admin-muted)' : (published ? 'rgba(16,185,129,.8)' : 'rgba(251,191,36,.9)');
+              return `
+                <div style="display:flex;align-items:center;gap:.6rem">
+                  <div style="flex:1;min-width:0">
+                    <div style="display:flex;align-items:center;gap:.5rem">
+                      <div style="font-size:13.5px;color:rgba(249,250,251,.85);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHtml(title)}</div>
+                      <span style="font-size:12px;color:${statusColor}">${escapeHtml(statusText)}</span>
+                    </div>
+                    <div style="font-size:12px;color:var(--admin-muted)">${escapeHtml(date)}</div>
+                  </div>
+                  <div style="display:flex;gap:.35rem;flex-wrap:wrap;justify-content:flex-end">
+                    <button class="btn btn-admin-outline btn-sm" onclick="dashboardEditPost('${filename}')">编辑</button>
+                    <button class="btn btn-admin-outline btn-sm" onclick="togglePublishPost('${filename}')">${published ? '转草稿' : '发布'}</button>
+                    <button class="btn btn-admin-outline btn-sm" onclick="dashboardToggleArchivePost('${filename}')">${archived ? '取消归档' : '归档'}</button>
+                  </div>
+                </div>
+              `;
+            })
+            .join('')
+        : `<div style="color:var(--admin-muted);font-size:13px">暂无数据</div>`;
+    }
+
+    const recentCommentsWrap = document.getElementById('dashboardRecentComments');
+    const recentComments = Array.isArray(data.recentComments) ? data.recentComments : [];
+    if (recentCommentsWrap) {
+      recentCommentsWrap.innerHTML = recentComments.length
+        ? recentComments
+            .map(c => {
+              const id = c && c.id ? String(c.id) : '';
+              const user = c && c.user ? String(c.user) : 'Anonymous';
+              const date = c && c.date ? new Date(c.date).toLocaleString() : '-';
+              const post = c && c.post ? String(c.post) : '';
+              const status = c && c.status ? String(c.status) : 'pending';
+              const content = String(c && c.content ? c.content : '');
+              const snippet = content.length > 80 ? `${content.slice(0, 80)}…` : content;
+              const statusLabel = status === 'approved' ? '已通过' : (status === 'hidden' ? '已隐藏' : '待审核');
+              const statusColor = status === 'approved' ? 'rgba(16,185,129,.8)' : (status === 'hidden' ? 'var(--admin-muted)' : 'rgba(251,191,36,.9)');
+              return `
+                <div style="display:flex;align-items:flex-start;gap:.6rem">
+                  <div style="flex:1;min-width:0">
+                    <div style="display:flex;align-items:center;gap:.5rem">
+                      <div style="font-size:13.5px;color:rgba(249,250,251,.85);font-weight:600">${escapeHtml(user)}</div>
+                      <span style="font-size:12px;color:${statusColor}">${escapeHtml(statusLabel)}</span>
+                    </div>
+                    <div style="font-size:12px;color:var(--admin-muted)">${escapeHtml(date)} · ${escapeHtml(post)}</div>
+                    <div style="margin-top:.25rem;font-size:13px;color:rgba(249,250,251,.78);line-height:1.55">${escapeHtml(snippet)}</div>
+                  </div>
+                  <div style="display:flex;gap:.35rem;flex-wrap:wrap;justify-content:flex-end">
+                    <button class="btn btn-admin-outline btn-sm" onclick="dashboardReviewComment('${id}', '${status}')">审核</button>
+                    ${status !== 'approved' ? `<button class="btn btn-admin btn-sm" onclick="dashboardModerateComment('${id}', 'approved')">通过</button>` : ''}
+                    ${status !== 'hidden' ? `<button class="btn btn-sm" style="color:#f87171;border:1px solid rgba(239,68,68,.3);background:transparent;border-radius:5px;padding:.3rem .7rem;font-size:12px" onclick="dashboardModerateComment('${id}', 'hidden')">隐藏</button>` : ''}
+                    <button class="btn btn-sm" style="color:var(--red);border:1px solid rgba(239,68,68,.3);background:transparent;border-radius:5px;padding:.3rem .7rem;font-size:12px" onclick="dashboardDeleteComment('${id}')">删除</button>
+                  </div>
+                </div>
+              `;
+            })
+            .join('')
+        : `<div style="color:var(--admin-muted);font-size:13px">暂无数据</div>`;
+    }
   } catch (err) { console.error('Failed to fetch stats', err); }
+}
+
+function dashboardEditPost(filename) {
+  if (!filename) return;
+  editPost(filename);
+}
+
+function dashboardGoReviewComments(status) {
+  showAdminPage('comments');
+  if (status === 'pending') {
+    const root = document.getElementById('adminPage-comments');
+    if (!root) return;
+    const tab = root.querySelector('.top-tab[data-filter="pending"]');
+    if (tab) tab.click();
+  }
+}
+
+function dashboardReviewComment(id, status) {
+  showAdminPage('comments');
+  const root = document.getElementById('adminPage-comments');
+  if (root && status === 'pending') {
+    const tab = root.querySelector('.top-tab[data-filter="pending"]');
+    if (tab) tab.click();
+  }
+  window.__dashboardFocusCommentId = id || '';
+  setTimeout(() => {
+    if (!window.__dashboardFocusCommentId) return;
+    const el = document.getElementById(`comment-${window.__dashboardFocusCommentId}`);
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      el.style.boxShadow = '0 0 0 2px rgba(59,130,246,.35)';
+      setTimeout(() => { el.style.boxShadow = ''; }, 1800);
+    }
+    window.__dashboardFocusCommentId = '';
+  }, 350);
+}
+
+async function dashboardModerateComment(id, status) {
+  await moderateComment(id, status);
+  await fetchStats();
+}
+
+async function dashboardDeleteComment(id) {
+  if (!confirm('确定删除该评论？')) return;
+  await deleteComment(id);
+  await fetchStats();
+}
+
+async function dashboardToggleArchivePost(filename) {
+  await toggleArchivePost(filename);
+  await fetchStats();
+}
+
+function updatePendingCommentBadges(pending) {
+  const n = Number(pending || 0);
+  const badge = document.getElementById('adminNavCommentsBadge');
+  if (badge) {
+    badge.textContent = String(n);
+    badge.style.display = n > 0 ? '' : 'none';
+  }
+  const label = document.getElementById('dashboardPendingCommentLabel');
+  if (label) label.textContent = `审核评论 (${n})`;
 }
 
 async function fetchPosts() {
@@ -1308,6 +1503,7 @@ function renderAdminComments() {
 
   const summary = document.getElementById('adminCommentsSummary');
   if (summary) summary.textContent = `${pending} 条待审核`;
+  updatePendingCommentBadges(pending);
 
   const oldCards = container.querySelectorAll('.comment-mod-card');
   oldCards.forEach(c => c.remove());
@@ -1318,6 +1514,7 @@ function renderAdminComments() {
   filtered.forEach(c => {
     const card = document.createElement('div');
     card.className = 'comment-mod-card';
+    card.id = `comment-${c && c.id ? String(c.id) : ''}`;
 
     const userName = c && c.user ? String(c.user) : 'Anonymous';
     const statusBadge = c.status === 'pending' ? '<span class="status-badge status-pending">⏳ 待审核</span>' :
@@ -1363,52 +1560,116 @@ async function fetchAdminUsers() {
       showToast(raw && raw.error ? `加载用户失败: ${raw.error}` : '加载用户失败');
       return;
     }
-    const users = Array.isArray(raw) ? raw : [];
-    const tbody = document.querySelector('#adminPage-users tbody');
-    if (!tbody) return;
-
-    tbody.innerHTML = users.map(u => {
-      const name = u && u.name ? String(u.name) : (u && u.username ? String(u.username) : 'User');
-      const username = u && u.username ? String(u.username) : '';
-      const role = u && u.role ? String(u.role) : 'user';
-      const created = u && u.createdAt ? new Date(u.createdAt).toLocaleDateString() : '-';
-      const id = u && u.id ? String(u.id) : username;
-      const roleBadge = role === 'admin'
-        ? '<span class="status-badge status-published">管理员</span>'
-        : '<span class="status-badge status-draft">用户</span>';
-
-      const toggleTo = role === 'admin' ? 'user' : 'admin';
-      const toggleLabel = role === 'admin' ? '降为用户' : '设为管理员';
-
-      return `
-        <tr>
-          <td>
-            <div style="display:flex;align-items:center;gap:.75rem">
-              <div class="comment-mod-avatar" style="background:${getRandomGradient(username || name)}">${escapeHtml((name || 'U').slice(0, 1))}</div>
-              <div>
-                <div style="font-size:13.5px;font-weight:600;color:var(--admin-text)">${escapeHtml(name)}</div>
-                <div style="font-size:12px;color:var(--admin-muted)">@${escapeHtml(username || '-') }</div>
-              </div>
-            </div>
-          </td>
-          <td style="font-family:'DM Mono',monospace;font-size:12px;color:var(--admin-muted)">${escapeHtml(username || '-')}</td>
-          <td>${roleBadge}</td>
-          <td><span class="status-badge status-published">正常</span></td>
-          <td style="font-family:'DM Mono',monospace;font-size:12px">-</td>
-          <td style="font-family:'DM Mono',monospace;font-size:12px;color:var(--admin-muted)">${created}</td>
-          <td>
-            <div style="display:flex;gap:.4rem">
-              <button class="btn btn-admin-outline btn-sm" onclick="setUserRole('${id}', '${toggleTo}')">${toggleLabel}</button>
-              <button class="btn btn-sm" style="color:var(--red);border:1px solid rgba(239,68,68,.3);border-radius:5px;padding:.3rem .7rem;font-size:12px;background:transparent" onclick="deleteUser('${id}')">删除</button>
-            </div>
-          </td>
-        </tr>
-      `;
-    }).join('');
+    adminUsersCache = Array.isArray(raw) ? raw : [];
+    initAdminUsersUI();
+    renderAdminUsers();
   } catch (err) {
     console.error(err);
     showToast('加载用户失败');
   }
+}
+
+function initAdminUsersUI() {
+  if (adminUsersUiBound) return;
+  const root = document.getElementById('adminPage-users');
+  if (!root) return;
+
+  const search = document.getElementById('adminUserSearch');
+  if (search) {
+    search.addEventListener('input', () => {
+      adminUserSearch = String(search.value || '').trim();
+      renderAdminUsers();
+    });
+  }
+
+  root.querySelectorAll('.top-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      root.querySelectorAll('.top-tab').forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+      adminUserFilter = tab.getAttribute('data-filter') || 'all';
+      renderAdminUsers();
+    });
+  });
+
+  adminUsersUiBound = true;
+}
+
+function renderAdminUsers() {
+  const tbody = document.getElementById('adminUserTableBody');
+  if (!tbody) return;
+
+  const all = Array.isArray(adminUsersCache) ? adminUsersCache : [];
+  const activeCount = all.filter(u => !u || (u.status || 'active') !== 'banned').length;
+  const bannedCount = all.filter(u => u && (u.status || 'active') === 'banned').length;
+
+  const cAll = document.getElementById('adminUserCountAll');
+  const cActive = document.getElementById('adminUserCountActive');
+  const cBanned = document.getElementById('adminUserCountBanned');
+  if (cAll) cAll.textContent = String(all.length);
+  if (cActive) cActive.textContent = String(activeCount);
+  if (cBanned) cBanned.textContent = String(bannedCount);
+
+  let filtered = all.slice();
+  if (adminUserFilter === 'active') filtered = filtered.filter(u => !u || (u.status || 'active') !== 'banned');
+  else if (adminUserFilter === 'banned') filtered = filtered.filter(u => u && (u.status || 'active') === 'banned');
+
+  if (adminUserSearch) {
+    const q = adminUserSearch.toLowerCase();
+    filtered = filtered.filter(u => {
+      const name = u && u.name ? String(u.name) : '';
+      const username = u && u.username ? String(u.username) : '';
+      return name.toLowerCase().includes(q) || username.toLowerCase().includes(q);
+    });
+  }
+
+  tbody.innerHTML = filtered.map(u => {
+    const name = u && u.name ? String(u.name) : (u && u.username ? String(u.username) : 'User');
+    const username = u && u.username ? String(u.username) : '';
+    const role = u && u.role ? String(u.role) : 'user';
+    const status = u && u.status ? String(u.status) : 'active';
+    const created = u && u.createdAt ? new Date(u.createdAt).toLocaleDateString() : '-';
+    const id = u && u.id ? String(u.id) : username;
+
+    const roleBadge = role === 'admin'
+      ? '<span class="status-badge status-published">管理员</span>'
+      : '<span class="status-badge status-draft">用户</span>';
+
+    const statusBadge = status === 'banned'
+      ? '<span class="status-badge status-hidden">已封禁</span>'
+      : '<span class="status-badge status-published">正常</span>';
+
+    const toggleTo = role === 'admin' ? 'user' : 'admin';
+    const toggleLabel = role === 'admin' ? '降为用户' : '设为管理员';
+
+    const banTo = status === 'banned' ? 'active' : 'banned';
+    const banLabel = status === 'banned' ? '解封' : '封禁';
+
+    return `
+      <tr>
+        <td>
+          <div style="display:flex;align-items:center;gap:.75rem">
+            <div class="comment-mod-avatar" style="background:${getRandomGradient(username || name)}">${escapeHtml((name || 'U').slice(0, 1))}</div>
+            <div>
+              <div style="font-size:13.5px;font-weight:600;color:var(--admin-text)">${escapeHtml(name)}</div>
+              <div style="font-size:12px;color:var(--admin-muted)">@${escapeHtml(username || '-')}</div>
+            </div>
+          </div>
+        </td>
+        <td style="font-family:'DM Mono',monospace;font-size:12px;color:var(--admin-muted)">${escapeHtml(username || '-')}</td>
+        <td>${roleBadge}</td>
+        <td>${statusBadge}</td>
+        <td style="font-family:'DM Mono',monospace;font-size:12px">-</td>
+        <td style="font-family:'DM Mono',monospace;font-size:12px;color:var(--admin-muted)">${escapeHtml(created)}</td>
+        <td>
+          <div style="display:flex;gap:.4rem;flex-wrap:wrap">
+            <button class="btn btn-admin-outline btn-sm" onclick="setUserRole('${id}', '${toggleTo}')">${toggleLabel}</button>
+            <button class="btn btn-admin-outline btn-sm" onclick="setUserStatus('${id}', '${banTo}')">${banLabel}</button>
+            <button class="btn btn-sm" style="color:var(--red);border:1px solid rgba(239,68,68,.3);border-radius:5px;padding:.3rem .7rem;font-size:12px;background:transparent" onclick="deleteUser('${id}')">删除</button>
+          </div>
+        </td>
+      </tr>
+    `;
+  }).join('');
 }
 
 async function setUserRole(id, role) {
@@ -1417,6 +1678,26 @@ async function setUserRole(id, role) {
       method: 'PUT',
       headers: withAuthHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify({ role })
+    });
+    const data = await safeJson(res) || {};
+    if (!res.ok) {
+      showToast(data.error ? `操作失败: ${data.error}` : '操作失败');
+      return;
+    }
+    await fetchAdminUsers();
+    showToast('操作成功');
+  } catch (err) {
+    console.error(err);
+    showToast('操作失败');
+  }
+}
+
+async function setUserStatus(id, status) {
+  try {
+    const res = await fetch(apiUrl(`/user?id=${encodeURIComponent(id)}`), {
+      method: 'PUT',
+      headers: withAuthHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify({ status })
     });
     const data = await safeJson(res) || {};
     if (!res.ok) {
@@ -1453,20 +1734,29 @@ async function deleteUser(id) {
 
 async function moderateComment(id, status) {
   try {
-    await fetch(apiUrl(`/comment?id=${encodeURIComponent(id)}`), {
+    const res = await fetch(apiUrl(`/comment?id=${encodeURIComponent(id)}`), {
       method: 'PUT',
       headers: withAuthHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify({ status })
     });
+    const data = await safeJson(res) || {};
+    if (!res.ok) {
+      showToast(data.error ? `操作失败: ${data.error}` : '操作失败');
+      return;
+    }
     fetchAdminComments();
     showToast('操作成功');
   } catch (err) { showToast('操作失败'); }
 }
 
 async function deleteComment(id) {
-  if (!confirm('确定删除?')) return;
   try {
-    await fetch(apiUrl(`/comment?id=${encodeURIComponent(id)}`), { method: 'DELETE', headers: withAuthHeaders({}) });
+    const res = await fetch(apiUrl(`/comment?id=${encodeURIComponent(id)}`), { method: 'DELETE', headers: withAuthHeaders({}) });
+    const data = await safeJson(res) || {};
+    if (!res.ok) {
+      showToast(data.error ? `删除失败: ${data.error}` : '删除失败');
+      return;
+    }
     fetchAdminComments();
     showToast('已删除');
   } catch (err) { showToast('操作失败'); }
@@ -1799,13 +2089,16 @@ function showToast(msg) {
 }
 
 // ── CHART BAR HOVER TOOLTIPS ──
-document.querySelectorAll('.chart-bar').forEach(bar => {
-  bar.addEventListener('mouseenter', function(e) {
-    this.style.opacity = '0.85';
-  });
-  bar.addEventListener('mouseleave', function() {
-    this.style.opacity = '';
-  });
+document.addEventListener('mouseover', (e) => {
+  const bar = e.target && e.target.closest ? e.target.closest('.chart-bar') : null;
+  if (!bar) return;
+  bar.style.opacity = '0.85';
+});
+
+document.addEventListener('mouseout', (e) => {
+  const bar = e.target && e.target.closest ? e.target.closest('.chart-bar') : null;
+  if (!bar) return;
+  bar.style.opacity = '';
 });
 
 // Expose functions to window for HTML onclick access
@@ -1838,4 +2131,11 @@ window.deleteComment = deleteComment;
 window.submitComment = submitComment;
 window.fetchAdminUsers = fetchAdminUsers;
 window.setUserRole = setUserRole;
+window.setUserStatus = setUserStatus;
 window.deleteUser = deleteUser;
+window.dashboardEditPost = dashboardEditPost;
+window.dashboardGoReviewComments = dashboardGoReviewComments;
+window.dashboardReviewComment = dashboardReviewComment;
+window.dashboardModerateComment = dashboardModerateComment;
+window.dashboardDeleteComment = dashboardDeleteComment;
+window.dashboardToggleArchivePost = dashboardToggleArchivePost;

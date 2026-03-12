@@ -22,7 +22,7 @@
         <div class="admin-nav-section-label">社区管理</div>
         <div class="admin-nav-item" id="adminNav-comments" onclick="showAdminPage('comments')">
           <span class="nav-icon">💬</span> 评论审核
-          <span class="admin-nav-badge">7</span>
+          <span class="admin-nav-badge" id="adminNavCommentsBadge">0</span>
         </div>
         <div class="admin-nav-item" id="adminNav-users" onclick="showAdminPage('users')">
           <span class="nav-icon">👥</span> 用户管理
@@ -50,7 +50,7 @@
       <div class="admin-page active" id="adminPage-dashboard">
         <div class="admin-header">
           <div class="admin-page-title">数据概览</div>
-          <div style="margin-left:auto;font-family:'DM Mono',monospace;font-size:12px;color:var(--admin-muted)">最近 30 天 · 更新于 5 分钟前</div>
+          <div id="dashboardUpdatedAt" style="margin-left:auto;font-family:'DM Mono',monospace;font-size:12px;color:var(--admin-muted)">最近 30 天 · 更新于 --</div>
         </div>
         <div class="admin-content">
           <div class="stats-grid">
@@ -59,7 +59,7 @@
                 <div class="stat-icon" style="background:rgba(16,185,129,.12);font-size:16px">👁</div>
                 <span class="stat-change stat-up">↑ 18.3%</span>
               </div>
-              <div class="stat-value">28,451</div>
+              <div class="stat-value" id="statViewCount">--</div>
               <div class="stat-label">总页面访问量</div>
             </div>
             <div class="stat-card">
@@ -67,7 +67,7 @@
                 <div class="stat-icon" style="background:rgba(59,130,246,.12)">👤</div>
                 <span class="stat-change stat-up">↑ 24.1%</span>
               </div>
-              <div class="stat-value">1,284</div>
+              <div class="stat-value" id="statUserCount">--</div>
               <div class="stat-label">注册用户</div>
             </div>
             <div class="stat-card">
@@ -75,7 +75,7 @@
                 <div class="stat-icon" style="background:rgba(251,191,36,.12)">💬</div>
                 <span class="stat-change stat-up">↑ 9.6%</span>
               </div>
-              <div class="stat-value">342</div>
+              <div class="stat-value" id="statCommentCount">--</div>
               <div class="stat-label">评论总数</div>
             </div>
             <div class="stat-card">
@@ -91,65 +91,42 @@
           <div class="two-col-grid">
             <div class="chart-card">
               <div class="chart-header">
-                <div class="chart-title">访问量趋势</div>
+                <div class="chart-title">内容活跃度</div>
                 <div class="chart-period">过去 14 天</div>
               </div>
-              <div class="chart-bars">
-                <div class="chart-bar-wrap"><div class="chart-bar" style="height:45%"></div><div class="chart-bar-label">3/1</div></div>
-                <div class="chart-bar-wrap"><div class="chart-bar" style="height:60%"></div><div class="chart-bar-label">3/2</div></div>
-                <div class="chart-bar-wrap"><div class="chart-bar" style="height:38%"></div><div class="chart-bar-label">3/3</div></div>
-                <div class="chart-bar-wrap"><div class="chart-bar" style="height:72%"></div><div class="chart-bar-label">3/4</div></div>
-                <div class="chart-bar-wrap"><div class="chart-bar" style="height:85%"></div><div class="chart-bar-label">3/5</div></div>
-                <div class="chart-bar-wrap"><div class="chart-bar" style="height:55%"></div><div class="chart-bar-label">3/6</div></div>
-                <div class="chart-bar-wrap"><div class="chart-bar" style="height:48%"></div><div class="chart-bar-label">3/7</div></div>
-                <div class="chart-bar-wrap"><div class="chart-bar" style="height:92%"></div><div class="chart-bar-label">3/8</div></div>
-                <div class="chart-bar-wrap"><div class="chart-bar" style="height:78%"></div><div class="chart-bar-label">3/9</div></div>
-                <div class="chart-bar-wrap"><div class="chart-bar" style="height:65%"></div><div class="chart-bar-label">3/10</div></div>
-                <div class="chart-bar-wrap"><div class="chart-bar" style="height:50%"></div><div class="chart-bar-label">3/11</div></div>
-                <div class="chart-bar-wrap"><div class="chart-bar" style="height:88%"></div><div class="chart-bar-label">3/12</div></div>
-                <div class="chart-bar-wrap"><div class="chart-bar" style="height:95%"></div><div class="chart-bar-label">3/13</div></div>
-                <div class="chart-bar-wrap"><div class="chart-bar" style="height:100%;background:var(--admin-accent)"></div><div class="chart-bar-label">今天</div></div>
-              </div>
+              <div class="chart-bars" id="dashboardActivityBars"></div>
             </div>
 
             <div class="chart-card">
               <div class="chart-header">
-                <div class="chart-title">热门文章 TOP 5</div>
-                <div class="chart-period">本月</div>
+                <div class="chart-title">热门文章 TOP 5（按评论数）</div>
+                <div class="chart-period">最近</div>
               </div>
-              <div style="display:flex;flex-direction:column;gap:.75rem">
-                <div style="display:flex;align-items:center;gap:.75rem">
-                  <span style="font-family:'DM Mono',monospace;font-size:11px;color:var(--admin-accent);width:20px">01</span>
-                  <div style="flex:1;font-size:13.5px;color:rgba(249,250,251,.8)">在文字的迷宫里寻找出口</div>
-                  <span style="font-family:'DM Mono',monospace;font-size:11.5px;color:var(--admin-muted)">3,241</span>
-                </div>
-                <div style="display:flex;align-items:center;gap:.75rem">
-                  <span style="font-family:'DM Mono',monospace;font-size:11px;color:rgba(16,185,129,.6);width:20px">02</span>
-                  <div style="flex:1;font-size:13.5px;color:rgba(249,250,251,.8)">论博尔赫斯的迷宫诗学</div>
-                  <span style="font-family:'DM Mono',monospace;font-size:11.5px;color:var(--admin-muted)">2,187</span>
-                </div>
-                <div style="display:flex;align-items:center;gap:.75rem">
-                  <span style="font-family:'DM Mono',monospace;font-size:11px;color:rgba(16,185,129,.4);width:20px">03</span>
-                  <div style="flex:1;font-size:13.5px;color:rgba(249,250,251,.8)">《奥本海默》影评</div>
-                  <span style="font-family:'DM Mono',monospace;font-size:11.5px;color:var(--admin-muted)">1,842</span>
-                </div>
-                <div style="display:flex;align-items:center;gap:.75rem">
-                  <span style="font-family:'DM Mono',monospace;font-size:11px;color:rgba(16,185,129,.3);width:20px">04</span>
-                  <div style="flex:1;font-size:13.5px;color:rgba(249,250,251,.8)">城市漫游者的孤独哲学</div>
-                  <span style="font-family:'DM Mono',monospace;font-size:11.5px;color:var(--admin-muted)">1,203</span>
-                </div>
-                <div style="display:flex;align-items:center;gap:.75rem">
-                  <span style="font-family:'DM Mono',monospace;font-size:11px;color:rgba(16,185,129,.2);width:20px">05</span>
-                  <div style="flex:1;font-size:13.5px;color:rgba(249,250,251,.8)">当音乐成为时间的容器</div>
-                  <span style="font-family:'DM Mono',monospace;font-size:11.5px;color:var(--admin-muted)">987</span>
-                </div>
+              <div id="dashboardTopPosts" style="display:flex;flex-direction:column;gap:.75rem"></div>
+            </div>
+          </div>
+
+          <div class="two-col-grid">
+            <div class="chart-card">
+              <div class="chart-header">
+                <div class="chart-title">最新文章动态</div>
+                <div class="chart-period">最近 8 条</div>
               </div>
+              <div id="dashboardRecentPosts" style="display:flex;flex-direction:column;gap:.6rem"></div>
+            </div>
+
+            <div class="chart-card">
+              <div class="chart-header">
+                <div class="chart-title">最新评论</div>
+                <div class="chart-period">最近 8 条</div>
+              </div>
+              <div id="dashboardRecentComments" style="display:flex;flex-direction:column;gap:.6rem"></div>
             </div>
           </div>
 
           <div class="admin-quick-links">
             <div class="quick-link" onclick="newPost()"><div class="quick-link-icon">✏️</div><div class="quick-link-label">写新文章</div></div>
-            <div class="quick-link" onclick="showAdminPage('comments')"><div class="quick-link-icon">💬</div><div class="quick-link-label">审核评论 (7)</div></div>
+            <div class="quick-link" onclick="showAdminPage('comments')"><div class="quick-link-icon">💬</div><div class="quick-link-label" id="dashboardPendingCommentLabel">审核评论 (0)</div></div>
             <div class="quick-link" onclick="showAdminPage('novels')"><div class="quick-link-icon">📖</div><div class="quick-link-label">更新小说</div></div>
             <div class="quick-link" onclick="showAdminPage('settings')"><div class="quick-link-icon">⚙️</div><div class="quick-link-label">网站设置</div></div>
           </div>
@@ -337,20 +314,20 @@
         <div class="admin-header">
           <div class="admin-page-title">用户管理</div>
           <div class="admin-header-actions">
-            <div class="admin-search"><span class="admin-search-icon">🔍</span><input placeholder="搜索用户…"></div>
+            <div class="admin-search"><span class="admin-search-icon">🔍</span><input id="adminUserSearch" placeholder="搜索用户…"></div>
           </div>
         </div>
         <div class="admin-content">
           <div class="top-tabs">
-            <div class="top-tab active">全部用户 <span class="tab-count">1,284</span></div>
-            <div class="top-tab">正常 <span class="tab-count">1,278</span></div>
-            <div class="top-tab">已封禁 <span class="tab-count">6</span></div>
+            <div class="top-tab active" data-filter="all">全部用户 <span class="tab-count" id="adminUserCountAll">0</span></div>
+            <div class="top-tab" data-filter="active">正常 <span class="tab-count" id="adminUserCountActive">0</span></div>
+            <div class="top-tab" data-filter="banned">已封禁 <span class="tab-count" id="adminUserCountBanned">0</span></div>
           </div>
           <div class="table-card">
             <div class="table-wrap">
               <table class="admin-table">
                 <thead><tr><th>用户</th><th>邮箱</th><th>角色</th><th>状态</th><th>评论数</th><th>注册时间</th><th>操作</th></tr></thead>
-                <tbody></tbody>
+                <tbody id="adminUserTableBody"></tbody>
               </table>
             </div>
           </div>

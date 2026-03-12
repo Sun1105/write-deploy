@@ -341,6 +341,7 @@ async function handleLogin(req, res) {
   const list = Array.isArray(users) ? users : [];
   const found = list.find(u => u && u.username === username);
   if (!found) return res.status(401).json({ success: false, message: '用户名或密码错误' });
+  if (found.status === 'banned') return res.status(403).json({ success: false, message: '账号已被封禁' });
   const salt = found.salt || '';
   const hash = found.hash || '';
   const computed = hashPassword(password, salt);
@@ -371,7 +372,7 @@ async function handleRegister(req, res) {
   const salt = crypto.randomBytes(16).toString('hex');
   const hash = hashPassword(password, salt);
   const role = users.length === 0 ? 'admin' : 'user';
-  const user = { id: randomId(), username, name: name || username, role, salt, hash, createdAt: new Date().toISOString() };
+  const user = { id: randomId(), username, name: name || username, role, status: 'active', salt, hash, createdAt: new Date().toISOString() };
   users.push(user);
   await writeJsonFile(owner, repo, token, usersFile, users, existing.sha, 'Register user');
 
@@ -396,7 +397,7 @@ async function handleUsers(req, res) {
   const usersFile = 'data/users.json';
   const { data: users } = await readJsonFileOr(owner, repo, headers, usersFile, []);
   const list = Array.isArray(users) ? users : [];
-  const safe = list.map(u => ({ id: u.id, username: u.username, name: u.name, role: u.role, createdAt: u.createdAt }));
+  const safe = list.map(u => ({ id: u.id, username: u.username, name: u.name, role: u.role, status: u.status || 'active', createdAt: u.createdAt }));
   return res.status(200).json(safe);
 }
 
@@ -415,10 +416,16 @@ async function handleUser(req, res) {
   if (idx === -1) return res.status(404).json({ error: 'User not found' });
 
   if (req.method === 'PUT') {
-    const role = req.body && req.body.role ? String(req.body.role) : '';
-    if (role !== 'admin' && role !== 'user') return res.status(400).json({ error: 'Invalid role' });
+    const role = req.body && req.body.role !== undefined ? String(req.body.role) : '';
+    const status = req.body && req.body.status !== undefined ? String(req.body.status) : '';
+    if (role && role !== 'admin' && role !== 'user') return res.status(400).json({ error: 'Invalid role' });
+    if (status && status !== 'active' && status !== 'banned') return res.status(400).json({ error: 'Invalid status' });
     const nextUsers = users.slice();
-    nextUsers[idx] = { ...nextUsers[idx], role };
+    nextUsers[idx] = {
+      ...nextUsers[idx],
+      ...(role ? { role } : {}),
+      ...(status ? { status } : {})
+    };
     await writeJsonFile(owner, repo, token, usersFile, nextUsers, existing.sha, 'Update user role');
     return res.status(200).json({ success: true });
   }
@@ -437,6 +444,7 @@ async function handleUser(req, res) {
 
 async function handleStats(req, res) {
   if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
+  await requireAdmin(req);
   const { owner, repo, token } = getGithubConfig();
   const headers = githubHeaders(token);
 
@@ -444,21 +452,125 @@ async function handleStats(req, res) {
   const commentsFile = 'data/comments.json';
   const usersFile = 'data/users.json';
 
-  const entries = await listDir(owner, repo, headers, postsDir);
-  const postCount = entries.filter(e => e && e.type === 'file' && /\\.md$/i.test(e.name || '')).length;
-
   const comments = await readJsonFileOr(owner, repo, headers, commentsFile, []);
   const commentList = Array.isArray(comments.data) ? comments.data : [];
 
   const users = await readJsonFileOr(owner, repo, headers, usersFile, []);
   const userList = Array.isArray(users.data) ? users.data : [];
 
+  const entries = await listDir(owner, repo, headers, postsDir);
+  const postFiles = entries.filter(e => e && e.type === 'file' && /\\.md$/i.test(e.name || ''));
+
+  const posts = await Promise.all(
+    postFiles.map(async (f) => {
+      try {
+        const { content } = await readText(owner, repo, headers, `${postsDir}/${f.name}`);
+        const parsed = extractFrontMatter(String(content || ''));
+        const fm = parsed.frontMatter || {};
+        return {
+          filename: f.name,
+          title: fm.title || String(f.name || '').replace(/\\.md$/i, ''),
+          date: fm.date || new Date().toISOString(),
+          published: typeof fm.published === 'boolean' ? fm.published : true,
+          archived: typeof fm.archived === 'boolean' ? fm.archived : false
+        };
+      } catch {
+        return {
+          filename: f.name,
+          title: String(f.name || '').replace(/\\.md$/i, ''),
+          date: new Date().toISOString(),
+          published: true,
+          archived: false
+        };
+      }
+    })
+  );
+
+  const archivedPostCount = posts.filter(p => p && p.archived === true).length;
+  const draftPostCount = posts.filter(p => p && p.archived !== true && p.published === false).length;
+  const publishedPostCount = posts.filter(p => p && p.archived !== true && p.published !== false).length;
+
+  const pendingCommentCount = commentList.filter(c => c && c.status === 'pending').length;
+
+  const commentsByPost = new Map();
+  for (const c of commentList) {
+    if (!c || !c.post) continue;
+    const key = String(c.post);
+    commentsByPost.set(key, (commentsByPost.get(key) || 0) + 1);
+  }
+  const topPosts = posts
+    .filter(p => p && p.archived !== true && p.published !== false)
+    .map(p => ({ title: p.title, filename: p.filename, count: commentsByPost.get(p.filename) || 0 }))
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 5);
+
+  const activity14Days = buildActivity14Days(posts, commentList);
+  const recentPosts = posts
+    .slice()
+    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+    .slice(0, 8);
+
+  const recentComments = commentList
+    .slice()
+    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+    .slice(0, 8)
+    .map(c => ({
+      id: c.id,
+      post: c.post,
+      user: c.user,
+      date: c.date,
+      status: c.status,
+      content: c.content
+    }));
+
   return res.status(200).json({
-    postCount,
+    postCount: posts.length,
+    publishedPostCount,
+    draftPostCount,
+    archivedPostCount,
     commentCount: commentList.length,
+    pendingCommentCount,
     userCount: userList.length,
-    viewCount: 28451
+    viewCount: 28451,
+    activity14Days,
+    topPosts,
+    recentPosts,
+    recentComments
   });
+}
+
+function buildActivity14Days(posts, commentList) {
+  const days = [];
+  const index = new Map();
+  const now = new Date();
+  const start = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+  start.setUTCDate(start.getUTCDate() - 13);
+
+  for (let i = 0; i < 14; i += 1) {
+    const d = new Date(start);
+    d.setUTCDate(start.getUTCDate() + i);
+    const key = d.toISOString().slice(0, 10);
+    days.push({ key, label: `${d.getUTCMonth() + 1}/${d.getUTCDate()}`, value: 0 });
+    index.set(key, i);
+  }
+
+  for (const p of posts || []) {
+    const date = p && p.date ? new Date(p.date) : null;
+    if (!date || Number.isNaN(date.getTime())) continue;
+    const key = date.toISOString().slice(0, 10);
+    const idx = index.get(key);
+    if (idx !== undefined) days[idx].value += 2;
+  }
+
+  for (const c of commentList || []) {
+    const date = c && c.date ? new Date(c.date) : null;
+    if (!date || Number.isNaN(date.getTime())) continue;
+    const key = date.toISOString().slice(0, 10);
+    const idx = index.get(key);
+    if (idx !== undefined) days[idx].value += 1;
+  }
+
+  return days.map(d => ({ label: d.label, value: d.value }));
 }
 
 async function handlePosts(req, res) {
