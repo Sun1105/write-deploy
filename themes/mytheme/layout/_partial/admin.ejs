@@ -57,7 +57,7 @@
             <div class="stat-card">
               <div class="stat-card-top">
                 <div class="stat-icon" style="background:rgba(16,185,129,.12);font-size:16px">👁</div>
-                <span class="stat-change stat-up">↑ 18.3%</span>
+                <span class="stat-change stat-up" id="statViewChange">--</span>
               </div>
               <div class="stat-value" id="statViewCount">--</div>
               <div class="stat-label">总页面访问量</div>
@@ -65,7 +65,7 @@
             <div class="stat-card">
               <div class="stat-card-top">
                 <div class="stat-icon" style="background:rgba(59,130,246,.12)">👤</div>
-                <span class="stat-change stat-up">↑ 24.1%</span>
+                <span class="stat-change stat-up" id="statUserChange">--</span>
               </div>
               <div class="stat-value" id="statUserCount">--</div>
               <div class="stat-label">注册用户</div>
@@ -73,7 +73,7 @@
             <div class="stat-card">
               <div class="stat-card-top">
                 <div class="stat-icon" style="background:rgba(251,191,36,.12)">💬</div>
-                <span class="stat-change stat-up">↑ 9.6%</span>
+                <span class="stat-change stat-up" id="statCommentChange">--</span>
               </div>
               <div class="stat-value" id="statCommentCount">--</div>
               <div class="stat-label">评论总数</div>
@@ -81,7 +81,7 @@
             <div class="stat-card">
               <div class="stat-card-top">
                 <div class="stat-icon" style="background:rgba(239,68,68,.12)">📝</div>
-                <span class="stat-change stat-down">↓ 2.1%</span>
+                <span class="stat-change stat-up" id="statPostChange">--</span>
               </div>
               <div class="stat-value" id="statPostCount">--</div>
               <div class="stat-label">已发布文章</div>
@@ -106,6 +106,27 @@
                 </div>
               </div>
               <div id="dashboardTopPosts" style="display:flex;flex-direction:column;gap:.75rem"></div>
+            </div>
+          </div>
+
+          <div class="two-col-grid">
+            <div class="chart-card">
+              <div class="chart-header">
+                <div class="chart-title">页面访问量 TOP 5</div>
+                <div class="chart-period">累计</div>
+              </div>
+              <div id="dashboardTopViewedPages" style="display:flex;flex-direction:column;gap:.75rem"></div>
+            </div>
+
+            <div class="chart-card">
+              <div class="chart-header">
+                <div class="chart-title">文章访问量 TOP 5</div>
+                <div style="display:flex;align-items:center;gap:.5rem">
+                  <div class="chart-period">累计</div>
+                  <button class="btn btn-admin-outline btn-sm" onclick="dashboardViewMorePosts('all')">查看更多</button>
+                </div>
+              </div>
+              <div id="dashboardTopViewedPosts" style="display:flex;flex-direction:column;gap:.75rem"></div>
             </div>
           </div>
 

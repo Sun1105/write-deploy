@@ -22,6 +22,8 @@ module.exports = async function handler(req, res) {
     if (route === 'comments') return handleComments(req, res);
     if (route === 'comment') return handleComment(req, res);
 
+    if (route === 'view') return handleView(req, res);
+
     if (route === 'upload') return handleUpload(req, res);
 
     if (route === 'novels') return handleNovels(req, res);
@@ -451,12 +453,38 @@ async function handleStats(req, res) {
   const postsDir = 'data/posts';
   const commentsFile = 'data/comments.json';
   const usersFile = 'data/users.json';
+  const viewsFile = 'data/views.json';
 
   const comments = await readJsonFileOr(owner, repo, headers, commentsFile, []);
   const commentList = Array.isArray(comments.data) ? comments.data : [];
 
   const users = await readJsonFileOr(owner, repo, headers, usersFile, []);
   const userList = Array.isArray(users.data) ? users.data : [];
+
+  const views = await readJsonFileOr(owner, repo, headers, viewsFile, { total: 0, pages: {}, posts: {}, chapters: {}, daily: {} });
+  const viewData = views && views.data && typeof views.data === 'object' ? views.data : { total: 0, daily: {} };
+  const viewCount = Number(viewData.total || 0);
+  const daily = viewData.daily && typeof viewData.daily === 'object' ? viewData.daily : {};
+  const todayKey = new Date().toISOString().slice(0, 10);
+  const y = new Date();
+  y.setUTCDate(y.getUTCDate() - 1);
+  const yesterdayKey = y.toISOString().slice(0, 10);
+  const viewToday = Number(daily[todayKey] || 0);
+  const viewYesterday = Number(daily[yesterdayKey] || 0);
+  const statsUpdatedAt = viewData && viewData.updatedAt ? String(viewData.updatedAt) : null;
+
+  const userToday = userList.filter(u => u && u.createdAt && String(u.createdAt).slice(0, 10) === todayKey).length;
+  const userYesterday = userList.filter(u => u && u.createdAt && String(u.createdAt).slice(0, 10) === yesterdayKey).length;
+
+  const commentToday = commentList.filter(c => c && c.date && String(c.date).slice(0, 10) === todayKey).length;
+  const commentYesterday = commentList.filter(c => c && c.date && String(c.date).slice(0, 10) === yesterdayKey).length;
+
+  const pageViews = viewData.pages && typeof viewData.pages === 'object' ? viewData.pages : {};
+  const postViews = viewData.posts && typeof viewData.posts === 'object' ? viewData.posts : {};
+  const topViewedPages = Object.entries(pageViews)
+    .map(([id, count]) => ({ id: String(id), count: Number(count || 0) }))
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 5);
 
   const entries = await listDir(owner, repo, headers, postsDir);
   const postFiles = entries.filter(e => e && e.type === 'file' && /\\.md$/i.test(e.name || ''));
@@ -489,6 +517,18 @@ async function handleStats(req, res) {
   const archivedPostCount = posts.filter(p => p && p.archived === true).length;
   const draftPostCount = posts.filter(p => p && p.archived !== true && p.published === false).length;
   const publishedPostCount = posts.filter(p => p && p.archived !== true && p.published !== false).length;
+  const publishedPostToday = posts.filter(p => {
+    if (!p || p.archived === true || p.published === false || !p.date) return false;
+    const d = new Date(p.date);
+    if (Number.isNaN(d.getTime())) return false;
+    return d.toISOString().slice(0, 10) === todayKey;
+  }).length;
+  const publishedPostYesterday = posts.filter(p => {
+    if (!p || p.archived === true || p.published === false || !p.date) return false;
+    const d = new Date(p.date);
+    if (Number.isNaN(d.getTime())) return false;
+    return d.toISOString().slice(0, 10) === yesterdayKey;
+  }).length;
 
   const pendingCommentCount = commentList.filter(c => c && c.status === 'pending').length;
 
@@ -524,6 +564,16 @@ async function handleStats(req, res) {
       content: c.content
     }));
 
+  const postTitleByFilename = new Map(posts.map(p => [p.filename, p.title]));
+  const topViewedPosts = Object.entries(postViews)
+    .map(([filename, count]) => ({
+      filename: String(filename),
+      title: String(postTitleByFilename.get(String(filename)) || String(filename).replace(/\.md$/i, '')),
+      count: Number(count || 0)
+    }))
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 5);
+
   return res.status(200).json({
     postCount: posts.length,
     publishedPostCount,
@@ -532,8 +582,19 @@ async function handleStats(req, res) {
     commentCount: commentList.length,
     pendingCommentCount,
     userCount: userList.length,
-    viewCount: 28451,
+    viewCount,
+    viewToday,
+    viewYesterday,
+    userToday,
+    userYesterday,
+    commentToday,
+    commentYesterday,
+    publishedPostToday,
+    publishedPostYesterday,
+    statsUpdatedAt,
     activity14Days,
+    topViewedPages,
+    topViewedPosts,
     commentCountsByPost,
     topPosts,
     recentPosts,
@@ -773,6 +834,42 @@ async function handleComment(req, res) {
   }
 
   return res.status(405).json({ error: 'Method not allowed' });
+}
+
+async function handleView(req, res) {
+  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+  const { owner, repo, token } = getGithubConfig();
+  const headers = githubHeaders(token);
+  const filePath = 'data/views.json';
+  const fallback = { total: 0, pages: {}, posts: {}, chapters: {}, daily: {}, updatedAt: null };
+
+  const body = req.body || {};
+  const kind = body.kind ? String(body.kind) : '';
+  const id = body.id ? String(body.id) : '';
+  if (!kind || !id) return res.status(400).json({ error: 'Missing kind or id' });
+  if (!['page', 'post', 'chapter'].includes(kind)) return res.status(400).json({ error: 'Invalid kind' });
+  if (id.length > 400) return res.status(400).json({ error: 'Invalid id' });
+
+  const existing = await readJsonFileOr(owner, repo, headers, filePath, fallback);
+  const data = existing && existing.data && typeof existing.data === 'object' ? existing.data : fallback;
+  const next = {
+    total: Number(data.total || 0),
+    pages: data.pages && typeof data.pages === 'object' ? { ...data.pages } : {},
+    posts: data.posts && typeof data.posts === 'object' ? { ...data.posts } : {},
+    chapters: data.chapters && typeof data.chapters === 'object' ? { ...data.chapters } : {},
+    daily: data.daily && typeof data.daily === 'object' ? { ...data.daily } : {},
+    updatedAt: new Date().toISOString()
+  };
+
+  next.total += 1;
+  if (kind === 'page') next.pages[id] = Number(next.pages[id] || 0) + 1;
+  if (kind === 'post') next.posts[id] = Number(next.posts[id] || 0) + 1;
+  if (kind === 'chapter') next.chapters[id] = Number(next.chapters[id] || 0) + 1;
+  const dayKey = new Date().toISOString().slice(0, 10);
+  next.daily[dayKey] = Number(next.daily[dayKey] || 0) + 1;
+
+  await writeJsonFile(owner, repo, token, filePath, next, existing.sha, `Track view ${kind}:${id}`);
+  return res.status(200).json({ success: true, total: next.total });
 }
 
 function extractBase64(data) {

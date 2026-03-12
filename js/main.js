@@ -55,6 +55,7 @@ window.addEventListener('DOMContentLoaded', () => {
   initEditorMode();
   initRegisterForm();
   renderFrontendPosts();
+  trackView('page', 'home');
   // If hash is present, route to it? For now default home
 });
 
@@ -184,23 +185,70 @@ async function fetchStats() {
     adminPostCommentCounts = data && typeof data.commentCountsByPost === 'object' && data.commentCountsByPost ? data.commentCountsByPost : {};
 
     const viewCount = Number(data.viewCount || 0);
+    const viewToday = Number(data.viewToday || 0);
+    const viewYesterday = Number(data.viewYesterday || 0);
     const userCount = Number(data.userCount || 0);
+    const userToday = Number(data.userToday || 0);
+    const userYesterday = Number(data.userYesterday || 0);
     const commentCount = Number(data.commentCount || 0);
+    const commentToday = Number(data.commentToday || 0);
+    const commentYesterday = Number(data.commentYesterday || 0);
     const publishedPostCount = Number(data.publishedPostCount ?? data.postCount ?? 0);
+    const publishedPostToday = Number(data.publishedPostToday || 0);
+    const publishedPostYesterday = Number(data.publishedPostYesterday || 0);
     const pendingCommentCount = Number(data.pendingCommentCount || 0);
+    const statsUpdatedAt = data && data.statsUpdatedAt ? String(data.statsUpdatedAt) : '';
 
     const viewEl = document.getElementById('statViewCount');
+    const viewChangeEl = document.getElementById('statViewChange');
     const userEl = document.getElementById('statUserCount');
+    const userChangeEl = document.getElementById('statUserChange');
     const commentEl = document.getElementById('statCommentCount');
+    const commentChangeEl = document.getElementById('statCommentChange');
     const postEl = document.getElementById('statPostCount');
+    const postChangeEl = document.getElementById('statPostChange');
 
     if (viewEl) viewEl.textContent = viewCount.toLocaleString();
+    if (viewChangeEl) {
+      const diff = viewToday - viewYesterday;
+      const sign = diff >= 0 ? '+' : '';
+      viewChangeEl.textContent = `今日 ${viewToday.toLocaleString()} (${sign}${diff.toLocaleString()})`;
+      viewChangeEl.classList.remove('stat-up', 'stat-down');
+      viewChangeEl.classList.add(diff >= 0 ? 'stat-up' : 'stat-down');
+    }
     if (userEl) userEl.textContent = userCount.toLocaleString();
+    if (userChangeEl) {
+      const diff = userToday - userYesterday;
+      const sign = diff >= 0 ? '+' : '';
+      userChangeEl.textContent = `今日 ${userToday.toLocaleString()} (${sign}${diff.toLocaleString()})`;
+      userChangeEl.classList.remove('stat-up', 'stat-down');
+      userChangeEl.classList.add(diff >= 0 ? 'stat-up' : 'stat-down');
+    }
     if (commentEl) commentEl.textContent = commentCount.toLocaleString();
+    if (commentChangeEl) {
+      const diff = commentToday - commentYesterday;
+      const sign = diff >= 0 ? '+' : '';
+      commentChangeEl.textContent = `今日 ${commentToday.toLocaleString()} (${sign}${diff.toLocaleString()})`;
+      commentChangeEl.classList.remove('stat-up', 'stat-down');
+      commentChangeEl.classList.add(diff >= 0 ? 'stat-up' : 'stat-down');
+    }
     if (postEl) postEl.textContent = publishedPostCount.toLocaleString();
+    if (postChangeEl) {
+      const diff = publishedPostToday - publishedPostYesterday;
+      const sign = diff >= 0 ? '+' : '';
+      postChangeEl.textContent = `今日 ${publishedPostToday.toLocaleString()} (${sign}${diff.toLocaleString()})`;
+      postChangeEl.classList.remove('stat-up', 'stat-down');
+      postChangeEl.classList.add(diff >= 0 ? 'stat-up' : 'stat-down');
+    }
 
     const updatedAt = document.getElementById('dashboardUpdatedAt');
-    if (updatedAt) updatedAt.textContent = `最近 30 天 · 更新于 ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+    if (updatedAt) {
+      const t = statsUpdatedAt ? new Date(statsUpdatedAt) : null;
+      const text = t && !Number.isNaN(t.getTime())
+        ? `${t.toLocaleDateString()} ${t.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
+        : new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      updatedAt.textContent = `最近 30 天 · 更新于 ${text}`;
+    }
 
     updatePendingCommentBadges(pendingCommentCount);
 
@@ -235,6 +283,61 @@ async function fetchStats() {
                   <span style="font-family:'DM Mono',monospace;font-size:11px;color:${color};width:20px">${no}</span>
                   <div style="flex:1;font-size:13.5px;color:rgba(249,250,251,.8)">${escapeHtml(title)}</div>
                   <span style="font-family:'DM Mono',monospace;font-size:11.5px;color:var(--admin-muted)">${count}</span>
+                  <button class="btn btn-admin-outline btn-sm" onclick="dashboardEditPost('${filename}')">编辑</button>
+                </div>
+              `;
+            })
+            .join('')
+        : `<div style="color:var(--admin-muted);font-size:13px">暂无数据</div>`;
+    }
+
+    const topViewedPagesWrap = document.getElementById('dashboardTopViewedPages');
+    const topViewedPages = Array.isArray(data.topViewedPages) ? data.topViewedPages : [];
+    if (topViewedPagesWrap) {
+      const labelOf = (id) => {
+        const m = {
+          home: '首页',
+          articles: '文章列表',
+          article: '文章详情',
+          novels: '小说',
+          chapter: '章节',
+          about: '关于'
+        };
+        return Object.prototype.hasOwnProperty.call(m, id) ? m[id] : id;
+      };
+      topViewedPagesWrap.innerHTML = topViewedPages.length
+        ? topViewedPages
+            .map((p, idx) => {
+              const id = p && p.id ? String(p.id) : '-';
+              const count = Number(p && p.count ? p.count : 0);
+              const no = String(idx + 1).padStart(2, '0');
+              return `
+                <div style="display:flex;align-items:center;gap:.75rem">
+                  <span style="font-family:'DM Mono',monospace;font-size:11px;color:var(--admin-muted);width:20px">${no}</span>
+                  <div style="flex:1;font-size:13.5px;color:rgba(249,250,251,.8)">${escapeHtml(labelOf(id))}</div>
+                  <span style="font-family:'DM Mono',monospace;font-size:11.5px;color:var(--admin-muted)">${count.toLocaleString()}</span>
+                </div>
+              `;
+            })
+            .join('')
+        : `<div style="color:var(--admin-muted);font-size:13px">暂无数据</div>`;
+    }
+
+    const topViewedPostsWrap = document.getElementById('dashboardTopViewedPosts');
+    const topViewedPosts = Array.isArray(data.topViewedPosts) ? data.topViewedPosts : [];
+    if (topViewedPostsWrap) {
+      topViewedPostsWrap.innerHTML = topViewedPosts.length
+        ? topViewedPosts
+            .map((p, idx) => {
+              const filename = p && p.filename ? String(p.filename) : '';
+              const title = p && p.title ? String(p.title) : filename.replace(/\.md$/i, '');
+              const count = Number(p && p.count ? p.count : 0);
+              const no = String(idx + 1).padStart(2, '0');
+              return `
+                <div style="display:flex;align-items:center;gap:.75rem">
+                  <span style="font-family:'DM Mono',monospace;font-size:11px;color:var(--admin-muted);width:20px">${no}</span>
+                  <div style="flex:1;font-size:13.5px;color:rgba(249,250,251,.8);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHtml(title)}</div>
+                  <span style="font-family:'DM Mono',monospace;font-size:11.5px;color:var(--admin-muted)">${count.toLocaleString()}</span>
                   <button class="btn btn-admin-outline btn-sm" onclick="dashboardEditPost('${filename}')">编辑</button>
                 </div>
               `;
@@ -1217,6 +1320,23 @@ async function showPage(name, param) {
   if (name === 'novels') {
     renderFrontendNovels();
   }
+  if (name === 'home' || name === 'articles' || name === 'novels' || name === 'about') {
+    trackView('page', name);
+  }
+}
+
+function trackView(kind, id) {
+  try {
+    if (!kind || !id) return;
+    const key = `viewed:${kind}:${id}`;
+    if (sessionStorage.getItem(key)) return;
+    sessionStorage.setItem(key, '1');
+    fetch(apiUrl('/view'), {
+      method: 'POST',
+      headers: withAuthHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify({ kind, id })
+    }).catch(() => {});
+  } catch {}
 }
 
 async function loadChapter(novelId, chapterFile) {
@@ -1239,6 +1359,8 @@ async function loadChapter(novelId, chapterFile) {
         <span class="chapter-toc-num">#</span>${c.title}
       </div>
     `).join('');
+
+    trackView('chapter', `${novelId}/${chapterFile}`);
     
   } catch (err) { showToast('章节加载失败'); }
 }
@@ -1280,6 +1402,10 @@ async function loadArticle(filename) {
   try {
     const res = await fetch(apiUrl(`/post?filename=${encodeURIComponent(filename)}`), { headers: withAuthHeaders({}) });
     const data = await safeJson(res) || {};
+    if (!res.ok) {
+      showToast(data && data.error ? `文章加载失败: ${data.error}` : '文章加载失败');
+      return;
+    }
     
     // Parse front matter manually since we get raw content
     const content = String(data.content || '');
@@ -1312,6 +1438,7 @@ async function loadArticle(filename) {
      
      // Load comments
      loadComments(filename);
+     trackView('post', filename);
 
    } catch (err) {
      console.error(err);
