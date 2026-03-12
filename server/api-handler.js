@@ -498,6 +498,7 @@ async function handleStats(req, res) {
     const key = String(c.post);
     commentsByPost.set(key, (commentsByPost.get(key) || 0) + 1);
   }
+  const commentCountsByPost = Object.fromEntries(commentsByPost.entries());
   const topPosts = posts
     .filter(p => p && p.archived !== true && p.published !== false)
     .map(p => ({ title: p.title, filename: p.filename, count: commentsByPost.get(p.filename) || 0 }))
@@ -533,6 +534,7 @@ async function handleStats(req, res) {
     userCount: userList.length,
     viewCount: 28451,
     activity14Days,
+    commentCountsByPost,
     topPosts,
     recentPosts,
     recentComments

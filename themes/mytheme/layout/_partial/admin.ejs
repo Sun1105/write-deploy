@@ -100,7 +100,10 @@
             <div class="chart-card">
               <div class="chart-header">
                 <div class="chart-title">热门文章 TOP 5（按评论数）</div>
-                <div class="chart-period">最近</div>
+                <div style="display:flex;align-items:center;gap:.5rem">
+                  <div class="chart-period">最近</div>
+                  <button class="btn btn-admin-outline btn-sm" onclick="dashboardViewMoreTopPosts()">查看更多</button>
+                </div>
               </div>
               <div id="dashboardTopPosts" style="display:flex;flex-direction:column;gap:.75rem"></div>
             </div>
@@ -110,7 +113,11 @@
             <div class="chart-card">
               <div class="chart-header">
                 <div class="chart-title">最新文章动态</div>
-                <div class="chart-period">最近 8 条</div>
+                <div style="display:flex;align-items:center;gap:.5rem">
+                  <div class="chart-period">最近 8 条</div>
+                  <button class="btn btn-admin-outline btn-sm" onclick="dashboardViewMorePosts('published')">已发布</button>
+                  <button class="btn btn-admin-outline btn-sm" onclick="dashboardViewMorePosts('all')">全部</button>
+                </div>
               </div>
               <div id="dashboardRecentPosts" style="display:flex;flex-direction:column;gap:.6rem"></div>
             </div>
@@ -118,7 +125,15 @@
             <div class="chart-card">
               <div class="chart-header">
                 <div class="chart-title">最新评论</div>
-                <div class="chart-period">最近 8 条</div>
+                <div style="display:flex;align-items:center;gap:.5rem">
+                  <div class="chart-period">最近 8 条</div>
+                  <button class="btn btn-admin-outline btn-sm" onclick="dashboardViewMoreComments('pending')">待审核</button>
+                  <button class="btn btn-admin-outline btn-sm" onclick="dashboardViewMoreComments('all')">全部</button>
+                  <div style="display:flex;align-items:center;gap:.35rem;color:var(--admin-muted);font-size:12px">
+                    <span>优先待审核</span>
+                    <div class="settings-toggle" id="dashboardPreferPendingToggle"><div class="settings-toggle-knob"></div></div>
+                  </div>
+                </div>
               </div>
               <div id="dashboardRecentComments" style="display:flex;flex-direction:column;gap:.6rem"></div>
             </div>
@@ -154,6 +169,10 @@
               <div style="display:flex;gap:.5rem">
                 <select id="adminArticleCategoryFilter" style="padding:.3rem .6rem;background:var(--admin-bg);border:1px solid var(--admin-border);border-radius:5px;color:var(--admin-muted);font-size:12px">
                   <option value="">全部分类</option>
+                </select>
+                <select id="adminArticleSort" style="padding:.3rem .6rem;background:var(--admin-bg);border:1px solid var(--admin-border);border-radius:5px;color:var(--admin-muted);font-size:12px">
+                  <option value="date">最新</option>
+                  <option value="comments">按评论数</option>
                 </select>
               </div>
             </div>

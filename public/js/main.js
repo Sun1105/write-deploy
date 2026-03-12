@@ -14,6 +14,8 @@ let adminPostFilter = 'all';
 let adminPostSearch = '';
 let adminPostCategory = '';
 let adminPostPage = 1;
+let adminPostSort = 'date';
+let adminPostCommentCounts = {};
 let adminPostsUiBound = false;
 let adminCommentsCache = [];
 let adminCommentFilter = 'all';
@@ -179,6 +181,7 @@ async function fetchStats() {
     const res = await fetch(apiUrl('/stats'), { headers: withAuthHeaders({}) });
     const data = await safeJson(res) || {};
     if (!res.ok) return;
+    adminPostCommentCounts = data && typeof data.commentCountsByPost === 'object' && data.commentCountsByPost ? data.commentCountsByPost : {};
 
     const viewCount = Number(data.viewCount || 0);
     const userCount = Number(data.userCount || 0);
@@ -222,6 +225,7 @@ async function fetchStats() {
       topWrap.innerHTML = topPosts.length
         ? topPosts
             .map((p, idx) => {
+              const filename = p && p.filename ? String(p.filename) : '';
               const title = p && p.title ? String(p.title) : '';
               const count = Number(p && p.count ? p.count : 0);
               const no = String(idx + 1).padStart(2, '0');
@@ -231,6 +235,7 @@ async function fetchStats() {
                   <span style="font-family:'DM Mono',monospace;font-size:11px;color:${color};width:20px">${no}</span>
                   <div style="flex:1;font-size:13.5px;color:rgba(249,250,251,.8)">${escapeHtml(title)}</div>
                   <span style="font-family:'DM Mono',monospace;font-size:11.5px;color:var(--admin-muted)">${count}</span>
+                  <button class="btn btn-admin-outline btn-sm" onclick="dashboardEditPost('${filename}')">编辑</button>
                 </div>
               `;
             })
@@ -299,9 +304,10 @@ async function fetchStats() {
                   </div>
                   <div style="display:flex;gap:.35rem;flex-wrap:wrap;justify-content:flex-end">
                     <button class="btn btn-admin-outline btn-sm" onclick="dashboardReviewComment('${id}', '${status}')">审核</button>
-                    ${status !== 'approved' ? `<button class="btn btn-admin btn-sm" onclick="dashboardModerateComment('${id}', 'approved')">通过</button>` : ''}
-                    ${status !== 'hidden' ? `<button class="btn btn-sm" style="color:#f87171;border:1px solid rgba(239,68,68,.3);background:transparent;border-radius:5px;padding:.3rem .7rem;font-size:12px" onclick="dashboardModerateComment('${id}', 'hidden')">隐藏</button>` : ''}
-                    <button class="btn btn-sm" style="color:var(--red);border:1px solid rgba(239,68,68,.3);background:transparent;border-radius:5px;padding:.3rem .7rem;font-size:12px" onclick="dashboardDeleteComment('${id}')">删除</button>
+                    <button class="btn btn-admin-outline btn-sm" onclick="dashboardViewOriginal('${post}', '${id}')">原文</button>
+                    ${status !== 'approved' ? `<button class="btn btn-admin btn-sm" onclick="dashboardModerateComment('${id}', 'approved', '${status}')">通过</button>` : ''}
+                    ${status !== 'hidden' ? `<button class="btn btn-sm" style="color:#f87171;border:1px solid rgba(239,68,68,.3);background:transparent;border-radius:5px;padding:.3rem .7rem;font-size:12px" onclick="dashboardModerateComment('${id}', 'hidden', '${status}')">隐藏</button>` : ''}
+                    <button class="btn btn-sm" style="color:var(--red);border:1px solid rgba(239,68,68,.3);background:transparent;border-radius:5px;padding:.3rem .7rem;font-size:12px" onclick="dashboardDeleteComment('${id}', '${status}')">删除</button>
                   </div>
                 </div>
               `;
@@ -317,6 +323,14 @@ function dashboardEditPost(filename) {
   editPost(filename);
 }
 
+function dashboardViewOriginal(postId, commentId) {
+  if (!postId) return;
+  window.__frontFocusCommentId = commentId || '';
+  window.__frontScrollToComments = true;
+  setMode('front');
+  showPage('article', postId);
+}
+
 function dashboardGoReviewComments(status) {
   showAdminPage('comments');
   if (status === 'pending') {
@@ -329,31 +343,108 @@ function dashboardGoReviewComments(status) {
 
 function dashboardReviewComment(id, status) {
   showAdminPage('comments');
-  const root = document.getElementById('adminPage-comments');
-  if (root && status === 'pending') {
-    const tab = root.querySelector('.top-tab[data-filter="pending"]');
-    if (tab) tab.click();
-  }
-  window.__dashboardFocusCommentId = id || '';
+  window.__adminCommentsFocusId = id || '';
+  window.__adminCommentsPostActionScroll = false;
+
+  const preferPending = getPreferPendingReview();
+  const filterToUse = (preferPending && status === 'pending') ? 'pending' : (adminCommentFilter || 'all');
   setTimeout(() => {
-    if (!window.__dashboardFocusCommentId) return;
-    const el = document.getElementById(`comment-${window.__dashboardFocusCommentId}`);
-    if (el) {
-      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      el.style.boxShadow = '0 0 0 2px rgba(59,130,246,.35)';
-      setTimeout(() => { el.style.boxShadow = ''; }, 1800);
-    }
-    window.__dashboardFocusCommentId = '';
-  }, 350);
+    const root = document.getElementById('adminPage-comments');
+    if (!root) return;
+    const tab = root.querySelector(`.top-tab[data-filter="${filterToUse}"]`) || root.querySelector('.top-tab[data-filter="all"]');
+    if (tab) tab.click();
+  }, 0);
 }
 
-async function dashboardModerateComment(id, status) {
-  await moderateComment(id, status);
+function getPreferPendingReview() {
+  const raw = localStorage.getItem('prefer_pending_review');
+  if (raw === null) return true;
+  return raw === 'true';
+}
+
+function setPreferPendingReview(value) {
+  localStorage.setItem('prefer_pending_review', value ? 'true' : 'false');
+  syncDashboardPreferPendingToggle();
+}
+
+function syncDashboardPreferPendingToggle() {
+  const el = document.getElementById('dashboardPreferPendingToggle');
+  if (!el) return;
+  const on = getPreferPendingReview();
+  el.classList.toggle('on', on);
+}
+
+function initDashboardPreferPendingToggle() {
+  const el = document.getElementById('dashboardPreferPendingToggle');
+  if (!el || el.__bound) return;
+  el.__bound = true;
+  syncDashboardPreferPendingToggle();
+  el.addEventListener('click', () => setPreferPendingReview(!getPreferPendingReview()));
+}
+
+function dashboardViewMorePosts(filter) {
+  const f = filter === 'published' || filter === 'draft' || filter === 'archived' ? filter : 'all';
+  adminPostFilter = f;
+  adminPostSort = 'date';
+  adminPostSearch = '';
+  adminPostCategory = '';
+  adminPostPage = 1;
+  showAdminPage('articles');
+  const searchEl = document.getElementById('adminArticleSearch');
+  const categoryEl = document.getElementById('adminArticleCategoryFilter');
+  if (searchEl) searchEl.value = '';
+  if (categoryEl) categoryEl.value = '';
+  setTimeout(() => {
+    const root = document.getElementById('adminPage-articles');
+    if (!root) return;
+    const tab = root.querySelector(`.top-tab[data-filter="${f}"]`) || root.querySelector('.top-tab[data-filter="all"]');
+    if (tab) tab.click();
+  }, 0);
+}
+
+function dashboardViewMoreComments(filter) {
+  showAdminPage('comments');
+  const f = filter === 'approved' || filter === 'hidden' || filter === 'pending' ? filter : 'all';
+  setTimeout(() => {
+    const root = document.getElementById('adminPage-comments');
+    if (!root) return;
+    const tab = root.querySelector(`.top-tab[data-filter="${f}"]`) || root.querySelector('.top-tab[data-filter="all"]');
+    if (tab) tab.click();
+  }, 0);
+}
+
+function dashboardViewMoreTopPosts() {
+  adminPostFilter = 'published';
+  adminPostSort = 'comments';
+  adminPostSearch = '';
+  adminPostCategory = '';
+  adminPostPage = 1;
+  showAdminPage('articles');
+  const searchEl = document.getElementById('adminArticleSearch');
+  const categoryEl = document.getElementById('adminArticleCategoryFilter');
+  const sortEl = document.getElementById('adminArticleSort');
+  if (searchEl) searchEl.value = '';
+  if (categoryEl) categoryEl.value = '';
+  if (sortEl) sortEl.value = 'comments';
+  setTimeout(() => {
+    const root = document.getElementById('adminPage-articles');
+    if (!root) return;
+    const tab = root.querySelector('.top-tab[data-filter="published"]') || root.querySelector('.top-tab[data-filter="all"]');
+    if (tab) tab.click();
+  }, 0);
+}
+
+async function dashboardModerateComment(id, nextStatus, currentStatus) {
+  dashboardReviewComment(id, currentStatus);
+  window.__adminCommentsPostActionScroll = true;
+  await moderateComment(id, nextStatus);
   await fetchStats();
 }
 
-async function dashboardDeleteComment(id) {
+async function dashboardDeleteComment(id, currentStatus) {
   if (!confirm('确定删除该评论？')) return;
+  dashboardReviewComment(id, currentStatus);
+  window.__adminCommentsPostActionScroll = true;
   await deleteComment(id);
   await fetchStats();
 }
@@ -411,6 +502,16 @@ function initAdminPostsUI() {
     });
   }
 
+  const sortEl = document.getElementById('adminArticleSort');
+  if (sortEl) {
+    sortEl.addEventListener('change', () => {
+      const v = String(sortEl.value || 'date');
+      adminPostSort = v === 'comments' ? 'comments' : 'date';
+      adminPostPage = 1;
+      renderAdminPosts();
+    });
+  }
+
   root.querySelectorAll('.top-tab').forEach(tab => {
     tab.addEventListener('click', () => {
       root.querySelectorAll('.top-tab').forEach(t => t.classList.remove('active'));
@@ -459,6 +560,9 @@ function renderAdminPosts() {
     if (keep) categoryEl.value = keep;
   }
 
+  const sortEl = document.getElementById('adminArticleSort');
+  if (sortEl) sortEl.value = adminPostSort === 'comments' ? 'comments' : 'date';
+
   let filtered = all.slice();
   if (adminPostFilter === 'published') filtered = filtered.filter(p => p && p.published && !p.archived);
   else if (adminPostFilter === 'draft') filtered = filtered.filter(p => p && p.published === false && !p.archived);
@@ -471,6 +575,24 @@ function renderAdminPosts() {
   if (adminPostSearch) {
     const q = adminPostSearch.toLowerCase();
     filtered = filtered.filter(p => String(p && p.title ? p.title : '').toLowerCase().includes(q));
+  }
+
+  const getCommentCount = (post) => {
+    if (!post || !post.filename) return 0;
+    const v = adminPostCommentCounts && Object.prototype.hasOwnProperty.call(adminPostCommentCounts, post.filename)
+      ? adminPostCommentCounts[post.filename]
+      : 0;
+    return Number(v || 0);
+  };
+
+  if (adminPostSort === 'comments') {
+    filtered.sort((a, b) => {
+      const diff = getCommentCount(b) - getCommentCount(a);
+      if (diff !== 0) return diff;
+      return new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime();
+    });
+  } else {
+    filtered.sort((a, b) => new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime());
   }
 
   const pageSize = 10;
@@ -489,13 +611,14 @@ function renderAdminPosts() {
     const publishLabel = published ? '转为草稿' : '发布';
     const archiveLabel = archived ? '取消归档' : '归档';
 
+    const commentCount = getCommentCount(post);
     return `
       <tr>
         <td><div style="display:flex;align-items:center;gap:.75rem"><div class="article-thumb">📄</div><div style="font-size:13.5px;font-weight:500;color:var(--admin-text)">${escapeHtml(post.title || '')}</div></div></td>
         <td><span class="tag tag-gray" style="font-size:11px">${escapeHtml(categoryName)}</span></td>
         <td><span class="status-badge ${statusClass}">${statusText}</span></td>
         <td style="font-family:'DM Mono',monospace;font-size:12px">-</td>
-        <td style="font-family:'DM Mono',monospace;font-size:12px">-</td>
+        <td style="font-family:'DM Mono',monospace;font-size:12px">${commentCount}</td>
         <td style="font-family:'DM Mono',monospace;font-size:12px;color:var(--admin-muted)">${escapeHtml(dateText)}</td>
         <td>
           <div style="display:flex;gap:.4rem;flex-wrap:wrap">
@@ -1155,7 +1278,7 @@ async function renderFrontendNovels() {
 
 async function loadArticle(filename) {
   try {
-    const res = await fetch(apiUrl(`/post?filename=${encodeURIComponent(filename)}`));
+    const res = await fetch(apiUrl(`/post?filename=${encodeURIComponent(filename)}`), { headers: withAuthHeaders({}) });
     const data = await safeJson(res) || {};
     
     // Parse front matter manually since we get raw content
@@ -1227,7 +1350,7 @@ async function loadArticle(filename) {
    }
 
    try {
-     const res = await fetch(apiUrl(`/comments?post=${encodeURIComponent(postId)}`));
+     const res = await fetch(apiUrl(`/comments?post=${encodeURIComponent(postId)}`), { headers: withAuthHeaders({}) });
      const raw = await safeJson(res);
      const comments = Array.isArray(raw) ? raw : [];
      
@@ -1242,16 +1365,19 @@ async function loadArticle(filename) {
      comments.forEach(c => {
       if (c.status !== 'approved' && (!CURRENT_USER || CURRENT_USER.role !== 'admin')) return;
        
+      const userName = c && c.user ? String(c.user) : 'Anonymous';
+      const commentId = c && c.id ? String(c.id) : '';
        const div = document.createElement('div');
        div.className = 'comment-item';
+      if (commentId) div.id = `front-comment-${commentId}`;
        div.innerHTML = `
-         <div class="comment-avatar-lg" style="background:${getRandomGradient(c.user)}">${c.user[0]}</div>
+        <div class="comment-avatar-lg" style="background:${getRandomGradient(userName)}">${escapeHtml(userName.slice(0, 1) || 'A')}</div>
          <div class="comment-body">
            <div class="comment-header">
-             <span class="comment-name">${c.user}</span>
+            <span class="comment-name">${escapeHtml(userName)}</span>
              <span class="comment-time">${new Date(c.date).toLocaleDateString()} ${c.status === 'pending' ? '(待审核)' : ''}</span>
            </div>
-           <div class="comment-text">${window.DOMPurify ? DOMPurify.sanitize(c.content) : escapeHtml(c.content)}</div>
+          <div class="comment-text">${window.DOMPurify ? DOMPurify.sanitize(String(c.content || '')) : escapeHtml(String(c.content || ''))}</div>
            <div class="comment-actions">
              <div class="comment-action">👍 0</div>
              <div class="comment-action" onclick="showPage('login')">回复</div>
@@ -1260,6 +1386,23 @@ async function loadArticle(filename) {
        `;
        container.appendChild(div);
      });
+
+    const focusId = window.__frontFocusCommentId ? String(window.__frontFocusCommentId) : '';
+    const shouldScroll = Boolean(window.__frontScrollToComments);
+    if (focusId) {
+      const el = document.getElementById(`front-comment-${focusId}`);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        el.style.boxShadow = '0 0 0 2px rgba(59,130,246,.35)';
+        setTimeout(() => { el.style.boxShadow = ''; }, 1800);
+      } else if (shouldScroll) {
+        container.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    } else if (shouldScroll) {
+      container.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+    window.__frontFocusCommentId = '';
+    window.__frontScrollToComments = false;
      
    } catch (err) { console.error(err); }
  }
@@ -1372,7 +1515,10 @@ function showAdminPage(name) {
   if (navItem) navItem.classList.add('active');
   
   // Load data based on page
-  if (name === 'dashboard') fetchStats();
+  if (name === 'dashboard') {
+    initDashboardPreferPendingToggle();
+    fetchStats();
+  }
   if (name === 'articles') fetchPosts();
   if (name === 'novels') fetchNovels();
   if (name === 'comments') fetchAdminComments();
@@ -1550,6 +1696,32 @@ function renderAdminComments() {
     }
     container.appendChild(card);
   });
+
+  const focusId = window.__adminCommentsFocusId ? String(window.__adminCommentsFocusId) : '';
+  if (focusId) {
+    const el = document.getElementById(`comment-${focusId}`);
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      el.style.boxShadow = '0 0 0 2px rgba(59,130,246,.35)';
+      setTimeout(() => { el.style.boxShadow = ''; }, 1800);
+    } else if (window.__adminCommentsPostActionScroll) {
+      const first = container.querySelector('.comment-mod-card');
+      if (first) {
+        first.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        first.style.boxShadow = '0 0 0 2px rgba(251,191,36,.25)';
+        setTimeout(() => { first.style.boxShadow = ''; }, 1200);
+      }
+    }
+    window.__adminCommentsFocusId = '';
+  } else if (window.__adminCommentsPostActionScroll) {
+    const first = container.querySelector('.comment-mod-card');
+    if (first) {
+      first.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      first.style.boxShadow = '0 0 0 2px rgba(251,191,36,.25)';
+      setTimeout(() => { first.style.boxShadow = ''; }, 1200);
+    }
+  }
+  window.__adminCommentsPostActionScroll = false;
 }
 
 async function fetchAdminUsers() {
@@ -1744,7 +1916,7 @@ async function moderateComment(id, status) {
       showToast(data.error ? `操作失败: ${data.error}` : '操作失败');
       return;
     }
-    fetchAdminComments();
+    await fetchAdminComments();
     showToast('操作成功');
   } catch (err) { showToast('操作失败'); }
 }
@@ -1757,7 +1929,7 @@ async function deleteComment(id) {
       showToast(data.error ? `删除失败: ${data.error}` : '删除失败');
       return;
     }
-    fetchAdminComments();
+    await fetchAdminComments();
     showToast('已删除');
   } catch (err) { showToast('操作失败'); }
 }
@@ -2134,8 +2306,12 @@ window.setUserRole = setUserRole;
 window.setUserStatus = setUserStatus;
 window.deleteUser = deleteUser;
 window.dashboardEditPost = dashboardEditPost;
+window.dashboardViewOriginal = dashboardViewOriginal;
 window.dashboardGoReviewComments = dashboardGoReviewComments;
 window.dashboardReviewComment = dashboardReviewComment;
 window.dashboardModerateComment = dashboardModerateComment;
 window.dashboardDeleteComment = dashboardDeleteComment;
 window.dashboardToggleArchivePost = dashboardToggleArchivePost;
+window.dashboardViewMorePosts = dashboardViewMorePosts;
+window.dashboardViewMoreComments = dashboardViewMoreComments;
+window.dashboardViewMoreTopPosts = dashboardViewMoreTopPosts;
