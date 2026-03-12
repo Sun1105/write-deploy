@@ -462,23 +462,23 @@
         <div class="admin-header">
           <div class="admin-page-title">文章管理</div>
           <div class="admin-header-actions">
-            <div class="admin-search"><span class="admin-search-icon">🔍</span><input placeholder="搜索文章…"></div>
+            <div class="admin-search"><span class="admin-search-icon">🔍</span><input id="adminArticleSearch" placeholder="搜索文章…"></div>
             <button class="btn btn-admin" onclick="newPost()">+ 新建文章</button>
           </div>
         </div>
         <div class="admin-content">
           <div class="top-tabs">
-            <div class="top-tab active">全部 <span class="tab-count">48</span></div>
-            <div class="top-tab">已发布 <span class="tab-count">43</span></div>
-            <div class="top-tab">草稿 <span class="tab-count">4</span></div>
-            <div class="top-tab">已归档 <span class="tab-count">1</span></div>
+            <div class="top-tab active" data-filter="all">全部 <span class="tab-count" id="adminArticleCountAll">0</span></div>
+            <div class="top-tab" data-filter="published">已发布 <span class="tab-count" id="adminArticleCountPublished">0</span></div>
+            <div class="top-tab" data-filter="draft">草稿 <span class="tab-count" id="adminArticleCountDraft">0</span></div>
+            <div class="top-tab" data-filter="archived">已归档 <span class="tab-count" id="adminArticleCountArchived">0</span></div>
           </div>
           <div class="table-card">
             <div class="table-card-header">
               <div class="table-card-title">文章列表</div>
               <div style="display:flex;gap:.5rem">
-                <select style="padding:.3rem .6rem;background:var(--admin-bg);border:1px solid var(--admin-border);border-radius:5px;color:var(--admin-muted);font-size:12px">
-                  <option>全部分类</option><option>文章</option><option>随笔</option><option>评论</option>
+                <select id="adminArticleCategoryFilter" style="padding:.3rem .6rem;background:var(--admin-bg);border:1px solid var(--admin-border);border-radius:5px;color:var(--admin-muted);font-size:12px">
+                  <option value="">全部分类</option>
                 </select>
               </div>
             </div>
@@ -489,12 +489,7 @@
               </table>
             </div>
           </div>
-          <div class="pagination">
-            <button class="page-btn active">1</button>
-            <button class="page-btn">2</button>
-            <button class="page-btn">3</button>
-            <button class="page-btn">→</button>
-          </div>
+          <div class="pagination" id="adminArticlePagination"></div>
         </div>
       </div>
 
@@ -598,7 +593,7 @@
             <div class="table-wrap">
               <table class="admin-table">
                 <thead><tr><th>小说名</th><th>类型</th><th>章节数</th><th>总字数</th><th>状态</th><th>最后更新</th><th>操作</th></tr></thead>
-                <tbody></tbody>
+                <tbody id="novelListBody"></tbody>
               </table>
             </div>
           </div>
@@ -628,14 +623,14 @@
       <div class="admin-page" id="adminPage-comments">
         <div class="admin-header">
           <div class="admin-page-title">评论审核</div>
-          <div style="margin-left:auto;font-size:13px;color:var(--admin-muted)">7 条待审核</div>
+          <div id="adminCommentsSummary" style="margin-left:auto;font-size:13px;color:var(--admin-muted)">0 条待审核</div>
         </div>
         <div class="admin-content">
           <div class="top-tabs">
-            <div class="top-tab active">全部 <span class="tab-count">0</span></div>
-            <div class="top-tab">待审核 <span class="tab-count">0</span></div>
-            <div class="top-tab">已通过 <span class="tab-count">0</span></div>
-            <div class="top-tab">已隐藏 <span class="tab-count">0</span></div>
+            <div class="top-tab active" data-filter="all">全部 <span class="tab-count" id="adminCommentCountAll">0</span></div>
+            <div class="top-tab" data-filter="pending">待审核 <span class="tab-count" id="adminCommentCountPending">0</span></div>
+            <div class="top-tab" data-filter="approved">已通过 <span class="tab-count" id="adminCommentCountApproved">0</span></div>
+            <div class="top-tab" data-filter="hidden">已隐藏 <span class="tab-count" id="adminCommentCountHidden">0</span></div>
           </div>
         </div>
       </div>

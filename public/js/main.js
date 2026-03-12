@@ -9,6 +9,15 @@ let currentNovelId = null;
 let currentNovelChapterFile = null;
 let currentNovelChapterSha = null;
 let cachedNovelsForEditor = null;
+let adminPostsCache = [];
+let adminPostFilter = 'all';
+let adminPostSearch = '';
+let adminPostCategory = '';
+let adminPostPage = 1;
+let adminPostsUiBound = false;
+let adminCommentsCache = [];
+let adminCommentFilter = 'all';
+let adminCommentsUiBound = false;
 
 function apiUrl(pathname) {
   const p = pathname.startsWith('/') ? pathname : `/${pathname}`;
@@ -178,34 +187,223 @@ async function fetchPosts() {
       showToast(raw && raw.error ? `加载文章失败: ${raw.error}` : '加载文章失败');
       return;
     }
-    const posts = Array.isArray(raw) ? raw : [];
-    const tbody = document.getElementById('articleListBody');
-    if (!tbody) return;
-    tbody.innerHTML = '';
-    
-    posts.forEach(post => {
-      const tr = document.createElement('tr');
-      const statusClass = post.published ? 'status-published' : 'status-draft';
-      const statusText = post.published ? '● 已发布' : '○ 草稿';
-      const categoryName = pickFirstText(post.categories) || '文章';
-      
-      tr.innerHTML = `
-        <td><div style="display:flex;align-items:center;gap:.75rem"><div class="article-thumb">📄</div><div style="font-size:13.5px;font-weight:500;color:var(--admin-text)">${post.title}</div></div></td>
+    adminPostsCache = Array.isArray(raw) ? raw : [];
+    initAdminPostsUI();
+    renderAdminPosts();
+  } catch (err) { console.error('Failed to fetch posts', err); }
+}
+
+function initAdminPostsUI() {
+  if (adminPostsUiBound) return;
+  const root = document.getElementById('adminPage-articles');
+  if (!root) return;
+
+  const searchEl = document.getElementById('adminArticleSearch');
+  if (searchEl) {
+    searchEl.addEventListener('input', () => {
+      adminPostSearch = String(searchEl.value || '').trim();
+      adminPostPage = 1;
+      renderAdminPosts();
+    });
+  }
+
+  const categoryEl = document.getElementById('adminArticleCategoryFilter');
+  if (categoryEl) {
+    categoryEl.addEventListener('change', () => {
+      adminPostCategory = String(categoryEl.value || '');
+      adminPostPage = 1;
+      renderAdminPosts();
+    });
+  }
+
+  root.querySelectorAll('.top-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      root.querySelectorAll('.top-tab').forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+      adminPostFilter = tab.getAttribute('data-filter') || 'all';
+      adminPostPage = 1;
+      renderAdminPosts();
+    });
+  });
+
+  adminPostsUiBound = true;
+}
+
+function renderAdminPosts() {
+  const tbody = document.getElementById('articleListBody');
+  if (!tbody) return;
+
+  const all = Array.isArray(adminPostsCache) ? adminPostsCache : [];
+  const counts = countPosts(all);
+
+  const countAll = document.getElementById('adminArticleCountAll');
+  const countPublished = document.getElementById('adminArticleCountPublished');
+  const countDraft = document.getElementById('adminArticleCountDraft');
+  const countArchived = document.getElementById('adminArticleCountArchived');
+  if (countAll) countAll.textContent = String(counts.all);
+  if (countPublished) countPublished.textContent = String(counts.published);
+  if (countDraft) countDraft.textContent = String(counts.draft);
+  if (countArchived) countArchived.textContent = String(counts.archived);
+
+  const categoryEl = document.getElementById('adminArticleCategoryFilter');
+  if (categoryEl) {
+    const categories = Array.from(
+      new Set(
+        all
+          .map(p => pickFirstText(p && p.categories))
+          .map(s => String(s || '').trim())
+          .filter(Boolean)
+      )
+    ).sort((a, b) => a.localeCompare(b));
+
+    const keep = String(categoryEl.value || '');
+    const options = ['<option value="">全部分类</option>'].concat(
+      categories.map(c => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`)
+    );
+    categoryEl.innerHTML = options.join('');
+    if (keep) categoryEl.value = keep;
+  }
+
+  let filtered = all.slice();
+  if (adminPostFilter === 'published') filtered = filtered.filter(p => p && p.published && !p.archived);
+  else if (adminPostFilter === 'draft') filtered = filtered.filter(p => p && p.published === false && !p.archived);
+  else if (adminPostFilter === 'archived') filtered = filtered.filter(p => p && p.archived);
+
+  if (adminPostCategory) {
+    filtered = filtered.filter(p => pickFirstText(p && p.categories) === adminPostCategory);
+  }
+
+  if (adminPostSearch) {
+    const q = adminPostSearch.toLowerCase();
+    filtered = filtered.filter(p => String(p && p.title ? p.title : '').toLowerCase().includes(q));
+  }
+
+  const pageSize = 10;
+  const pageCount = Math.max(1, Math.ceil(filtered.length / pageSize));
+  adminPostPage = Math.min(Math.max(1, adminPostPage), pageCount);
+  const pageItems = filtered.slice((adminPostPage - 1) * pageSize, adminPostPage * pageSize);
+
+  tbody.innerHTML = pageItems.map(post => {
+    const archived = Boolean(post.archived);
+    const published = Boolean(post.published);
+    const statusClass = archived ? 'status-hidden' : (published ? 'status-published' : 'status-draft');
+    const statusText = archived ? '⚠ 已归档' : (published ? '● 已发布' : '○ 草稿');
+    const categoryName = pickFirstText(post.categories) || '文章';
+    const dateText = post.date ? new Date(post.date).toLocaleDateString() : '-';
+
+    const publishLabel = published ? '转为草稿' : '发布';
+    const archiveLabel = archived ? '取消归档' : '归档';
+
+    return `
+      <tr>
+        <td><div style="display:flex;align-items:center;gap:.75rem"><div class="article-thumb">📄</div><div style="font-size:13.5px;font-weight:500;color:var(--admin-text)">${escapeHtml(post.title || '')}</div></div></td>
         <td><span class="tag tag-gray" style="font-size:11px">${escapeHtml(categoryName)}</span></td>
         <td><span class="status-badge ${statusClass}">${statusText}</span></td>
         <td style="font-family:'DM Mono',monospace;font-size:12px">-</td>
         <td style="font-family:'DM Mono',monospace;font-size:12px">-</td>
-        <td style="font-family:'DM Mono',monospace;font-size:12px;color:var(--admin-muted)">${new Date(post.date).toLocaleDateString()}</td>
-        <td><div style="display:flex;gap:.4rem">
-          <button class="btn btn-admin-outline btn-sm" onclick="editPost('${post.filename}')">编辑</button>
-          <button class="btn btn-sm" style="color:var(--red);border:1px solid rgba(239,68,68,.3);border-radius:5px;padding:.3rem .7rem;font-size:12px;background:transparent" onclick="deletePost('${post.filename}')">删除</button>
-        </div></td>
-      `;
-      tbody.appendChild(tr);
-    });
-  } catch (err) { console.error('Failed to fetch posts', err); }
+        <td style="font-family:'DM Mono',monospace;font-size:12px;color:var(--admin-muted)">${escapeHtml(dateText)}</td>
+        <td>
+          <div style="display:flex;gap:.4rem;flex-wrap:wrap">
+            <button class="btn btn-admin-outline btn-sm" onclick="editPost('${post.filename}')">编辑</button>
+            <button class="btn btn-admin-outline btn-sm" onclick="togglePublishPost('${post.filename}')">${publishLabel}</button>
+            <button class="btn btn-admin-outline btn-sm" onclick="toggleArchivePost('${post.filename}')">${archiveLabel}</button>
+            <button class="btn btn-sm" style="color:var(--red);border:1px solid rgba(239,68,68,.3);border-radius:5px;padding:.3rem .7rem;font-size:12px;background:transparent" onclick="deletePost('${post.filename}')">删除</button>
+          </div>
+        </td>
+      </tr>
+    `;
+  }).join('');
+
+  renderAdminPostsPagination(pageCount);
 }
 
+function renderAdminPostsPagination(pageCount) {
+  const el = document.getElementById('adminArticlePagination');
+  if (!el) return;
+  const btns = [];
+
+  const addBtn = (label, page, active, disabled) => {
+    const cls = ['page-btn'].concat(active ? ['active'] : []).join(' ');
+    const dis = disabled ? 'disabled' : '';
+    btns.push(`<button class="${cls}" ${dis} onclick="setAdminPostPage(${page})">${escapeHtml(label)}</button>`);
+  };
+
+  addBtn('←', Math.max(1, adminPostPage - 1), false, adminPostPage <= 1);
+  const maxButtons = 7;
+  const start = Math.max(1, Math.min(adminPostPage - 2, pageCount - (maxButtons - 1)));
+  const end = Math.min(pageCount, start + (maxButtons - 1));
+  for (let p = start; p <= end; p += 1) addBtn(String(p), p, p === adminPostPage, false);
+  addBtn('→', Math.min(pageCount, adminPostPage + 1), false, adminPostPage >= pageCount);
+
+  el.innerHTML = btns.join('');
+}
+
+function setAdminPostPage(page) {
+  adminPostPage = Number(page) || 1;
+  renderAdminPosts();
+}
+
+function countPosts(list) {
+  const all = Array.isArray(list) ? list : [];
+  const archived = all.filter(p => p && p.archived).length;
+  const draft = all.filter(p => p && p.published === false && !p.archived).length;
+  const published = all.filter(p => p && p.published && !p.archived).length;
+  return { all: all.length, published, draft, archived };
+}
+
+async function togglePublishPost(filename) {
+  const post = (Array.isArray(adminPostsCache) ? adminPostsCache : []).find(p => p && p.filename === filename);
+  const nextPublished = !(post && post.published);
+  await updatePostFlags(filename, { published: nextPublished, archived: false });
+}
+
+async function toggleArchivePost(filename) {
+  const post = (Array.isArray(adminPostsCache) ? adminPostsCache : []).find(p => p && p.filename === filename);
+  const nextArchived = !(post && post.archived);
+  await updatePostFlags(filename, { archived: nextArchived, published: nextArchived ? false : (post ? post.published : true) });
+}
+
+async function updatePostFlags(filename, next) {
+  try {
+    const res = await fetch(apiUrl(`/post?filename=${encodeURIComponent(filename)}`), { headers: withAuthHeaders({}) });
+    const data = await safeJson(res) || {};
+    if (!res.ok || !data.content) {
+      showToast(data && data.error ? `操作失败: ${data.error}` : '操作失败');
+      return;
+    }
+
+    const parsed = splitFrontMatter(String(data.content));
+    const fm = parsed.frontMatter || {};
+    const updated = buildMarkdown({
+      title: fm.title || filename.replace(/\.md$/i, ''),
+      date: fm.date || new Date().toISOString(),
+      tags: Array.isArray(fm.tags) ? fm.tags : [],
+      categories: Array.isArray(fm.categories) ? fm.categories : [],
+      description: typeof fm.description === 'string' ? fm.description : '',
+      published: typeof next.published === 'boolean' ? next.published : (typeof fm.published === 'boolean' ? fm.published : true),
+      archived: typeof next.archived === 'boolean' ? next.archived : Boolean(fm.archived),
+      body: parsed.body || ''
+    });
+
+    const put = await fetch(apiUrl(`/post?filename=${encodeURIComponent(filename)}`), {
+      method: 'PUT',
+      headers: withAuthHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify({ filename, content: updated, sha: data.sha })
+    });
+    const putData = await safeJson(put) || {};
+    if (!put.ok) {
+      showToast(putData && putData.error ? `操作失败: ${putData.error}` : '操作失败');
+      return;
+    }
+
+    showToast('操作成功');
+    await fetchPosts();
+    renderFrontendPosts();
+  } catch (err) {
+    console.error(err);
+    showToast('操作失败');
+  }
+}
 function pickFirstText(value) {
   if (!value) return '';
   if (Array.isArray(value)) return pickFirstText(value[0]);
@@ -307,6 +505,7 @@ async function savePost(publish = false) {
     categories,
     description,
     published: publish ? true : false,
+    archived: false,
     body
   });
 
@@ -576,6 +775,7 @@ function parseFrontMatter(fmText) {
     else if (key === 'tags') out.tags = parseInlineArray(value);
     else if (key === 'categories') out.categories = parseInlineArray(value);
     else if (key === 'published') out.published = value === 'true';
+    else if (key === 'archived') out.archived = value === 'true';
   }
   return out;
 }
@@ -597,7 +797,7 @@ function stripQuotes(s) {
   return str;
 }
 
-function buildMarkdown({ title, date, tags, categories, description, published, body }) {
+function buildMarkdown({ title, date, tags, categories, description, published, archived, body }) {
   const fmLines = ['---', `title: ${escapeFrontMatter(title)}`, `date: ${escapeFrontMatter(date)}`];
 
   if (Array.isArray(tags) && tags.length) {
@@ -614,6 +814,7 @@ function buildMarkdown({ title, date, tags, categories, description, published, 
 
   if (description) fmLines.push(`description: ${escapeFrontMatter(description)}`);
   if (typeof published === 'boolean') fmLines.push(`published: ${published ? 'true' : 'false'}`);
+  if (typeof archived === 'boolean') fmLines.push(`archived: ${archived ? 'true' : 'false'}`);
 
   fmLines.push('---', '');
   return `${fmLines.join('\n')}${String(body || '').replace(/^\n+/, '')}`;
@@ -1061,66 +1262,97 @@ async function fetchAdminComments() {
       showToast(raw && raw.error ? `加载评论失败: ${raw.error}` : '加载评论失败');
       return;
     }
-    const comments = Array.isArray(raw) ? raw : [];
-    
-    // Update tabs
-    const pending = comments.filter(c => c.status === 'pending').length;
-    const approved = comments.filter(c => c.status === 'approved').length;
-    const hidden = comments.filter(c => c.status === 'hidden').length;
-    
-    const tabs = document.querySelectorAll('#adminPage-comments .top-tab .tab-count');
-    if (tabs.length >= 4) {
-      tabs[0].textContent = comments.length;
-      tabs[1].textContent = pending;
-      tabs[2].textContent = approved;
-      tabs[3].textContent = hidden;
-    }
-    
-    const container = document.querySelector('#adminPage-comments .admin-content');
-    if (!container) return;
-    const oldCards = container.querySelectorAll('.comment-mod-card');
-    oldCards.forEach(c => c.remove());
-    
-    comments.forEach(c => {
-      const card = document.createElement('div');
-      card.className = 'comment-mod-card';
-      
-      const userName = c && c.user ? String(c.user) : 'Anonymous';
-      const statusBadge = c.status === 'pending' ? '<span class="status-badge status-pending">⏳ 待审核</span>' :
-                          c.status === 'approved' ? '<span class="status-badge status-published">已通过</span>' :
-                          '<span class="status-badge status-hidden">⚠ 已隐藏</span>';
-                          
-      card.innerHTML = `
-        <div class="comment-mod-header">
-          <div class="comment-mod-user">
-            <div class="comment-mod-avatar" style="background:${getRandomGradient(userName)}">${escapeHtml(userName.slice(0, 1) || 'U')}</div>
-            <div>
-              <div class="comment-mod-name">${escapeHtml(userName)}</div>
-              <div class="comment-mod-meta">${new Date(c.date).toLocaleString()}</div>
-            </div>
-          </div>
-          ${statusBadge}
-        </div>
-        <div class="comment-mod-body">
-          <div class="comment-mod-target">📝 文章：${c.post}</div>
-          ${window.DOMPurify ? DOMPurify.sanitize(c.content) : escapeHtml(c.content)}
-        </div>
-        <div class="comment-mod-actions">
-          ${c.status !== 'approved' ? `<button class="btn btn-admin btn-sm" onclick="moderateComment('${c.id}', 'approved')">通过</button>` : ''}
-          ${c.status !== 'hidden' ? `<button class="btn btn-sm" style="color:#f87171;border:1px solid rgba(239,68,68,.3);background:transparent;border-radius:5px;padding:.3rem .7rem;font-size:12px" onclick="moderateComment('${c.id}', 'hidden')">隐藏</button>` : ''}
-          <button class="btn btn-sm" style="color:var(--red);border:1px solid rgba(239,68,68,.3);background:transparent;border-radius:5px;padding:.3rem .7rem;font-size:12px" onclick="deleteComment('${c.id}')">删除</button>
-        </div>
-      `;
-
-      if (c.status === 'pending') {
-        card.style.borderColor = 'rgba(251,191,36,.3)';
-        const header = card.querySelector('.comment-mod-header');
-        if (header) header.style.background = 'rgba(251,191,36,.05)';
-      }
-      container.appendChild(card);
-    });
+    adminCommentsCache = Array.isArray(raw) ? raw : [];
+    initAdminCommentsUI();
+    renderAdminComments();
     
   } catch (err) { console.error(err); }
+}
+
+function initAdminCommentsUI() {
+  if (adminCommentsUiBound) return;
+  const root = document.getElementById('adminPage-comments');
+  if (!root) return;
+
+  root.querySelectorAll('.top-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      root.querySelectorAll('.top-tab').forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+      adminCommentFilter = tab.getAttribute('data-filter') || 'all';
+      renderAdminComments();
+    });
+  });
+
+  adminCommentsUiBound = true;
+}
+
+function renderAdminComments() {
+  const root = document.getElementById('adminPage-comments');
+  if (!root) return;
+  const container = root.querySelector('.admin-content');
+  if (!container) return;
+
+  const list = Array.isArray(adminCommentsCache) ? adminCommentsCache : [];
+  const pending = list.filter(c => c && c.status === 'pending').length;
+  const approved = list.filter(c => c && c.status === 'approved').length;
+  const hidden = list.filter(c => c && c.status === 'hidden').length;
+
+  const countAll = document.getElementById('adminCommentCountAll');
+  const countPending = document.getElementById('adminCommentCountPending');
+  const countApproved = document.getElementById('adminCommentCountApproved');
+  const countHidden = document.getElementById('adminCommentCountHidden');
+  if (countAll) countAll.textContent = String(list.length);
+  if (countPending) countPending.textContent = String(pending);
+  if (countApproved) countApproved.textContent = String(approved);
+  if (countHidden) countHidden.textContent = String(hidden);
+
+  const summary = document.getElementById('adminCommentsSummary');
+  if (summary) summary.textContent = `${pending} 条待审核`;
+
+  const oldCards = container.querySelectorAll('.comment-mod-card');
+  oldCards.forEach(c => c.remove());
+
+  let filtered = list.slice();
+  if (adminCommentFilter !== 'all') filtered = filtered.filter(c => c && c.status === adminCommentFilter);
+
+  filtered.forEach(c => {
+    const card = document.createElement('div');
+    card.className = 'comment-mod-card';
+
+    const userName = c && c.user ? String(c.user) : 'Anonymous';
+    const statusBadge = c.status === 'pending' ? '<span class="status-badge status-pending">⏳ 待审核</span>' :
+                        c.status === 'approved' ? '<span class="status-badge status-published">已通过</span>' :
+                        '<span class="status-badge status-hidden">⚠ 已隐藏</span>';
+
+    card.innerHTML = `
+      <div class="comment-mod-header">
+        <div class="comment-mod-user">
+          <div class="comment-mod-avatar" style="background:${getRandomGradient(userName)}">${escapeHtml(userName.slice(0, 1) || 'U')}</div>
+          <div>
+            <div class="comment-mod-name">${escapeHtml(userName)}</div>
+            <div class="comment-mod-meta">${new Date(c.date).toLocaleString()}</div>
+          </div>
+        </div>
+        ${statusBadge}
+      </div>
+      <div class="comment-mod-body">
+        <div class="comment-mod-target">📝 文章：${escapeHtml(String(c.post || ''))}</div>
+        ${window.DOMPurify ? DOMPurify.sanitize(String(c.content || '')) : escapeHtml(String(c.content || ''))}
+      </div>
+      <div class="comment-mod-actions">
+        ${c.status !== 'approved' ? `<button class="btn btn-admin btn-sm" onclick="moderateComment('${c.id}', 'approved')">通过</button>` : ''}
+        ${c.status !== 'hidden' ? `<button class="btn btn-sm" style="color:#f87171;border:1px solid rgba(239,68,68,.3);background:transparent;border-radius:5px;padding:.3rem .7rem;font-size:12px" onclick="moderateComment('${c.id}', 'hidden')">隐藏</button>` : ''}
+        <button class="btn btn-sm" style="color:var(--red);border:1px solid rgba(239,68,68,.3);background:transparent;border-radius:5px;padding:.3rem .7rem;font-size:12px" onclick="deleteComment('${c.id}')">删除</button>
+      </div>
+    `;
+
+    if (c.status === 'pending') {
+      card.style.borderColor = 'rgba(251,191,36,.3)';
+      const header = card.querySelector('.comment-mod-header');
+      if (header) header.style.background = 'rgba(251,191,36,.05)';
+    }
+    container.appendChild(card);
+  });
 }
 
 async function fetchAdminUsers() {
@@ -1297,7 +1529,7 @@ async function fetchNovels() {
     }
     const novels = Array.isArray(raw) ? raw : [];
     cachedNovelsForEditor = novels;
-    const tbody = document.querySelector('#adminPage-novels tbody');
+    const tbody = document.getElementById('novelListBody');
     if (!tbody) return;
     tbody.innerHTML = novels.map(n => `
       <tr>
@@ -1307,12 +1539,97 @@ async function fetchNovels() {
         <td style="font-family:'DM Mono',monospace;font-size:12px">--</td>
         <td><span class="status-badge ${n.status === 'finished' ? 'status-completed' : 'status-ongoing'}">${n.status === 'finished' ? '✓ 已完结' : '● 连载中'}</span></td>
         <td style="font-family:'DM Mono',monospace;font-size:12px;color:var(--admin-muted)">${new Date(n.created || Date.now()).toLocaleDateString()}</td>
-        <td><div style="display:flex;gap:.4rem">
-          <button class="btn btn-admin-outline btn-sm" onclick="openNovelChapters('${n.id}')">管理章节</button>
-        </div></td>
+        <td>
+          <div style="display:flex;gap:.4rem;flex-wrap:wrap">
+            <button class="btn btn-admin-outline btn-sm" onclick="openNovelChapters('${n.id}')">管理章节</button>
+            <button class="btn btn-admin-outline btn-sm" onclick="editNovelMeta('${n.id}')">编辑</button>
+            <button class="btn btn-admin-outline btn-sm" onclick="toggleNovelStatus('${n.id}', '${n.status === 'finished' ? 'ongoing' : 'finished'}')">${n.status === 'finished' ? '设为连载' : '设为完结'}</button>
+            <button class="btn btn-sm" style="color:var(--red);border:1px solid rgba(239,68,68,.3);border-radius:5px;padding:.3rem .7rem;font-size:12px;background:transparent" onclick="deleteNovel('${n.id}')">删除</button>
+          </div>
+        </td>
       </tr>
     `).join('');
   } catch (err) { console.error(err); }
+}
+
+async function editNovelMeta(novelId) {
+  try {
+    const res = await fetch(apiUrl(`/novel?id=${encodeURIComponent(novelId)}`), { headers: withAuthHeaders({}) });
+    const data = await safeJson(res) || {};
+    if (!res.ok) {
+      showToast(data.error ? `加载失败: ${data.error}` : '加载失败');
+      return;
+    }
+
+    const meta = data.meta || {};
+    const title = prompt('小说标题：', meta.title || '');
+    if (title == null) return;
+    const genre = prompt('类型：', meta.genre || '未分类');
+    if (genre == null) return;
+    const status = prompt('状态（ongoing/finished）：', meta.status || 'ongoing');
+    if (status == null) return;
+
+    const put = await fetch(apiUrl(`/novel?id=${encodeURIComponent(novelId)}`), {
+      method: 'PUT',
+      headers: withAuthHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify({ title, genre, status })
+    });
+    const putData = await safeJson(put) || {};
+    if (!put.ok) {
+      showToast(putData.error ? `保存失败: ${putData.error}` : '保存失败');
+      return;
+    }
+    showToast('保存成功');
+    cachedNovelsForEditor = null;
+    await fetchNovels();
+  } catch (err) {
+    console.error(err);
+    showToast('保存失败');
+  }
+}
+
+async function toggleNovelStatus(novelId, nextStatus) {
+  try {
+    const put = await fetch(apiUrl(`/novel?id=${encodeURIComponent(novelId)}`), {
+      method: 'PUT',
+      headers: withAuthHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify({ status: nextStatus })
+    });
+    const data = await safeJson(put) || {};
+    if (!put.ok) {
+      showToast(data.error ? `操作失败: ${data.error}` : '操作失败');
+      return;
+    }
+    showToast('操作成功');
+    cachedNovelsForEditor = null;
+    await fetchNovels();
+  } catch (err) {
+    console.error(err);
+    showToast('操作失败');
+  }
+}
+
+async function deleteNovel(novelId) {
+  if (!confirm('确定删除该小说及其全部章节？')) return;
+  try {
+    const del = await fetch(apiUrl(`/novel?id=${encodeURIComponent(novelId)}`), {
+      method: 'DELETE',
+      headers: withAuthHeaders({ 'Content-Type': 'application/json' })
+    });
+    const data = await safeJson(del) || {};
+    if (!del.ok) {
+      showToast(data.error ? `删除失败: ${data.error}` : '删除失败');
+      return;
+    }
+    showToast('已删除');
+    cachedNovelsForEditor = null;
+    const card = document.getElementById('novelChaptersCard');
+    if (card) card.style.display = 'none';
+    await fetchNovels();
+  } catch (err) {
+    console.error(err);
+    showToast('删除失败');
+  }
 }
 
 async function openNovelChapters(novelId) {
@@ -1501,9 +1818,15 @@ window.saveEditor = saveEditor;
 window.savePost = savePost;
 window.editPost = editPost;
 window.deletePost = deletePost;
+window.setAdminPostPage = setAdminPostPage;
+window.togglePublishPost = togglePublishPost;
+window.toggleArchivePost = toggleArchivePost;
 window.newPost = newPost;
 window.uploadMedia = uploadMedia;
 window.createNovel = createNovel;
+window.editNovelMeta = editNovelMeta;
+window.toggleNovelStatus = toggleNovelStatus;
+window.deleteNovel = deleteNovel;
 window.openNovelChapters = openNovelChapters;
 window.newNovelChapter = newNovelChapter;
 window.saveNovelChapter = saveNovelChapter;

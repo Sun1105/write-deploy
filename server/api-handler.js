@@ -185,6 +185,7 @@ function extractFrontMatter(markdown) {
     else if (key === 'date') out.date = stripQuotes(value);
     else if (key === 'description') out.description = stripQuotes(value);
     else if (key === 'published') out.published = value === 'true';
+    else if (key === 'archived') out.archived = value === 'true';
     else if (key === 'tags') out.tags = parseInlineArray(value);
     else if (key === 'categories') out.categories = parseInlineArray(value);
   }
@@ -481,7 +482,8 @@ async function handlePosts(req, res) {
           tags: [],
           categories: [],
           description: '',
-          published: true
+          published: true,
+          archived: false
         };
         try {
           const { content } = await readText(owner, repo, headers, `${dirPath}/${file.name}`);
@@ -493,6 +495,7 @@ async function handlePosts(req, res) {
           if (Array.isArray(fm.categories)) meta.categories = fm.categories;
           if (typeof fm.description === 'string') meta.description = fm.description;
           if (typeof fm.published === 'boolean') meta.published = fm.published;
+          if (typeof fm.archived === 'boolean') meta.archived = fm.archived;
           if (!meta.date) meta.date = new Date().toISOString();
           return meta;
         } catch {
@@ -502,7 +505,7 @@ async function handlePosts(req, res) {
       })
     );
     results.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-    const visible = isAdmin ? results : results.filter(p => p && p.published !== false);
+    const visible = isAdmin ? results : results.filter(p => p && p.published !== false && p.archived !== true);
     return res.status(200).json(visible);
   } catch {
     return res.status(200).json([]);
@@ -522,7 +525,8 @@ async function handlePost(req, res, segments) {
     const isAdmin = payload && payload.role === 'admin';
     const parsed = extractFrontMatter(String(content || ''));
     const published = parsed.frontMatter && typeof parsed.frontMatter.published === 'boolean' ? parsed.frontMatter.published : true;
-    if (!isAdmin && published === false) return res.status(404).json({ error: 'Not found' });
+    const archived = parsed.frontMatter && typeof parsed.frontMatter.archived === 'boolean' ? parsed.frontMatter.archived : false;
+    if (!isAdmin && (published === false || archived === true)) return res.status(404).json({ error: 'Not found' });
     return res.status(200).json({ filename, sha, content });
   }
 
@@ -721,19 +725,65 @@ async function handleNovels(req, res) {
 }
 
 async function handleNovel(req, res) {
-  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
-  await requireAdmin(req);
   const { owner, repo, token } = getGithubConfig();
   const headers = githubHeaders(token);
-  const body = req.body || {};
-  const title = body.title ? String(body.title).trim() : '';
-  const genre = body.genre ? String(body.genre).trim() : '未分类';
-  if (!title) return res.status(400).json({ success: false, error: 'Missing title' });
-  const id = `${Date.now()}-${slugify(title)}`;
-  const metaPath = `data/novels/${id}/meta.json`;
-  const meta = { id, title, genre, status: 'ongoing', created: new Date().toISOString() };
-  await writeText(owner, repo, token, metaPath, JSON.stringify(meta, null, 2), `Create novel ${id}`);
-  return res.status(200).json({ success: true, novel: meta });
+  const baseDir = 'data/novels';
+
+  if (req.method === 'GET') {
+    const id = req.query && req.query.id ? String(req.query.id) : '';
+    if (!id) return res.status(400).json({ error: 'Missing id' });
+    const meta = await readJsonFileOr(owner, repo, headers, `${baseDir}/${id}/meta.json`, { id, title: id, genre: '未分类', status: 'ongoing' });
+    const chapterList = await listDir(owner, repo, headers, `${baseDir}/${id}`);
+    const chapters = chapterList.filter(e => e && e.type === 'file' && /\\.md$/i.test(e.name || '')).map(e => e.name).sort();
+    return res.status(200).json({ meta: meta.data || {}, chapters });
+  }
+
+  await requireAdmin(req);
+
+  if (req.method === 'POST') {
+    const body = req.body || {};
+    const title = body.title ? String(body.title).trim() : '';
+    const genre = body.genre ? String(body.genre).trim() : '未分类';
+    if (!title) return res.status(400).json({ success: false, error: 'Missing title' });
+    const id = `${Date.now()}-${slugify(title)}`;
+    const metaPath = `${baseDir}/${id}/meta.json`;
+    const meta = { id, title, genre, status: 'ongoing', created: new Date().toISOString(), updated: new Date().toISOString() };
+    await writeText(owner, repo, token, metaPath, JSON.stringify(meta, null, 2), `Create novel ${id}`);
+    return res.status(200).json({ success: true, novel: meta });
+  }
+
+  if (req.method === 'PUT') {
+    const id = req.query && req.query.id ? String(req.query.id) : '';
+    if (!id) return res.status(400).json({ error: 'Missing id' });
+    const body = req.body || {};
+    const existing = await readJsonFileOr(owner, repo, headers, `${baseDir}/${id}/meta.json`, { id, title: id, genre: '未分类', status: 'ongoing' });
+    const next = { ...(existing.data || {}) };
+    if (body.title !== undefined) next.title = String(body.title).trim();
+    if (body.genre !== undefined) next.genre = String(body.genre).trim();
+    if (body.status !== undefined) next.status = String(body.status).trim();
+    next.id = id;
+    if (!next.created) next.created = new Date().toISOString();
+    next.updated = new Date().toISOString();
+    await writeJsonFile(owner, repo, token, `${baseDir}/${id}/meta.json`, next, existing.sha, `Update novel ${id}`);
+    return res.status(200).json({ success: true, novel: next });
+  }
+
+  if (req.method === 'DELETE') {
+    const id = req.query && req.query.id ? String(req.query.id) : '';
+    if (!id) return res.status(400).json({ error: 'Missing id' });
+    const dir = `${baseDir}/${id}`;
+    const entries = await listDir(owner, repo, headers, dir);
+    const files = entries.filter(e => e && e.type === 'file');
+    for (const f of files) {
+      try {
+        await deleteFile(owner, repo, token, f.path, `Delete ${f.path}`, f.sha);
+      } catch {
+      }
+    }
+    return res.status(200).json({ success: true });
+  }
+
+  return res.status(405).json({ error: 'Method not allowed' });
 }
 
 function slugify(input) {
