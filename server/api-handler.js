@@ -18,6 +18,7 @@ module.exports = async function handler(req, res) {
 
     if (route === 'posts') return handlePosts(req, res);
     if (route === 'post') return handlePost(req, res, segments);
+    if (route === 'featured') return handleFeatured(req, res);
 
     if (route === 'settings') return handleSettings(req, res);
 
@@ -59,7 +60,8 @@ function getGithubConfig() {
   return {
     owner: process.env.GITHUB_OWNER || 'Sun1105',
     repo: process.env.GITHUB_REPO || 'write-deploy',
-    token: process.env.GITHUB_TOKEN || ''
+    token: process.env.GITHUB_TOKEN || '',
+    branch: process.env.GITHUB_BRANCH || 'main'
   };
 }
 
@@ -105,6 +107,38 @@ function shouldUseLocalPosts() {
   const token = process.env.GITHUB_TOKEN ? String(process.env.GITHUB_TOKEN) : '';
   if (token) return false;
   return true;
+}
+
+function getLocalDataDir() {
+  return path.join(process.cwd(), 'data');
+}
+
+async function readLocalJsonOr(fileName, fallback) {
+  try {
+    const full = path.join(getLocalDataDir(), fileName);
+    const text = await fs.promises.readFile(full, 'utf8');
+    const parsed = JSON.parse(text || 'null');
+    return parsed ?? fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+async function writeLocalJson(fileName, data) {
+  const dir = getLocalDataDir();
+  await fs.promises.mkdir(dir, { recursive: true });
+  const full = path.join(dir, fileName);
+  await fs.promises.writeFile(full, JSON.stringify(data, null, 2), 'utf8');
+}
+
+function getLocalImagesDir() {
+  return path.join(process.cwd(), 'images');
+}
+
+async function writeLocalBinary(relPath, buffer) {
+  const full = path.join(process.cwd(), relPath);
+  await fs.promises.mkdir(path.dirname(full), { recursive: true });
+  await fs.promises.writeFile(full, buffer);
 }
 
 function githubHeaders(token) {
@@ -232,6 +266,7 @@ function extractFrontMatter(markdown) {
     if (key === 'title') out.title = stripQuotes(value);
     else if (key === 'date') out.date = stripQuotes(value);
     else if (key === 'description') out.description = stripQuotes(value);
+    else if (key === 'cover') out.cover = stripQuotes(value);
     else if (key === 'published') out.published = value === 'true';
     else if (key === 'archived') out.archived = value === 'true';
     else if (key === 'tags') out.tags = parseInlineArray(value);
@@ -507,7 +542,9 @@ async function handleStats(req, res) {
   const users = await readJsonFileOr(owner, repo, headers, usersFile, []);
   const userList = Array.isArray(users.data) ? users.data : [];
 
-  const views = await readJsonFileOr(owner, repo, headers, viewsFile, { total: 0, pages: {}, posts: {}, chapters: {}, daily: {} });
+  const views = shouldUseLocalPosts()
+    ? { data: await readLocalJsonOr('views.json', { total: 0, pages: {}, posts: {}, chapters: {}, daily: {} }), sha: null }
+    : await readJsonFileOr(owner, repo, headers, viewsFile, { total: 0, pages: {}, posts: {}, chapters: {}, daily: {} });
   const viewData = views && views.data && typeof views.data === 'object' ? views.data : { total: 0, daily: {} };
   const viewCount = Number(viewData.total || 0);
   const daily = viewData.daily && typeof viewData.daily === 'object' ? viewData.daily : {};
@@ -700,6 +737,7 @@ async function handlePosts(req, res) {
             tags: [],
             categories: [],
             description: '',
+            cover: '',
             published: true,
             archived: false
           };
@@ -712,6 +750,7 @@ async function handlePosts(req, res) {
             if (Array.isArray(fm.tags)) meta.tags = fm.tags;
             if (Array.isArray(fm.categories)) meta.categories = fm.categories;
             if (typeof fm.description === 'string') meta.description = fm.description;
+            if (typeof fm.cover === 'string') meta.cover = fm.cover;
             if (typeof fm.published === 'boolean') meta.published = fm.published;
             if (typeof fm.archived === 'boolean') meta.archived = fm.archived;
             if (!meta.date) meta.date = new Date().toISOString();
@@ -747,6 +786,7 @@ async function handlePosts(req, res) {
           tags: [],
           categories: [],
           description: '',
+          cover: '',
           published: true,
           archived: false
         };
@@ -759,6 +799,7 @@ async function handlePosts(req, res) {
           if (Array.isArray(fm.tags)) meta.tags = fm.tags;
           if (Array.isArray(fm.categories)) meta.categories = fm.categories;
           if (typeof fm.description === 'string') meta.description = fm.description;
+          if (typeof fm.cover === 'string') meta.cover = fm.cover;
           if (typeof fm.published === 'boolean') meta.published = fm.published;
           if (typeof fm.archived === 'boolean') meta.archived = fm.archived;
           if (!meta.date) meta.date = new Date().toISOString();
@@ -966,7 +1007,9 @@ async function handleView(req, res) {
   if (!['page', 'post', 'chapter'].includes(kind)) return res.status(400).json({ error: 'Invalid kind' });
   if (id.length > 400) return res.status(400).json({ error: 'Invalid id' });
 
-  const existing = await readJsonFileOr(owner, repo, headers, filePath, fallback);
+  const existing = shouldUseLocalPosts()
+    ? { data: await readLocalJsonOr('views.json', fallback), sha: null }
+    : await readJsonFileOr(owner, repo, headers, filePath, fallback);
   const data = existing && existing.data && typeof existing.data === 'object' ? existing.data : fallback;
   const next = {
     total: Number(data.total || 0),
@@ -984,8 +1027,66 @@ async function handleView(req, res) {
   const dayKey = new Date().toISOString().slice(0, 10);
   next.daily[dayKey] = Number(next.daily[dayKey] || 0) + 1;
 
-  await writeJsonFile(owner, repo, token, filePath, next, existing.sha, `Track view ${kind}:${id}`);
+  if (shouldUseLocalPosts()) {
+    await writeLocalJson('views.json', next);
+  } else {
+    await writeJsonFile(owner, repo, token, filePath, next, existing.sha, `Track view ${kind}:${id}`);
+  }
   return res.status(200).json({ success: true, total: next.total });
+}
+
+async function handleFeatured(req, res) {
+  if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
+  const { owner, repo, token } = getGithubConfig();
+  const headers = githubHeaders(token);
+
+  const postsDir = 'data/posts';
+  const viewsFile = 'data/views.json';
+  const views = shouldUseLocalPosts()
+    ? { data: await readLocalJsonOr('views.json', { total: 0, posts: {} }), sha: null }
+    : await readJsonFileOr(owner, repo, headers, viewsFile, { total: 0, posts: {} });
+  const viewData = views && views.data && typeof views.data === 'object' ? views.data : { posts: {} };
+  const postViews = viewData.posts && typeof viewData.posts === 'object' ? viewData.posts : {};
+  const totalViews = Number(viewData.total || 0);
+
+  const files = shouldUseLocalPosts()
+    ? (await listLocalPostFiles()).map(name => ({ name }))
+    : (await listDir(owner, repo, headers, postsDir)).filter(e => e && e.type === 'file' && /\.md$/i.test(e.name || ''));
+
+  const posts = await Promise.all(
+    files.map(async (f) => {
+      const filename = String(f && (f.name || f.filename) ? (f.name || f.filename) : '');
+      if (!filename) return null;
+      try {
+        const { content } = shouldUseLocalPosts()
+          ? await readLocalPost(filename)
+          : await readText(owner, repo, headers, `${postsDir}/${filename}`);
+        const parsed = extractFrontMatter(String(content || ''));
+        const fm = parsed.frontMatter || {};
+        const published = typeof fm.published === 'boolean' ? fm.published : true;
+        const archived = typeof fm.archived === 'boolean' ? fm.archived : false;
+        if (published === false || archived === true) return null;
+        const title = fm.title || filename.replace(/\.md$/i, '');
+        const date = fm.date || new Date().toISOString();
+        const description = typeof fm.description === 'string' ? fm.description : '';
+        const cover = typeof fm.cover === 'string' ? fm.cover : '';
+        const category = Array.isArray(fm.categories) && fm.categories.length ? String(fm.categories[0]) : '';
+        const viewsCount = Number(Object.prototype.hasOwnProperty.call(postViews, filename) ? postViews[filename] : 0);
+        const wordCount = parsed.body ? String(parsed.body).replace(/\s+/g, '').length : 0;
+        const minutes = Math.max(1, Math.round(wordCount / 600));
+        return { filename, title, date, description, cover, category, views: viewsCount, minutes };
+      } catch {
+        return null;
+      }
+    })
+  );
+
+  const publishedPosts = posts.filter(Boolean);
+  const top = publishedPosts
+    .slice()
+    .sort((a, b) => (b.views - a.views) || (new Date(b.date).getTime() - new Date(a.date).getTime()))[0] || null;
+
+  return res.status(200).json({ featured: top, totalViews });
 }
 
 function extractBase64(data) {
@@ -999,7 +1100,7 @@ function extractBase64(data) {
 async function handleUpload(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
   await requireAdmin(req);
-  const { owner, repo, token } = getGithubConfig();
+  const { owner, repo, token, branch } = getGithubConfig();
   const headers = githubHeaders(token);
   const body = req.body || {};
   const image = body.image;
@@ -1009,6 +1110,11 @@ async function handleUpload(req, res) {
 
   const safeName = filename.replace(/[^a-z0-9.\u4e00-\u9fa5_-]/gi, '_');
   const filePath = `images/${safeName}`;
+  if (shouldUseLocalPosts() || !token) {
+    const buf = Buffer.from(String(base64), 'base64');
+    await writeLocalBinary(filePath, buf);
+    return res.status(200).json({ success: true, url: `/${filePath}` });
+  }
   let sha = null;
   try {
     const existing = await getContent(owner, repo, headers, filePath);
@@ -1025,7 +1131,8 @@ async function handleUpload(req, res) {
     headers: githubHeaders(token),
     body: JSON.stringify(putBody)
   });
-  return res.status(200).json({ success: true, url: `/${filePath}` });
+  const rawUrl = `https://raw.githubusercontent.com/${owner}/${repo}/${branch}/${filePath}?v=${Date.now()}`;
+  return res.status(200).json({ success: true, url: rawUrl });
 }
 
 async function handleNovels(req, res) {

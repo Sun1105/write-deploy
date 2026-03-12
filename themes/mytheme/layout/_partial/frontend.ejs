@@ -27,14 +27,14 @@
           </div>
         </div>
         <div class="hero-side">
-          <div class="hero-card">
+          <div class="hero-card" id="homeLatestWorkCard">
             <div style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.12em;color:rgba(255,255,255,.4);margin-bottom:.75rem">LATEST WORK</div>
-            <div class="hero-card-title">《午后三时，光线斜切过窗棂》</div>
-            <div class="hero-card-meta">随笔 · 2024.03.15 · 3 分钟阅读</div>
+            <div class="hero-card-title" id="homeLatestWorkTitle">--</div>
+            <div class="hero-card-meta" id="homeLatestWorkMeta">--</div>
             <div class="hero-card-stats">
-              <div class="hero-stat"><span class="hero-stat-val">48</span><span class="hero-stat-lbl">ARTICLES</span></div>
-              <div class="hero-stat"><span class="hero-stat-val">5</span><span class="hero-stat-lbl">NOVELS</span></div>
-              <div class="hero-stat"><span class="hero-stat-val">2.1k</span><span class="hero-stat-lbl">READERS</span></div>
+              <div class="hero-stat"><span class="hero-stat-val" id="homeStatArticles">--</span><span class="hero-stat-lbl">ARTICLES</span></div>
+              <div class="hero-stat"><span class="hero-stat-val" id="homeStatNovels">--</span><span class="hero-stat-lbl">NOVELS</span></div>
+              <div class="hero-stat"><span class="hero-stat-val" id="homeStatReaders">--</span><span class="hero-stat-lbl">READERS</span></div>
             </div>
           </div>
         </div>
@@ -45,36 +45,30 @@
       <div class="section-header">
         <div class="section-title">精选推荐</div>
       </div>
-      <div class="featured-article" onclick="showPage('article')">
+      <div class="featured-article" id="homeFeatured">
         <div class="featured-body">
           <div class="featured-label">Editor's Pick</div>
-          <h2 class="featured-title">在文字的迷宫里寻找出口——关于写作与存在的长篇思考</h2>
-          <p class="featured-excerpt">我们为什么要写作？不是为了被记住，不是为了留下什么，而是为了在那一刻，语言帮助我们厘清混沌，让那些浮动于意识边缘的感受变得真实而可触碰。这篇文章试图回答这个困扰我多年的问题……</p>
-          <div class="card-meta">
-            <span>2024-03-10</span>
-            <span>·</span>
-            <span>12 分钟阅读</span>
-            <span>·</span>
-            <span>3,241 次阅读</span>
-          </div>
+          <h2 class="featured-title" id="homeFeaturedTitle">--</h2>
+          <p class="featured-excerpt" id="homeFeaturedExcerpt">--</p>
+          <div class="card-meta" id="homeFeaturedMeta"></div>
         </div>
-        <div class="featured-cover">📖</div>
+        <div class="featured-cover" id="homeFeaturedCover">📖</div>
       </div>
 
-      <div class="cat-tabs">
-        <div class="cat-tab active">全部</div>
-        <div class="cat-tab">文章</div>
-        <div class="cat-tab">随笔</div>
-        <div class="cat-tab">评论</div>
+      <div class="cat-tabs" id="homeCatTabs">
+        <div class="cat-tab active" data-tab="all">全部</div>
+        <div class="cat-tab" data-tab="article">文章</div>
+        <div class="cat-tab" data-tab="essay">随笔</div>
+        <div class="cat-tab" data-tab="comment">评论</div>
       </div>
 
-      <div class="articles-grid"></div>
+      <div class="articles-grid" id="homeArticlesGrid"></div>
 
       <div class="section-header">
         <div class="section-title">连载小说</div>
         <div class="section-more" onclick="showPage('novels')">查看全部 →</div>
       </div>
-      <div class="novels-grid"></div>
+      <div class="novels-grid" id="homeNovelsGrid"></div>
     </div>
 
     <footer class="front-footer">
@@ -145,12 +139,12 @@
     </div>
     <div class="container">
       <div class="cat-tabs" style="padding-top:2rem">
-        <div class="cat-tab active">全部</div>
-        <div class="cat-tab">连载中</div>
-        <div class="cat-tab">已完结</div>
-        <div class="cat-tab">科幻</div>
-        <div class="cat-tab">奇幻</div>
-        <div class="cat-tab">现实主义</div>
+        <div class="cat-tab active" data-tab="all">全部</div>
+        <div class="cat-tab" data-tab="ongoing">连载中</div>
+        <div class="cat-tab" data-tab="finished">已完结</div>
+        <div class="cat-tab" data-tab="genre:科幻">科幻</div>
+        <div class="cat-tab" data-tab="genre:奇幻">奇幻</div>
+        <div class="cat-tab" data-tab="genre:现实主义">现实主义</div>
       </div>
       <div class="novels-list-grid"></div>
     </div>
@@ -161,8 +155,8 @@
       <div class="chapter-back" onclick="showPage('novels')">← 返回目录</div>
       <div class="chapter-title-bar">小说阅读</div>
       <div class="chapter-nav-btns">
-        <button class="btn btn-outline btn-sm">← 上一章</button>
-        <button class="btn btn-primary btn-sm">下一章 →</button>
+        <button class="btn btn-outline btn-sm" onclick="goPrevChapter()">← 上一章</button>
+        <button class="btn btn-primary btn-sm" onclick="goNextChapter()">下一章 →</button>
       </div>
     </div>
     <div class="reading-progress"><div class="reading-progress-bar"></div></div>
@@ -172,8 +166,8 @@
         <h1 class="chapter-title">章节标题</h1>
         <div class="chapter-body"></div>
         <div class="chapter-nav-footer">
-          <button class="btn btn-outline">← 上一章</button>
-          <button class="btn btn-primary">下一章 →</button>
+          <button class="btn btn-outline" onclick="goPrevChapter()">← 上一章</button>
+          <button class="btn btn-primary" onclick="goNextChapter()">下一章 →</button>
         </div>
       </div>
       <div>
@@ -220,18 +214,14 @@
       </div>
     </div>
     <div class="container">
-      <div class="cat-tabs" style="padding-top:2rem">
-        <div class="cat-tab active">全部</div>
-        <div class="cat-tab">文章</div>
-        <div class="cat-tab">随笔</div>
-        <div class="cat-tab">评论</div>
+      <div class="cat-tabs" style="padding-top:2rem" id="articlesCatTabs">
+        <div class="cat-tab active" data-tab="all">全部</div>
+        <div class="cat-tab" data-tab="article">文章</div>
+        <div class="cat-tab" data-tab="essay">随笔</div>
+        <div class="cat-tab" data-tab="comment">评论</div>
       </div>
-      <div class="articles-grid"></div>
-      <div class="pagination" style="border-color:var(--border)">
-        <button class="page-btn active" style="background:var(--accent);border-color:var(--accent);color:white">1</button>
-        <button class="page-btn" style="border-color:var(--border-2);color:var(--ink-3)">2</button>
-        <button class="page-btn" style="border-color:var(--border-2);color:var(--ink-3)">→</button>
-      </div>
+      <div class="articles-grid" id="articlesGrid"></div>
+      <div class="pagination" id="frontArticlesPagination" style="border-color:var(--border)"></div>
     </div>
   </div>
 

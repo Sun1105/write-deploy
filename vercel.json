@@ -9,10 +9,12 @@
 
     { "source": "/api/posts", "destination": "/api/content?route=posts" },
     { "source": "/api/post", "destination": "/api/content?route=post" },
+    { "source": "/api/featured", "destination": "/api/content?route=featured" },
     { "source": "/api/novels", "destination": "/api/content?route=novels" },
     { "source": "/api/novel", "destination": "/api/content?route=novel" },
     { "source": "/api/novel-chapter", "destination": "/api/content?route=novel-chapter" },
     { "source": "/api/upload", "destination": "/api/content?route=upload" },
+    { "source": "/api/view", "destination": "/api/content?route=view" },
 
     { "source": "/api/stats", "destination": "/api/admin?route=stats" },
     { "source": "/api/settings", "destination": "/api/admin?route=settings" },

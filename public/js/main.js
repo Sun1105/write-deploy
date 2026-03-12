@@ -25,6 +25,18 @@ let adminUserFilter = 'all';
 let adminUserSearch = '';
 let adminUsersUiBound = false;
 
+let frontUiBound = false;
+let frontPostsCache = [];
+let frontCommentsCache = null;
+let frontHomeTab = 'all';
+let frontArticlesTab = 'all';
+let frontArticlesPage = 1;
+let frontNovelsTab = 'all';
+let frontFeaturedCache = null;
+let frontLatestCache = null;
+let frontNovelCache = null;
+let frontChapterCtx = null;
+
 function apiUrl(pathname) {
   const p = pathname.startsWith('/') ? pathname : `/${pathname}`;
   return `${API_BASE}${p}`;
@@ -840,13 +852,21 @@ function escapeHtml(str) {
     .replace(/'/g, '&#39;');
 }
 
+function escapeJsString(str) {
+  return String(str || '')
+    .replace(/\\/g, '\\\\')
+    .replace(/'/g, "\\'")
+    .replace(/\r/g, '')
+    .replace(/\n/g, '\\n');
+}
+
 async function editPost(filename) {
   setEditorModeValue('post');
   currentEditingFile = filename;
   currentEditingSha = null;
   currentEditingDate = null;
   try {
-    const res = await fetch(apiUrl(`/post?filename=${encodeURIComponent(filename)}`));
+    const res = await fetch(apiUrl(`/post?filename=${encodeURIComponent(filename)}`), { headers: withAuthHeaders({}) });
     const data = await safeJson(res) || {};
     if (!data.content) {
       showToast('加载文章失败');
@@ -878,6 +898,9 @@ async function editPost(filename) {
     const slugInput = document.getElementById('editorSlug');
     if (slugInput) slugInput.value = slugFromFilename(filename);
 
+    const coverInput = document.getElementById('editorCover');
+    if (coverInput) coverInput.value = typeof fm.cover === 'string' ? fm.cover : '';
+
     showAdminPage('editor');
   } catch (err) {
     console.error(err);
@@ -890,6 +913,8 @@ function newPost() {
   currentEditingFile = null;
   currentEditingSha = null;
   currentEditingDate = null;
+  const coverInput = document.getElementById('editorCover');
+  if (coverInput) coverInput.value = '';
   showAdminPage('editor');
 }
 
@@ -908,10 +933,12 @@ async function savePost(publish = false) {
   const catInput = document.getElementById('editorCategory');
   const excerptInput = document.getElementById('editorExcerpt');
   const slugInput = document.getElementById('editorSlug');
+  const coverInput = document.getElementById('editorCover');
 
   const tags = parseCommaList(tagsInput ? tagsInput.value : '');
   const categories = parseCommaList(catInput ? catInput.value : '');
   const description = excerptInput ? excerptInput.value.trim() : '';
+  const cover = coverInput ? coverInput.value.trim() : '';
   const slug = (slugInput ? slugInput.value : '') || title;
 
   const desiredSlug = slugify(slug);
@@ -925,6 +952,7 @@ async function savePost(publish = false) {
     tags,
     categories,
     description,
+    cover,
     published: publish ? true : false,
     archived: false,
     body
@@ -1193,6 +1221,7 @@ function parseFrontMatter(fmText) {
     if (key === 'title') out.title = stripQuotes(value);
     else if (key === 'date') out.date = stripQuotes(value);
     else if (key === 'description') out.description = stripQuotes(value);
+    else if (key === 'cover') out.cover = stripQuotes(value);
     else if (key === 'tags') out.tags = parseInlineArray(value);
     else if (key === 'categories') out.categories = parseInlineArray(value);
     else if (key === 'published') out.published = value === 'true';
@@ -1218,7 +1247,7 @@ function stripQuotes(s) {
   return str;
 }
 
-function buildMarkdown({ title, date, tags, categories, description, published, archived, body }) {
+function buildMarkdown({ title, date, tags, categories, description, cover, published, archived, body }) {
   const fmLines = ['---', `title: ${escapeFrontMatter(title)}`, `date: ${escapeFrontMatter(date)}`];
 
   if (Array.isArray(tags) && tags.length) {
@@ -1234,6 +1263,7 @@ function buildMarkdown({ title, date, tags, categories, description, published, 
   }
 
   if (description) fmLines.push(`description: ${escapeFrontMatter(description)}`);
+  if (cover) fmLines.push(`cover: ${escapeFrontMatter(cover)}`);
   if (typeof published === 'boolean') fmLines.push(`published: ${published ? 'true' : 'false'}`);
   if (typeof archived === 'boolean') fmLines.push(`archived: ${archived ? 'true' : 'false'}`);
 
@@ -1361,46 +1391,104 @@ async function loadChapter(novelId, chapterFile) {
     `).join('');
 
     trackView('chapter', `${novelId}/${chapterFile}`);
+    frontChapterCtx = {
+      novelId,
+      chapters: Array.isArray(data.chapters) ? data.chapters.map(x => ({ filename: String(x.filename || ''), title: String(x.title || '') })) : [],
+      index: Array.isArray(data.chapters) ? data.chapters.findIndex(c => String(c && c.filename ? c.filename : '') === String(chapterFile)) : -1
+    };
+    syncChapterNavButtons();
+    updateReadingProgress();
     
   } catch (err) { showToast('章节加载失败'); }
 }
 
 async function renderFrontendNovels() {
   try {
-    const res = await fetch(apiUrl('/novels'));
-    const raw = await safeJson(res);
-    if (!res.ok) {
-      showToast(raw && raw.error ? `加载小说失败: ${raw.error}` : '加载小说失败');
-      return;
+    let novels = Array.isArray(frontNovelCache) ? frontNovelCache : null;
+    if (!novels) {
+      const res = await fetch(apiUrl('/novels'));
+      const raw = await safeJson(res);
+      if (!res.ok) {
+        showToast(raw && raw.error ? `加载小说失败: ${raw.error}` : '加载小说失败');
+        return;
+      }
+      novels = Array.isArray(raw) ? raw : [];
+      frontNovelCache = novels;
     }
-    const novels = Array.isArray(raw) ? raw : [];
-    const grid = document.querySelector('.novels-list-grid');
-    if (!grid) return;
-    
-    grid.innerHTML = novels.map(n => `
-      <div class="novel-list-card" onclick="alert('Select a chapter')">
-        <div class="novel-list-cover" style="background:${getRandomGradient(n.title)}">
-          <div class="novel-list-cover-icon">📖</div>
-          <div class="novel-list-cover-overlay"><div class="novel-list-title">${n.title}</div></div>
-        </div>
-        <div class="novel-list-body">
-          <div style="display:flex;align-items:center;justify-content:space-between"><span class="tag tag-blue">${n.genre || '未分类'}</span><span class="tag tag-green" style="font-size:10px">${n.status === 'finished' ? '已完结' : '连载中'}</span></div>
-          <div class="novel-info-row">
-            <span class="novel-chapters-count">${n.chapters} 章</span>
-            ${n.firstChapter ? 
-              `<button class="btn btn-primary btn-sm" onclick="event.stopPropagation();showPage('chapter', '${n.id}/${n.firstChapter}')">开始阅读</button>` :
-              `<button class="btn btn-outline btn-sm" disabled>暂无章节</button>`
-            }
+
+    const tab = String(frontNovelsTab || 'all');
+    let filtered = novels.slice();
+    if (tab === 'ongoing') filtered = filtered.filter(n => n && n.status !== 'finished');
+    else if (tab === 'finished') filtered = filtered.filter(n => n && n.status === 'finished');
+    else if (tab.startsWith('genre:')) {
+      const g = tab.slice('genre:'.length);
+      filtered = filtered.filter(n => n && String(n.genre || '') === g);
+    }
+
+    const listGrid = document.querySelector('#page-novels .novels-list-grid');
+    if (listGrid) {
+      listGrid.innerHTML = filtered.map(n => {
+        const title = n && n.title ? String(n.title) : '';
+        const genre = n && n.genre ? String(n.genre) : '未分类';
+        const status = n && n.status ? String(n.status) : 'ongoing';
+        const chapters = Number(n && n.chapters ? n.chapters : 0);
+        const firstChapter = n && n.firstChapter ? String(n.firstChapter) : '';
+        const id = n && n.id ? String(n.id) : '';
+        const canRead = Boolean(id && firstChapter);
+        const click = canRead ? `showPage('chapter', '${id}/${firstChapter}')` : "showToast('暂无章节')";
+        return `
+          <div class="novel-list-card" onclick="${click}">
+            <div class="novel-list-cover" style="background:${getRandomGradient(title)}">
+              <div class="novel-list-cover-icon">📖</div>
+              <div class="novel-list-cover-overlay"><div class="novel-list-title">${escapeHtml(title)}</div></div>
+            </div>
+            <div class="novel-list-body">
+              <div style="display:flex;align-items:center;justify-content:space-between"><span class="tag tag-blue">${escapeHtml(genre)}</span><span class="tag tag-green" style="font-size:10px">${status === 'finished' ? '已完结' : '连载中'}</span></div>
+              <div class="novel-info-row">
+                <span class="novel-chapters-count">${chapters} 章</span>
+                ${canRead
+                  ? `<button class="btn btn-primary btn-sm" onclick="event.stopPropagation();showPage('chapter', '${id}/${firstChapter}')">开始阅读</button>`
+                  : `<button class="btn btn-outline btn-sm" disabled>暂无章节</button>`
+                }
+              </div>
+            </div>
           </div>
-        </div>
-      </div>
-    `).join('');
+        `;
+      }).join('');
+    }
+
+    const homeGrid = document.getElementById('homeNovelsGrid');
+    if (homeGrid) {
+      const picks = novels.filter(n => n && n.firstChapter).slice(0, 4);
+      homeGrid.innerHTML = picks.map(n => {
+        const title = n && n.title ? String(n.title) : '';
+        const genre = n && n.genre ? String(n.genre) : '未分类';
+        const chapters = Number(n && n.chapters ? n.chapters : 0);
+        const id = n && n.id ? String(n.id) : '';
+        const firstChapter = n && n.firstChapter ? String(n.firstChapter) : '';
+        return `
+          <div class="novel-card" onclick="showPage('chapter', '${id}/${firstChapter}')">
+            <div class="novel-cover">
+              <div class="novel-cover-bg">📖</div>
+              <div class="novel-cover-title">${escapeHtml(title)}</div>
+            </div>
+            <div class="novel-body">
+              <div class="novel-genre">${escapeHtml(genre)}</div>
+              <div class="novel-title">${escapeHtml(title)}</div>
+              <div class="novel-stats"><span>${chapters} 章</span></div>
+            </div>
+          </div>
+        `;
+      }).join('');
+      const novelsStat = document.getElementById('homeStatNovels');
+      if (novelsStat) novelsStat.textContent = String(novels.length);
+    }
   } catch (err) { console.error(err); }
 }
 
 async function loadArticle(filename) {
   try {
-    const res = await fetch(apiUrl(`/post?filename=${encodeURIComponent(filename)}`), { headers: withAuthHeaders({}) });
+    const res = await fetch(apiUrl(`/post?filename=${encodeURIComponent(filename)}`));
     const data = await safeJson(res) || {};
     if (!res.ok) {
       showToast(data && data.error ? `文章加载失败: ${data.error}` : '文章加载失败');
@@ -1427,14 +1515,19 @@ async function loadArticle(filename) {
     } else {
       document.querySelector('.article-content').textContent = body;
     }
+
+    syncArticleMediaPanel();
     
     // Update meta
     const metaItems = document.querySelectorAll('.article-meta-item');
     if (metaItems[0]) metaItems[0].textContent = `📅 ${date}`;
+    const wordCount = String(body || '').replace(/\s+/g, '').length;
+    const minutes = Math.max(1, Math.round(wordCount / 600));
+    if (metaItems[1]) metaItems[1].textContent = `⏱ ${minutes} 分钟阅读`;
     
     // Update tags
      const tagContainer = document.querySelector('.article-tags');
-     tagContainer.innerHTML = tags.map(t => `<span class="tag tag-gray">${t}</span>`).join('');
+     tagContainer.innerHTML = tags.map(t => `<span class="tag tag-gray">${escapeHtml(t)}</span>`).join('');
      
      // Load comments
      loadComments(filename);
@@ -1445,6 +1538,41 @@ async function loadArticle(filename) {
      showToast('文章加载失败');
    }
  }
+
+function syncArticleMediaPanel() {
+  const panel = document.querySelector('.media-panel');
+  const content = document.querySelector('.article-content');
+  if (!panel || !content) return;
+  const imgs = Array.from(content.querySelectorAll('img'));
+  const videos = Array.from(content.querySelectorAll('video'));
+  const audios = Array.from(content.querySelectorAll('audio'));
+  const items = []
+    .concat(imgs.map((el, idx) => ({ kind: 'img', el, idx })))
+    .concat(videos.map((el, idx) => ({ kind: 'video', el, idx })))
+    .concat(audios.map((el, idx) => ({ kind: 'audio', el, idx })));
+  if (!items.length) {
+    panel.innerHTML = `<div style="color:var(--ink-4);font-family:'DM Mono',monospace;font-size:12px">暂无媒体</div>`;
+    return;
+  }
+  panel.innerHTML = items.map((it, i) => {
+    if (it.kind === 'img') {
+      const src = it.el && it.el.getAttribute ? String(it.el.getAttribute('src') || '') : '';
+      return `<div class="media-item" data-i="${i}"><img class="media-img" src="${escapeHtml(src)}" alt=""></div>`;
+    }
+    if (it.kind === 'video') return `<div class="media-item" data-i="${i}"><div class="media-img">🎬</div></div>`;
+    return `<div class="media-item" data-i="${i}"><div class="media-img">🎵</div></div>`;
+  }).join('');
+  panel.querySelectorAll('.media-item').forEach(el => {
+    el.addEventListener('click', () => {
+      const i = Number(el.getAttribute('data-i') || -1);
+      const it = items[i];
+      if (!it || !it.el) return;
+      it.el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      it.el.style.outline = '2px solid rgba(59,130,246,.35)';
+      setTimeout(() => { it.el.style.outline = ''; }, 1400);
+    });
+  });
+}
 
  async function loadComments(postId) {
    const container = document.querySelector('.comments-section');
@@ -1477,7 +1605,7 @@ async function loadArticle(filename) {
    }
 
    try {
-     const res = await fetch(apiUrl(`/comments?post=${encodeURIComponent(postId)}`), { headers: withAuthHeaders({}) });
+     const res = await fetch(apiUrl(`/comments?post=${encodeURIComponent(postId)}`));
      const raw = await safeJson(res);
      const comments = Array.isArray(raw) ? raw : [];
      
@@ -1497,6 +1625,8 @@ async function loadArticle(filename) {
        const div = document.createElement('div');
        div.className = 'comment-item';
       if (commentId) div.id = `front-comment-${commentId}`;
+      const liked = commentId ? sessionStorage.getItem(`liked:${commentId}`) === '1' : false;
+      const likeCount = liked ? 1 : 0;
        div.innerHTML = `
         <div class="comment-avatar-lg" style="background:${getRandomGradient(userName)}">${escapeHtml(userName.slice(0, 1) || 'A')}</div>
          <div class="comment-body">
@@ -1506,8 +1636,8 @@ async function loadArticle(filename) {
            </div>
           <div class="comment-text">${window.DOMPurify ? DOMPurify.sanitize(String(c.content || '')) : escapeHtml(String(c.content || ''))}</div>
            <div class="comment-actions">
-             <div class="comment-action">👍 0</div>
-             <div class="comment-action" onclick="showPage('login')">回复</div>
+            <div class="comment-action" onclick="toggleFrontCommentLike('${escapeJsString(commentId)}', this)">👍 ${likeCount}</div>
+            <div class="comment-action" onclick="replyToComment('${escapeJsString(userName)}')">回复</div>
            </div>
          </div>
        `;
@@ -1556,56 +1686,338 @@ async function loadArticle(filename) {
 
  async function renderFrontendPosts() {
   try {
-    const res = await fetch(apiUrl('/posts'), { headers: withAuthHeaders({}) });
+    const res = await fetch(apiUrl('/posts'));
     const raw = await safeJson(res);
     if (!res.ok) {
       showToast(raw && raw.error ? `加载文章失败: ${raw.error}` : '加载文章失败');
       return;
     }
-    const posts = Array.isArray(raw) ? raw : [];
-    
-    // Update Home Page Grid
-    const homeGrid = document.querySelector('#page-home .articles-grid');
-    if (homeGrid) {
-      homeGrid.innerHTML = posts.slice(0, 6).map(post => `
-        <div class="article-card" onclick="showPage('article', '${post.filename}')">
-          <div class="card-cover" style="background:${getRandomGradient(post.title)}">
-            <div class="card-category-badge">文章</div>
-            ${getRandomIcon(post.title)}
-          </div>
-          <div class="card-body">
-            <h3 class="card-title">${post.title}</h3>
-            <p class="card-excerpt">点击阅读全文...</p>
-            <div class="card-footer">
-              <div class="card-meta">
-                <span>${new Date(post.date).toLocaleDateString()}</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      `).join('');
-    }
+    frontPostsCache = Array.isArray(raw) ? raw : [];
+    initFrontUI();
+    renderHomeLatestWork();
+    renderHomeFeatured();
+    renderHomeArticles();
+    renderArticlesPage();
+    renderFrontendNovels();
 
-    // Update Articles Page List
-    const articlesGrid = document.querySelector('#page-articles .articles-grid');
-    if (articlesGrid && document.getElementById('page-articles').classList.contains('active')) {
-      articlesGrid.innerHTML = posts.map(post => `
-        <div class="article-card" onclick="showPage('article', '${post.filename}')">
-          <div class="card-cover" style="background:${getRandomGradient(post.title)}">
-            <div class="card-category-badge">文章</div>
-            ${getRandomIcon(post.title)}
+    const articlesStat = document.getElementById('homeStatArticles');
+    if (articlesStat) articlesStat.textContent = String(frontPostsCache.length);
+  } catch (err) { console.error('Failed to load posts', err); }
+}
+
+function initFrontUI() {
+  if (frontUiBound) return;
+
+  const bindTabs = (containerId, getValue, setValue, onChange) => {
+    const root = document.getElementById(containerId);
+    if (!root) return;
+    root.querySelectorAll('.cat-tab[data-tab]').forEach(tabEl => {
+      tabEl.addEventListener('click', async () => {
+        const v = tabEl.getAttribute('data-tab') || 'all';
+        setValue(v);
+        root.querySelectorAll('.cat-tab').forEach(x => x.classList.remove('active'));
+        tabEl.classList.add('active');
+        await onChange();
+      });
+    });
+  };
+
+  bindTabs('homeCatTabs', () => frontHomeTab, (v) => { frontHomeTab = v; }, async () => {
+    await renderHomeArticles();
+  });
+
+  bindTabs('articlesCatTabs', () => frontArticlesTab, (v) => { frontArticlesTab = v; frontArticlesPage = 1; }, async () => {
+    await renderArticlesPage();
+  });
+
+  const novelsTabs = document.querySelector('#page-novels .cat-tabs');
+  if (novelsTabs) {
+    novelsTabs.querySelectorAll('.cat-tab[data-tab]').forEach(tabEl => {
+      tabEl.addEventListener('click', async () => {
+        const v = tabEl.getAttribute('data-tab') || 'all';
+        frontNovelsTab = v;
+        novelsTabs.querySelectorAll('.cat-tab').forEach(x => x.classList.remove('active'));
+        tabEl.classList.add('active');
+        await renderFrontendNovels();
+      });
+    });
+  }
+
+  window.addEventListener('scroll', () => {
+    const page = document.getElementById('page-chapter');
+    if (!page || !page.classList.contains('active')) return;
+    updateReadingProgress();
+  }, { passive: true });
+
+  frontUiBound = true;
+}
+
+function filterPostsByFrontTab(posts, tab) {
+  const list = Array.isArray(posts) ? posts : [];
+  if (tab === 'essay') return list.filter(p => Array.isArray(p && p.categories) && p.categories.includes('随笔'));
+  if (tab === 'article') return list.filter(p => !(Array.isArray(p && p.categories) && p.categories.includes('随笔')));
+  return list;
+}
+
+async function ensureFrontComments() {
+  if (Array.isArray(frontCommentsCache)) return frontCommentsCache;
+  const res = await fetch(apiUrl('/comments'));
+  const raw = await safeJson(res);
+  if (!res.ok) return [];
+  frontCommentsCache = Array.isArray(raw) ? raw : [];
+  return frontCommentsCache;
+}
+
+function renderPostCard(post, badgeText) {
+  const title = post && post.title ? String(post.title) : '';
+  const filename = post && post.filename ? String(post.filename) : '';
+  const dateText = post && post.date ? new Date(post.date).toLocaleDateString() : '';
+  const cover = post && post.cover ? String(post.cover) : '';
+  const excerpt = post && typeof post.description === 'string' && post.description.trim()
+    ? post.description.trim()
+    : '点击阅读全文...';
+  const badge = badgeText || (Array.isArray(post && post.categories) && post.categories.length ? String(post.categories[0]) : '文章');
+
+  return `
+    <div class="article-card" onclick="showPage('article', '${escapeJsString(filename)}')">
+      <div class="card-cover" style="background:${getRandomGradient(title)}">
+        <div class="card-category-badge">${escapeHtml(badge)}</div>
+        ${cover ? `<img class="card-cover-img" src="${escapeHtml(cover)}" alt="">` : escapeHtml(getRandomIcon(title))}
+      </div>
+      <div class="card-body">
+        <h3 class="card-title">${escapeHtml(title)}</h3>
+        <p class="card-excerpt">${escapeHtml(excerpt)}</p>
+        <div class="card-footer">
+          <div class="card-meta"><span>${escapeHtml(dateText)}</span></div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+async function renderHomeArticles() {
+  const grid = document.getElementById('homeArticlesGrid');
+  if (!grid) return;
+  if (frontHomeTab === 'comment') {
+    grid.innerHTML = `<div style="color:var(--ink-4);font-family:'DM Mono',monospace;font-size:12px">加载中...</div>`;
+    const comments = await ensureFrontComments();
+    const items = comments.slice(0, 6);
+    grid.innerHTML = items.map(c => {
+      const postId = c && c.post ? String(c.post) : '';
+      const id = c && c.id ? String(c.id) : '';
+      const user = c && c.user ? String(c.user) : 'Anonymous';
+      const date = c && c.date ? new Date(c.date).toLocaleDateString() : '';
+      const content = c && c.content ? String(c.content) : '';
+      const snippet = content.length > 90 ? `${content.slice(0, 90)}…` : content;
+      return `
+        <div class="article-card" onclick="frontOpenComment('${escapeJsString(postId)}','${escapeJsString(id)}')">
+          <div class="card-cover" style="background:${getRandomGradient(user)}">
+            <div class="card-category-badge">评论</div>
+            💬
           </div>
           <div class="card-body">
-            <h3 class="card-title">${post.title}</h3>
+            <h3 class="card-title">${escapeHtml(user)}</h3>
+            <p class="card-excerpt">${escapeHtml(snippet)}</p>
             <div class="card-footer">
-              <div class="card-meta"><span>${new Date(post.date).toLocaleDateString()}</span></div>
+              <div class="card-meta"><span>${escapeHtml(date)}</span></div>
             </div>
           </div>
         </div>
-      `).join('');
+      `;
+    }).join('');
+    return;
+  }
+
+  const filtered = filterPostsByFrontTab(frontPostsCache, frontHomeTab);
+  grid.innerHTML = filtered.slice(0, 6).map(p => renderPostCard(p)).join('') || `<div style="color:var(--ink-4);font-family:'DM Mono',monospace;font-size:12px">暂无数据</div>`;
+}
+
+async function renderArticlesPage() {
+  const grid = document.getElementById('articlesGrid');
+  if (!grid) return;
+  const pager = document.getElementById('frontArticlesPagination');
+  if (frontArticlesTab === 'comment') {
+    if (pager) pager.innerHTML = '';
+    grid.innerHTML = `<div style="color:var(--ink-4);font-family:'DM Mono',monospace;font-size:12px">加载中...</div>`;
+    const comments = await ensureFrontComments();
+    const items = comments.slice(0, 24);
+    grid.innerHTML = items.map(c => {
+      const postId = c && c.post ? String(c.post) : '';
+      const id = c && c.id ? String(c.id) : '';
+      const user = c && c.user ? String(c.user) : 'Anonymous';
+      const date = c && c.date ? new Date(c.date).toLocaleDateString() : '';
+      const content = c && c.content ? String(c.content) : '';
+      const snippet = content.length > 120 ? `${content.slice(0, 120)}…` : content;
+      return `
+        <div class="article-card" onclick="frontOpenComment('${escapeJsString(postId)}','${escapeJsString(id)}')">
+          <div class="card-cover" style="background:${getRandomGradient(user)}">
+            <div class="card-category-badge">评论</div>
+            💬
+          </div>
+          <div class="card-body">
+            <h3 class="card-title">${escapeHtml(user)}</h3>
+            <p class="card-excerpt">${escapeHtml(snippet)}</p>
+            <div class="card-footer">
+              <div class="card-meta"><span>${escapeHtml(date)}</span></div>
+            </div>
+          </div>
+        </div>
+      `;
+    }).join('');
+    return;
+  }
+
+  const filtered = filterPostsByFrontTab(frontPostsCache, frontArticlesTab);
+  const pageSize = 9;
+  const pageCount = Math.max(1, Math.ceil(filtered.length / pageSize));
+  frontArticlesPage = Math.min(Math.max(1, frontArticlesPage), pageCount);
+  const pageItems = filtered.slice((frontArticlesPage - 1) * pageSize, frontArticlesPage * pageSize);
+  grid.innerHTML = pageItems.map(p => renderPostCard(p)).join('') || `<div style="color:var(--ink-4);font-family:'DM Mono',monospace;font-size:12px">暂无数据</div>`;
+
+  if (pager) {
+    const btns = [];
+    const add = (label, page, active, disabled) => {
+      const cls = ['page-btn'].concat(active ? ['active'] : []).join(' ');
+      const dis = disabled ? 'disabled' : '';
+      const style = active ? 'style="background:var(--accent);border-color:var(--accent);color:white"' : 'style="border-color:var(--border-2);color:var(--ink-3)"';
+      btns.push(`<button class="${cls}" ${style} ${dis} onclick="setFrontArticlesPage(${page})">${escapeHtml(label)}</button>`);
+    };
+    add('←', Math.max(1, frontArticlesPage - 1), false, frontArticlesPage <= 1);
+    const maxButtons = 7;
+    const start = Math.max(1, Math.min(frontArticlesPage - 2, pageCount - (maxButtons - 1)));
+    const end = Math.min(pageCount, start + (maxButtons - 1));
+    for (let p = start; p <= end; p += 1) add(String(p), p, p === frontArticlesPage, false);
+    add('→', Math.min(pageCount, frontArticlesPage + 1), false, frontArticlesPage >= pageCount);
+    pager.innerHTML = btns.join('');
+  }
+}
+
+function setFrontArticlesPage(page) {
+  frontArticlesPage = Number(page) || 1;
+  renderArticlesPage();
+}
+
+function renderHomeLatestWork() {
+  const card = document.getElementById('homeLatestWorkCard');
+  if (!card) return;
+  const list = Array.isArray(frontPostsCache) ? frontPostsCache.slice() : [];
+  list.sort((a, b) => new Date(b && b.date ? b.date : 0).getTime() - new Date(a && a.date ? a.date : 0).getTime());
+  const latest = list[0] || null;
+  frontLatestCache = latest;
+  const titleEl = document.getElementById('homeLatestWorkTitle');
+  const metaEl = document.getElementById('homeLatestWorkMeta');
+  if (titleEl) titleEl.textContent = latest ? `《${latest.title || latest.filename || ''}》` : '--';
+  if (metaEl) {
+    const date = latest && latest.date ? new Date(latest.date).toLocaleDateString() : '--';
+    const cat = latest && Array.isArray(latest.categories) && latest.categories.length ? String(latest.categories[0]) : '文章';
+    metaEl.textContent = `${cat} · ${date}`;
+  }
+  card.onclick = latest && latest.filename ? () => showPage('article', latest.filename) : null;
+}
+
+async function renderHomeFeatured() {
+  const wrap = document.getElementById('homeFeatured');
+  if (!wrap) return;
+  if (!frontFeaturedCache) {
+    try {
+      const res = await fetch(apiUrl('/featured'));
+      const raw = await safeJson(res);
+      if (res.ok && raw) frontFeaturedCache = raw;
+    } catch {
     }
-    
-  } catch (err) { console.error('Failed to load posts', err); }
+  }
+  const data = frontFeaturedCache || {};
+  const featured = data && data.featured ? data.featured : null;
+  const titleEl = document.getElementById('homeFeaturedTitle');
+  const excerptEl = document.getElementById('homeFeaturedExcerpt');
+  const metaEl = document.getElementById('homeFeaturedMeta');
+  const coverEl = document.getElementById('homeFeaturedCover');
+  if (!featured) {
+    if (titleEl) titleEl.textContent = '暂无推荐';
+    if (excerptEl) excerptEl.textContent = '暂无可展示的已发布文章。';
+    if (metaEl) metaEl.innerHTML = '';
+    wrap.onclick = null;
+  } else {
+    if (titleEl) titleEl.textContent = featured.title || featured.filename || '';
+    if (excerptEl) excerptEl.textContent = featured.description || '点击阅读全文...';
+    if (metaEl) {
+      const date = featured.date ? new Date(featured.date).toLocaleDateString() : '';
+      const mins = Number(featured.minutes || 0);
+      const views = Number(featured.views || 0);
+      metaEl.innerHTML = `<span>${escapeHtml(date)}</span><span>·</span><span>${escapeHtml(String(Math.max(1, mins)))} 分钟阅读</span><span>·</span><span>${escapeHtml(views.toLocaleString())} 次阅读</span>`;
+    }
+    if (coverEl) {
+      const cover = featured.cover ? String(featured.cover) : '';
+      coverEl.innerHTML = cover ? `<img class="card-cover-img" src="${escapeHtml(cover)}" alt="">` : '📖';
+    }
+    wrap.onclick = () => showPage('article', featured.filename);
+  }
+  const readersEl = document.getElementById('homeStatReaders');
+  if (readersEl) {
+    const totalViews = Number(data && data.totalViews ? data.totalViews : 0);
+    readersEl.textContent = totalViews ? (totalViews >= 1000 ? `${(totalViews / 1000).toFixed(1)}k` : String(totalViews)) : '--';
+  }
+}
+
+function frontOpenComment(postId, commentId) {
+  if (!postId) return;
+  window.__frontFocusCommentId = commentId || '';
+  window.__frontScrollToComments = true;
+  showPage('article', postId);
+}
+
+function toggleFrontCommentLike(commentId, el) {
+  if (!commentId || !el) return;
+  const key = `liked:${commentId}`;
+  const liked = sessionStorage.getItem(key) === '1';
+  sessionStorage.setItem(key, liked ? '0' : '1');
+  el.textContent = `👍 ${liked ? 0 : 1}`;
+}
+
+function replyToComment(userName) {
+  const container = document.querySelector('.comments-section');
+  if (!container) return;
+  const textarea = container.querySelector('textarea');
+  if (!textarea) return;
+  if (!CURRENT_USER) return showPage('login');
+  const name = String(userName || '').trim();
+  const prefix = name ? `@${name} ` : '';
+  if (!textarea.value.includes(prefix)) textarea.value = `${prefix}${textarea.value || ''}`.trimStart();
+  textarea.focus();
+}
+
+function syncChapterNavButtons() {
+  const prevEnabled = frontChapterCtx && typeof frontChapterCtx.index === 'number' && frontChapterCtx.index > 0;
+  const nextEnabled = frontChapterCtx && Array.isArray(frontChapterCtx.chapters) && typeof frontChapterCtx.index === 'number' && frontChapterCtx.index >= 0 && frontChapterCtx.index < frontChapterCtx.chapters.length - 1;
+  document.querySelectorAll('#page-chapter .chapter-nav-btns .btn, #page-chapter .chapter-nav-footer .btn').forEach((btn, idx, all) => {
+    const isPrev = btn.textContent.includes('上一章');
+    const enabled = isPrev ? prevEnabled : nextEnabled;
+    btn.disabled = !enabled;
+  });
+}
+
+function goPrevChapter() {
+  if (!frontChapterCtx || !Array.isArray(frontChapterCtx.chapters) || frontChapterCtx.index <= 0) return;
+  const prev = frontChapterCtx.chapters[frontChapterCtx.index - 1];
+  if (!prev || !prev.filename) return;
+  showPage('chapter', `${frontChapterCtx.novelId}/${prev.filename}`);
+}
+
+function goNextChapter() {
+  if (!frontChapterCtx || !Array.isArray(frontChapterCtx.chapters) || frontChapterCtx.index < 0 || frontChapterCtx.index >= frontChapterCtx.chapters.length - 1) return;
+  const next = frontChapterCtx.chapters[frontChapterCtx.index + 1];
+  if (!next || !next.filename) return;
+  showPage('chapter', `${frontChapterCtx.novelId}/${next.filename}`);
+}
+
+function updateReadingProgress() {
+  const bar = document.querySelector('.reading-progress-bar');
+  const wrap = document.querySelector('.chapter-content-wrap');
+  if (!bar || !wrap) return;
+  const total = wrap.scrollHeight - window.innerHeight;
+  const y = window.scrollY;
+  const progress = total > 0 ? Math.min(1, Math.max(0, y / total)) : 0;
+  bar.style.width = `${Math.round(progress * 100)}%`;
 }
 
 function getRandomGradient(str) {
@@ -2078,7 +2490,18 @@ async function uploadMedia(file) {
         const textarea = document.getElementById('editorContent');
         const url = data.url;
         const fullUrl = url;
-        insertText(textarea, `\n![${file.name}](${fullUrl})\n`, '');
+        const isImage = String(file.type || '').startsWith('image/');
+        const isVideo = String(file.type || '').startsWith('video/');
+        const isAudio = String(file.type || '').startsWith('audio/');
+        if (isImage) insertText(textarea, `\n![${file.name}](${fullUrl})\n`, '');
+        else if (isVideo) insertText(textarea, `\n<video controls src="${fullUrl}"></video>\n`, '');
+        else if (isAudio) insertText(textarea, `\n<audio controls src="${fullUrl}"></audio>\n`, '');
+        else insertText(textarea, `\n[${file.name}](${fullUrl})\n`, '');
+
+        if (isImage) {
+          const coverInput = document.getElementById('editorCover');
+          if (coverInput && !String(coverInput.value || '').trim()) coverInput.value = fullUrl;
+        }
       } else {
         showToast('上传失败');
       }
@@ -2402,6 +2825,12 @@ document.addEventListener('mouseout', (e) => {
 
 // Expose functions to window for HTML onclick access
 window.showPage = showPage;
+window.setFrontArticlesPage = setFrontArticlesPage;
+window.frontOpenComment = frontOpenComment;
+window.toggleFrontCommentLike = toggleFrontCommentLike;
+window.replyToComment = replyToComment;
+window.goPrevChapter = goPrevChapter;
+window.goNextChapter = goNextChapter;
 window.handleLogin = handleLogin;
 window.handleRegister = handleRegister;
 window.setMode = setMode;
