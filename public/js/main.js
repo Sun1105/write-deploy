@@ -1556,7 +1556,7 @@ async function loadArticle(filename) {
 
  async function renderFrontendPosts() {
   try {
-    const res = await fetch(apiUrl('/posts'));
+    const res = await fetch(apiUrl('/posts'), { headers: withAuthHeaders({}) });
     const raw = await safeJson(res);
     if (!res.ok) {
       showToast(raw && raw.error ? `加载文章失败: ${raw.error}` : '加载文章失败');
