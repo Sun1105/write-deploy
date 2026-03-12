@@ -1,4 +1,6 @@
 const crypto = require('crypto');
+const fs = require('fs');
+const path = require('path');
 
 module.exports = async function handler(req, res) {
   try {
@@ -59,6 +61,50 @@ function getGithubConfig() {
     repo: process.env.GITHUB_REPO || 'write-deploy',
     token: process.env.GITHUB_TOKEN || ''
   };
+}
+
+function getLocalPostsDir() {
+  return path.join(process.cwd(), 'data', 'posts');
+}
+
+async function listLocalPostFiles() {
+  try {
+    const dir = getLocalPostsDir();
+    const entries = await fs.promises.readdir(dir, { withFileTypes: true });
+    return entries
+      .filter(e => e && e.isFile && e.isFile() && /\.md$/i.test(e.name || ''))
+      .map(e => e.name);
+  } catch {
+    return [];
+  }
+}
+
+async function readLocalPost(filename) {
+  const full = path.join(getLocalPostsDir(), filename);
+  const content = await fs.promises.readFile(full, 'utf8');
+  return { content, sha: null };
+}
+
+async function writeLocalPost(filename, content) {
+  const dir = getLocalPostsDir();
+  await fs.promises.mkdir(dir, { recursive: true });
+  const full = path.join(dir, filename);
+  await fs.promises.writeFile(full, String(content || ''), 'utf8');
+  return { sha: null };
+}
+
+async function deleteLocalPost(filename) {
+  const full = path.join(getLocalPostsDir(), filename);
+  await fs.promises.unlink(full);
+}
+
+function shouldUseLocalPosts() {
+  const forced = process.env.CONTENT_SOURCE ? String(process.env.CONTENT_SOURCE).toLowerCase() : '';
+  if (forced === 'local') return true;
+  if (forced === 'github') return false;
+  const token = process.env.GITHUB_TOKEN ? String(process.env.GITHUB_TOKEN) : '';
+  if (token) return false;
+  return true;
 }
 
 function githubHeaders(token) {
@@ -638,21 +684,65 @@ function buildActivity14Days(posts, commentList) {
 
 async function handlePosts(req, res) {
   if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
+  const payload = parseToken(getBearerToken(req));
+  const isAdmin = payload && payload.role === 'admin';
+  if (shouldUseLocalPosts()) {
+    try {
+      const files = await listLocalPostFiles();
+      const results = await Promise.all(
+        files.map(async (name) => {
+          const meta = {
+            filename: name,
+            path: `data/posts/${name}`,
+            sha: null,
+            title: (name || '').replace(/\.md$/i, ''),
+            date: null,
+            tags: [],
+            categories: [],
+            description: '',
+            published: true,
+            archived: false
+          };
+          try {
+            const { content } = await readLocalPost(name);
+            const parsed = extractFrontMatter(String(content || ''));
+            const fm = parsed.frontMatter || {};
+            if (fm.title) meta.title = fm.title;
+            if (fm.date) meta.date = fm.date;
+            if (Array.isArray(fm.tags)) meta.tags = fm.tags;
+            if (Array.isArray(fm.categories)) meta.categories = fm.categories;
+            if (typeof fm.description === 'string') meta.description = fm.description;
+            if (typeof fm.published === 'boolean') meta.published = fm.published;
+            if (typeof fm.archived === 'boolean') meta.archived = fm.archived;
+            if (!meta.date) meta.date = new Date().toISOString();
+            return meta;
+          } catch {
+            meta.date = new Date().toISOString();
+            return meta;
+          }
+        })
+      );
+      results.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+      const visible = isAdmin ? results : results.filter(p => p && p.published !== false && p.archived !== true);
+      return res.status(200).json(visible);
+    } catch {
+      return res.status(200).json([]);
+    }
+  }
+
   const { owner, repo, token } = getGithubConfig();
   const headers = githubHeaders(token);
   const dirPath = 'data/posts';
-  const payload = parseToken(getBearerToken(req));
-  const isAdmin = payload && payload.role === 'admin';
   try {
     const entries = await listDir(owner, repo, headers, dirPath);
-    const files = entries.filter(e => e && e.type === 'file' && /\\.md$/i.test(e.name || ''));
+    const files = entries.filter(e => e && e.type === 'file' && /\.md$/i.test(e.name || ''));
     const results = await Promise.all(
       files.map(async (file) => {
         const meta = {
           filename: file.name,
           path: file.path,
           sha: file.sha,
-          title: (file.name || '').replace(/\\.md$/i, ''),
+          title: (file.name || '').replace(/\.md$/i, ''),
           date: null,
           tags: [],
           categories: [],
@@ -695,9 +785,19 @@ async function handlePost(req, res, segments) {
   const filename = (req.query && req.query.filename ? String(req.query.filename) : '') || (segments[1] ? String(segments[1]) : '');
   if (req.method === 'GET') {
     if (!filename) return res.status(400).json({ error: 'Missing filename' });
-    const { content, sha } = await readText(owner, repo, headers, `${postsDir}/${filename}`);
     const payload = parseToken(getBearerToken(req));
     const isAdmin = payload && payload.role === 'admin';
+    let source = null;
+    if (shouldUseLocalPosts()) {
+      try {
+        source = await readLocalPost(filename);
+      } catch {
+        return res.status(404).json({ error: 'Not found' });
+      }
+    } else {
+      source = await readText(owner, repo, headers, `${postsDir}/${filename}`);
+    }
+    const { content, sha } = source;
     const parsed = extractFrontMatter(String(content || ''));
     const published = parsed.frontMatter && typeof parsed.frontMatter.published === 'boolean' ? parsed.frontMatter.published : true;
     const archived = parsed.frontMatter && typeof parsed.frontMatter.archived === 'boolean' ? parsed.frontMatter.archived : false;
@@ -713,12 +813,20 @@ async function handlePost(req, res, segments) {
   if (req.method === 'POST') {
     const fname = body.filename ? String(body.filename) : '';
     if (!fname || !content) return res.status(400).json({ error: 'Missing filename or content' });
+    if (shouldUseLocalPosts()) {
+      const result = await writeLocalPost(fname, content);
+      return res.status(200).json({ success: true, filename: fname, sha: result.sha || undefined });
+    }
     const result = await writeText(owner, repo, token, `${postsDir}/${fname}`, content, message || `Create ${fname}`);
     return res.status(200).json({ success: true, filename: fname, sha: result && result.content ? result.content.sha : undefined });
   }
 
   if (req.method === 'PUT') {
     if (!filename || !content) return res.status(400).json({ error: 'Missing filename or content' });
+    if (shouldUseLocalPosts()) {
+      const result = await writeLocalPost(filename, content);
+      return res.status(200).json({ success: true, filename, sha: result.sha || undefined });
+    }
     const sha = body.sha ? String(body.sha) : (await readText(owner, repo, headers, `${postsDir}/${filename}`)).sha;
     const result = await writeText(owner, repo, token, `${postsDir}/${filename}`, content, message || `Update ${filename}`, sha);
     return res.status(200).json({ success: true, filename, sha: result && result.content ? result.content.sha : undefined });
@@ -726,6 +834,14 @@ async function handlePost(req, res, segments) {
 
   if (req.method === 'DELETE') {
     if (!filename) return res.status(400).json({ error: 'Missing filename' });
+    if (shouldUseLocalPosts()) {
+      try {
+        await deleteLocalPost(filename);
+        return res.status(200).json({ success: true, filename });
+      } catch {
+        return res.status(404).json({ error: 'Not found' });
+      }
+    }
     const sha = body.sha ? String(body.sha) : (await readText(owner, repo, headers, `${postsDir}/${filename}`)).sha;
     await deleteFile(owner, repo, token, `${postsDir}/${filename}`, message || `Delete ${filename}`, sha);
     return res.status(200).json({ success: true, filename });
