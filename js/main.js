@@ -1177,6 +1177,7 @@ async function saveNovelChapterFromEditor() {
     currentNovelChapterFile = data.filename || filename;
     currentNovelChapterSha = data.sha || currentNovelChapterSha;
     showToast('保存成功');
+    frontNovelCache = null;
     await fetchNovels();
     await openNovelChapters(novelId);
   } catch (err) {
@@ -1473,17 +1474,14 @@ async function loadChapter(novelId, chapterFile) {
 
 async function renderFrontendNovels() {
   try {
-    let novels = Array.isArray(frontNovelCache) ? frontNovelCache : null;
-    if (!novels) {
-      const res = await fetch(apiUrl('/novels'));
-      const raw = await safeJson(res);
-      if (!res.ok) {
-        showToast(raw && raw.error ? `加载小说失败: ${raw.error}` : '加载小说失败');
-        return;
-      }
-      novels = Array.isArray(raw) ? raw : [];
-      frontNovelCache = novels;
+    const res = await fetch(apiUrl('/novels'));
+    const raw = await safeJson(res);
+    if (!res.ok) {
+      showToast(raw && raw.error ? `加载小说失败: ${raw.error}` : '加载小说失败');
+      return;
     }
+    const novels = Array.isArray(raw) ? raw : [];
+    frontNovelCache = novels;
 
     const tab = String(frontNovelsTab || 'all');
     let filtered = novels.slice();
@@ -2088,7 +2086,10 @@ async function toggleReaction(action) {
     return;
   }
   const id = String(currentFrontArticleId || '').trim();
-  if (!id) return;
+  if (!id) {
+    showToast('请先打开文章再操作');
+    return;
+  }
   try {
     const res = await fetch(apiUrl('/reactions'), {
       method: 'POST',
@@ -2885,8 +2886,15 @@ async function refreshNovelChaptersList() {
   const titleEl = document.getElementById('novelChaptersTitle');
   if (!listEl || !titleEl) return;
 
-  const res = await fetch(apiUrl(`/novel-chapter?novelId=${encodeURIComponent(currentNovelId)}`));
+  const res = await fetch(apiUrl(`/novel-chapter?novelId=${encodeURIComponent(currentNovelId)}`), { headers: withAuthHeaders({}) });
   const data = await safeJson(res) || {};
+  if (!res.ok) {
+    const msg = data && (data.error || data.message) ? String(data.error || data.message) : '加载失败';
+    showToast(`章节列表加载失败: ${msg}`);
+    listEl.innerHTML = `<div style="color:var(--admin-muted);font-size:13px;padding:.5rem 0">${escapeHtml(msg)}</div>`;
+    titleEl.textContent = '章节管理';
+    return;
+  }
   const chapters = Array.isArray(data.chapters) ? data.chapters : [];
   titleEl.textContent = data.novelTitle ? `章节管理 · ${data.novelTitle}` : '章节管理';
 
@@ -2923,8 +2931,12 @@ async function loadNovelChapterForEdit(novelId, chapterFile) {
   const filenameInput = document.getElementById('novelChapterFilename');
   if (filenameInput) filenameInput.value = chapterFile;
 
-  const res = await fetch(apiUrl(`/novel-chapter?novelId=${encodeURIComponent(novelId)}&chapterFile=${encodeURIComponent(chapterFile)}`));
+  const res = await fetch(apiUrl(`/novel-chapter?novelId=${encodeURIComponent(novelId)}&chapterFile=${encodeURIComponent(chapterFile)}`), { headers: withAuthHeaders({}) });
   const data = await safeJson(res) || {};
+  if (!res.ok) {
+    showToast(data && data.error ? `加载失败: ${data.error}` : '加载失败');
+    return;
+  }
   const contentInput = document.getElementById('novelChapterContent');
   if (contentInput) contentInput.value = String(data.content || '');
   currentNovelChapterSha = data.sha || null;
@@ -2962,6 +2974,7 @@ async function saveNovelChapter() {
   currentNovelChapterFile = data.filename || filename;
   currentNovelChapterSha = data.sha || currentNovelChapterSha;
   showToast('已保存');
+  frontNovelCache = null;
   await refreshNovelChaptersList();
 }
 
@@ -2994,6 +3007,7 @@ async function deleteNovelChapter() {
   if (filenameInput) filenameInput.value = '';
   if (contentInput) contentInput.value = '';
   showToast('已删除');
+  frontNovelCache = null;
   await refreshNovelChaptersList();
 }
 
