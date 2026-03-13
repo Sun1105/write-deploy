@@ -102,13 +102,12 @@ async function handleLogin() {
       CURRENT_USER = data.user;
       showToast('登录成功！欢迎回来 👋');
       updateNavUser();
-      setTimeout(() => {
-        if (CURRENT_USER && CURRENT_USER.role === 'admin') {
-          setMode('admin');
-        } else {
-          setMode('front');
-        }
-      }, 500);
+      if (CURRENT_USER && CURRENT_USER.role === 'admin') {
+        setMode('admin');
+      } else {
+        setMode('front');
+        showPage('home');
+      }
     } else {
       const msg = data.message || data.error || '登录失败';
       showToast(`登录失败: ${msg}`);
@@ -179,13 +178,35 @@ function updateNavUser() {
     const actions = document.querySelector('.nav-actions');
     if (!actions) return;
     const initial = CURRENT_USER.name ? String(CURRENT_USER.name).slice(0, 1) : 'U';
-    actions.innerHTML = `<div class="nav-avatar" onclick="setMode('admin')" title="进入后台">${escapeHtml(initial)}</div>`;
+    const title = CURRENT_USER.role === 'admin' ? '进入后台' : '个人信息';
+    actions.innerHTML = `<div class="nav-avatar" onclick="openUserCenter()" title="${escapeHtml(title)}">${escapeHtml(initial)}</div><button class="btn btn-ghost btn-sm" onclick="logout()">退出</button>`;
 
     const adminName = document.querySelector('.admin-user-name');
     const adminRole = document.querySelector('.admin-user-role');
     if (adminName) adminName.textContent = CURRENT_USER.name || CURRENT_USER.username || 'User';
     if (adminRole) adminRole.textContent = CURRENT_USER.role === 'admin' ? 'Administrator' : 'User';
   }
+}
+
+function updateNavGuest() {
+  const actions = document.querySelector('.nav-actions');
+  if (!actions) return;
+  actions.innerHTML = `<button class="btn btn-ghost btn-sm" onclick="showPage('login')">登录</button><button class="btn btn-primary btn-sm" onclick="showPage('register')">注册</button>`;
+}
+
+function logout() {
+  localStorage.removeItem('auth_token');
+  localStorage.removeItem('user_info');
+  CURRENT_USER = null;
+  updateNavGuest();
+  setMode('front');
+  showPage('home');
+}
+
+function openUserCenter() {
+  if (!CURRENT_USER) return showPage('login');
+  if (CURRENT_USER.role === 'admin') return setMode('admin');
+  showPage('profile');
 }
 
 // ── DATA FETCHING ──
@@ -1339,6 +1360,13 @@ async function showPage(name, param) {
   if (name === 'article' && param) {
     await loadArticle(param);
   }
+  if (name === 'profile') {
+    if (!CURRENT_USER) {
+      showPage('login');
+      return;
+    }
+    renderProfilePage();
+  }
   if (name === 'chapter' && param) {
     // param format: novelId/chapterFilename
     const [novelId, chapterFile] = param.split('/');
@@ -1353,6 +1381,29 @@ async function showPage(name, param) {
   if (name === 'home' || name === 'articles' || name === 'novels' || name === 'about') {
     trackView('page', name);
   }
+}
+
+function renderProfilePage() {
+  const avatar = document.getElementById('profileAvatar');
+  const nameEl = document.getElementById('profileName');
+  const metaEl = document.getElementById('profileMeta');
+  const usernameEl = document.getElementById('profileUsername');
+  const roleEl = document.getElementById('profileRole');
+  const createdEl = document.getElementById('profileCreatedAt');
+  if (!CURRENT_USER) return;
+
+  const name = CURRENT_USER.name || CURRENT_USER.username || 'User';
+  const username = CURRENT_USER.username || '-';
+  const role = CURRENT_USER.role || 'user';
+  const createdAt = CURRENT_USER.createdAt ? new Date(CURRENT_USER.createdAt).toLocaleString() : '-';
+  const initial = String(name).slice(0, 1) || 'U';
+
+  if (avatar) avatar.textContent = initial;
+  if (nameEl) nameEl.textContent = String(name);
+  if (metaEl) metaEl.textContent = `@${username}`;
+  if (usernameEl) usernameEl.textContent = String(username);
+  if (roleEl) roleEl.textContent = role === 'admin' ? '管理员' : '普通用户';
+  if (createdEl) createdEl.textContent = createdAt;
 }
 
 function trackView(kind, id) {
@@ -2831,6 +2882,8 @@ window.toggleFrontCommentLike = toggleFrontCommentLike;
 window.replyToComment = replyToComment;
 window.goPrevChapter = goPrevChapter;
 window.goNextChapter = goNextChapter;
+window.logout = logout;
+window.openUserCenter = openUserCenter;
 window.handleLogin = handleLogin;
 window.handleRegister = handleRegister;
 window.setMode = setMode;
