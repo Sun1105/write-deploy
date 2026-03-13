@@ -7,5 +7,15 @@
     "salt": "8c16880f24bdc0a105d6dac599c2a6f9",
     "hash": "bcf9ff7d6b5182ee834b629b82563809a642f82910f8853c25cb6fd1e6bf3232f75fbfddf774d813cdcf14c3ce7d7004c509e0198f66feadb8e87aa52d909e11",
     "createdAt": "2026-03-11T16:21:37.307Z"
+  },
+  {
+    "id": "65a8f008d9985a399d66dd09f0032544",
+    "username": "466492052@qq.com",
+    "name": "sun1105_2",
+    "role": "user",
+    "status": "active",
+    "salt": "4acae9fe86d782afbaa0855fa6841fa5",
+    "hash": "e094119ba403276e3a3b6449a6f73db2cc83be41eb325e1b4ac5ddce0418b3776ea6ada1042476f20fb9d5e110ec7b2f3ab9f4aa81ad7d30f70a801711bdc808",
+    "createdAt": "2026-03-13T01:19:49.072Z"
   }
 ]
