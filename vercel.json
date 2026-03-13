@@ -15,6 +15,7 @@
     { "source": "/api/novel-chapter", "destination": "/api/content?route=novel-chapter" },
     { "source": "/api/upload", "destination": "/api/content?route=upload" },
     { "source": "/api/view", "destination": "/api/content?route=view" },
+    { "source": "/api/reactions", "destination": "/api/content?route=reactions" },
 
     { "source": "/api/stats", "destination": "/api/admin?route=stats" },
     { "source": "/api/settings", "destination": "/api/admin?route=settings" },

@@ -9,6 +9,7 @@ let currentNovelId = null;
 let currentNovelChapterFile = null;
 let currentNovelChapterSha = null;
 let cachedNovelsForEditor = null;
+let currentNovelMetaId = null;
 let adminPostsCache = [];
 let adminPostFilter = 'all';
 let adminPostSearch = '';
@@ -36,6 +37,7 @@ let frontFeaturedCache = null;
 let frontLatestCache = null;
 let frontNovelCache = null;
 let frontChapterCtx = null;
+let currentFrontArticleId = '';
 
 function apiUrl(pathname) {
   const p = pathname.startsWith('/') ? pathname : `/${pathname}`;
@@ -297,6 +299,22 @@ async function fetchStats() {
           return `<div class="chart-bar-wrap"><div class="chart-bar" style="height:${h}%"></div><div class="chart-bar-label">${escapeHtml(label)}</div></div>`;
         })
         .join('');
+    }
+
+    const views30Bars = document.getElementById('dashboardViews30Bars');
+    const views30 = Array.isArray(data.views30Days) ? data.views30Days : [];
+    if (views30Bars) {
+      const max = Math.max(1, ...views30.map(d => Number(d && d.value ? d.value : 0)));
+      views30Bars.innerHTML = views30.length
+        ? views30
+            .map(d => {
+              const v = Number(d && d.value ? d.value : 0);
+              const h = Math.max(4, Math.round((v / max) * 100));
+              const label = d && d.label ? String(d.label) : '';
+              return `<div class="chart-bar-wrap"><div class="chart-bar" style="height:${h}%"></div><div class="chart-bar-label">${escapeHtml(label)}</div></div>`;
+            })
+            .join('')
+        : `<div style="color:var(--admin-muted);font-size:13px">暂无数据</div>`;
     }
 
     const topWrap = document.getElementById('dashboardTopPosts');
@@ -1485,11 +1503,13 @@ async function renderFrontendNovels() {
         const chapters = Number(n && n.chapters ? n.chapters : 0);
         const firstChapter = n && n.firstChapter ? String(n.firstChapter) : '';
         const id = n && n.id ? String(n.id) : '';
+        const cover = n && n.cover ? String(n.cover) : '';
         const canRead = Boolean(id && firstChapter);
         const click = canRead ? `showPage('chapter', '${id}/${firstChapter}')` : "showToast('暂无章节')";
         return `
           <div class="novel-list-card" onclick="${click}">
             <div class="novel-list-cover" style="background:${getRandomGradient(title)}">
+              ${cover ? `<img class="novel-cover-img" src="${escapeHtml(cover)}" alt="">` : ''}
               <div class="novel-list-cover-icon">📖</div>
               <div class="novel-list-cover-overlay"><div class="novel-list-title">${escapeHtml(title)}</div></div>
             </div>
@@ -1517,9 +1537,11 @@ async function renderFrontendNovels() {
         const chapters = Number(n && n.chapters ? n.chapters : 0);
         const id = n && n.id ? String(n.id) : '';
         const firstChapter = n && n.firstChapter ? String(n.firstChapter) : '';
+        const cover = n && n.cover ? String(n.cover) : '';
         return `
           <div class="novel-card" onclick="showPage('chapter', '${id}/${firstChapter}')">
             <div class="novel-cover">
+              ${cover ? `<img class="novel-cover-img" src="${escapeHtml(cover)}" alt="">` : ''}
               <div class="novel-cover-bg">📖</div>
               <div class="novel-cover-title">${escapeHtml(title)}</div>
             </div>
@@ -1545,6 +1567,7 @@ async function loadArticle(filename) {
       showToast(data && data.error ? `文章加载失败: ${data.error}` : '文章加载失败');
       return;
     }
+    currentFrontArticleId = String(filename || '');
     
     // Parse front matter manually since we get raw content
     const content = String(data.content || '');
@@ -1575,6 +1598,12 @@ async function loadArticle(filename) {
     const wordCount = String(body || '').replace(/\s+/g, '').length;
     const minutes = Math.max(1, Math.round(wordCount / 600));
     if (metaItems[1]) metaItems[1].textContent = `⏱ ${minutes} 分钟阅读`;
+    if (metaItems[2]) {
+      const cached = Array.isArray(frontPostsCache) ? frontPostsCache.find(p => p && String(p.filename || '') === String(filename)) : null;
+      const views = Number(cached && cached.views ? cached.views : 0);
+      metaItems[2].textContent = views ? `👁 ${views.toLocaleString()}` : `👁 --`;
+    }
+    if (metaItems[3]) metaItems[3].textContent = `💬 --`;
     
     // Update tags
      const tagContainer = document.querySelector('.article-tags');
@@ -1583,6 +1612,7 @@ async function loadArticle(filename) {
      // Load comments
      loadComments(filename);
      trackView('post', filename);
+     refreshReactions();
 
    } catch (err) {
      console.error(err);
@@ -1610,7 +1640,12 @@ function syncArticleMediaPanel() {
       const src = it.el && it.el.getAttribute ? String(it.el.getAttribute('src') || '') : '';
       return `<div class="media-item" data-i="${i}"><img class="media-img" src="${escapeHtml(src)}" alt=""></div>`;
     }
-    if (it.kind === 'video') return `<div class="media-item" data-i="${i}"><div class="media-img">🎬</div></div>`;
+    if (it.kind === 'video') {
+      const src = it.el && it.el.getAttribute ? String(it.el.getAttribute('src') || '') : '';
+      return src
+        ? `<div class="media-item" data-i="${i}"><video class="media-img media-video-thumb" muted playsinline preload="metadata" src="${escapeHtml(src)}"></video></div>`
+        : `<div class="media-item" data-i="${i}"><div class="media-img">🎬</div></div>`;
+    }
     return `<div class="media-item" data-i="${i}"><div class="media-img">🎵</div></div>`;
   }).join('');
   panel.querySelectorAll('.media-item').forEach(el => {
@@ -1662,6 +1697,8 @@ function syncArticleMediaPanel() {
      
      // Update count
      document.querySelector('.comments-title').textContent = `评论 · ${comments.length}`;
+     const metaItems = document.querySelectorAll('.article-meta-item');
+     if (metaItems[3] && String(currentFrontArticleId || '') === String(postId || '')) metaItems[3].textContent = `💬 ${comments.length}`;
      
      // Render list
      const list = container.querySelectorAll('.comment-item');
@@ -1824,6 +1861,7 @@ function renderPostCard(post, badgeText) {
   const filename = post && post.filename ? String(post.filename) : '';
   const dateText = post && post.date ? new Date(post.date).toLocaleDateString() : '';
   const cover = post && post.cover ? String(post.cover) : '';
+  const views = Number(post && post.views ? post.views : 0);
   const excerpt = post && typeof post.description === 'string' && post.description.trim()
     ? post.description.trim()
     : '点击阅读全文...';
@@ -1839,7 +1877,7 @@ function renderPostCard(post, badgeText) {
         <h3 class="card-title">${escapeHtml(title)}</h3>
         <p class="card-excerpt">${escapeHtml(excerpt)}</p>
         <div class="card-footer">
-          <div class="card-meta"><span>${escapeHtml(dateText)}</span></div>
+          <div class="card-meta"><span>${escapeHtml(dateText)}</span>${views ? `<span>👁 ${escapeHtml(views.toLocaleString())}</span>` : ''}</div>
         </div>
       </div>
     </div>
@@ -2015,6 +2053,57 @@ function frontOpenComment(postId, commentId) {
   window.__frontFocusCommentId = commentId || '';
   window.__frontScrollToComments = true;
   showPage('article', postId);
+}
+
+async function refreshReactions() {
+  const id = String(currentFrontArticleId || '').trim();
+  if (!id) return;
+  try {
+    const res = await fetch(apiUrl(`/reactions?kind=post&id=${encodeURIComponent(id)}`), { headers: withAuthHeaders({}) });
+    const data = await safeJson(res) || {};
+    if (!res.ok) return;
+    renderReactions(data);
+  } catch {
+  }
+}
+
+function renderReactions(data) {
+  const likeCountEl = document.getElementById('likeCount');
+  const favCountEl = document.getElementById('favoriteCount');
+  const btnLike = document.getElementById('btnLike');
+  const btnFav = document.getElementById('btnFavorite');
+  const likes = Number(data && data.likes ? data.likes : 0);
+  const favs = Number(data && data.favorites ? data.favorites : 0);
+  const liked = Boolean(data && data.liked);
+  const favorited = Boolean(data && data.favorited);
+  if (likeCountEl) likeCountEl.textContent = likes.toLocaleString();
+  if (favCountEl) favCountEl.textContent = favs.toLocaleString();
+  if (btnLike) btnLike.classList.toggle('active', liked);
+  if (btnFav) btnFav.classList.toggle('active', favorited);
+}
+
+async function toggleReaction(action) {
+  if (!CURRENT_USER) {
+    showPage('login');
+    return;
+  }
+  const id = String(currentFrontArticleId || '').trim();
+  if (!id) return;
+  try {
+    const res = await fetch(apiUrl('/reactions'), {
+      method: 'POST',
+      headers: withAuthHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify({ kind: 'post', id, action })
+    });
+    const data = await safeJson(res) || {};
+    if (!res.ok) {
+      showToast(data && data.error ? `操作失败: ${data.error}` : '操作失败');
+      return;
+    }
+    renderReactions(data);
+  } catch {
+    showToast('操作失败');
+  }
 }
 
 function toggleFrontCommentLike(commentId, el) {
@@ -2623,19 +2712,97 @@ async function editNovelMeta(novelId) {
       showToast(data.error ? `加载失败: ${data.error}` : '加载失败');
       return;
     }
+    openNovelMetaModal(novelId, data.meta || {});
+  } catch (err) {
+    console.error(err);
+    showToast('保存失败');
+  }
+}
 
-    const meta = data.meta || {};
-    const title = prompt('小说标题：', meta.title || '');
-    if (title == null) return;
-    const genre = prompt('类型：', meta.genre || '未分类');
-    if (genre == null) return;
-    const status = prompt('状态（ongoing/finished）：', meta.status || 'ongoing');
-    if (status == null) return;
+function openNovelMetaModal(novelId, meta) {
+  currentNovelMetaId = novelId;
+  const modal = document.getElementById('novelMetaModal');
+  if (!modal) return;
+  modal.classList.remove('hidden');
 
-    const put = await fetch(apiUrl(`/novel?id=${encodeURIComponent(novelId)}`), {
+  const titleEl = document.getElementById('novelMetaTitle');
+  const genreEl = document.getElementById('novelMetaGenre');
+  const statusEl = document.getElementById('novelMetaStatus');
+  const coverEl = document.getElementById('novelMetaCover');
+  if (titleEl) titleEl.value = meta && meta.title ? String(meta.title) : '';
+  if (genreEl) genreEl.value = meta && meta.genre ? String(meta.genre) : '未分类';
+  if (statusEl) statusEl.value = meta && meta.status ? String(meta.status) : 'ongoing';
+  if (coverEl) coverEl.value = meta && meta.cover ? String(meta.cover) : '';
+  syncNovelCoverPreview();
+}
+
+function closeNovelMetaModal() {
+  const modal = document.getElementById('novelMetaModal');
+  if (modal) modal.classList.add('hidden');
+  currentNovelMetaId = null;
+}
+
+function syncNovelCoverPreview() {
+  const coverEl = document.getElementById('novelMetaCover');
+  const preview = document.getElementById('novelMetaCoverPreview');
+  if (!preview) return;
+  const url = coverEl ? String(coverEl.value || '').trim() : '';
+  preview.innerHTML = url ? `<img src="${escapeHtml(url)}" alt="">` : '暂无封面';
+}
+
+async function uploadNovelCoverFile(file) {
+  if (!file) return;
+  if (!String(file.type || '').startsWith('image/')) {
+    showToast('请选择图片文件');
+    return;
+  }
+  const reader = new FileReader();
+  reader.onload = async (e) => {
+    const base64 = e.target.result;
+    try {
+      const res = await fetch(apiUrl('/upload'), {
+        method: 'POST',
+        headers: withAuthHeaders({ 'Content-Type': 'application/json' }),
+        body: JSON.stringify({ image: base64, filename: file.name })
+      });
+      const data = await safeJson(res) || {};
+      if (!res.ok || !data.success) {
+        showToast(data && data.error ? `上传失败: ${data.error}` : '上传失败');
+        return;
+      }
+      const coverEl = document.getElementById('novelMetaCover');
+      if (coverEl) coverEl.value = String(data.url || '');
+      syncNovelCoverPreview();
+      showToast('上传成功');
+    } catch (err) {
+      showToast('上传出错');
+    }
+  };
+  reader.readAsDataURL(file);
+}
+
+async function saveNovelMetaModal() {
+  if (!currentNovelMetaId) return;
+  const titleEl = document.getElementById('novelMetaTitle');
+  const genreEl = document.getElementById('novelMetaGenre');
+  const statusEl = document.getElementById('novelMetaStatus');
+  const coverEl = document.getElementById('novelMetaCover');
+
+  const title = titleEl ? String(titleEl.value || '').trim() : '';
+  const genre = genreEl ? String(genreEl.value || '').trim() : '未分类';
+  const status = statusEl ? String(statusEl.value || '').trim() : 'ongoing';
+  const cover = coverEl ? String(coverEl.value || '').trim() : '';
+
+  if (!title) {
+    showToast('请填写小说标题');
+    return;
+  }
+
+  try {
+    const put = await fetch(apiUrl(`/novel?id=${encodeURIComponent(currentNovelMetaId)}`), {
       method: 'PUT',
       headers: withAuthHeaders({ 'Content-Type': 'application/json' }),
-      body: JSON.stringify({ title, genre, status })
+      body: JSON.stringify({ title, genre, status, cover })
     });
     const putData = await safeJson(put) || {};
     if (!put.ok) {
@@ -2643,7 +2810,9 @@ async function editNovelMeta(novelId) {
       return;
     }
     showToast('保存成功');
+    closeNovelMetaModal();
     cachedNovelsForEditor = null;
+    frontNovelCache = null;
     await fetchNovels();
   } catch (err) {
     console.error(err);
@@ -2880,6 +3049,7 @@ window.setFrontArticlesPage = setFrontArticlesPage;
 window.frontOpenComment = frontOpenComment;
 window.toggleFrontCommentLike = toggleFrontCommentLike;
 window.replyToComment = replyToComment;
+window.toggleReaction = toggleReaction;
 window.goPrevChapter = goPrevChapter;
 window.goNextChapter = goNextChapter;
 window.logout = logout;
@@ -2899,6 +3069,10 @@ window.newPost = newPost;
 window.uploadMedia = uploadMedia;
 window.createNovel = createNovel;
 window.editNovelMeta = editNovelMeta;
+window.closeNovelMetaModal = closeNovelMetaModal;
+window.saveNovelMetaModal = saveNovelMetaModal;
+window.uploadNovelCoverFile = uploadNovelCoverFile;
+window.syncNovelCoverPreview = syncNovelCoverPreview;
 window.toggleNovelStatus = toggleNovelStatus;
 window.deleteNovel = deleteNovel;
 window.openNovelChapters = openNovelChapters;

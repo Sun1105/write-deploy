@@ -115,6 +115,10 @@
           <div class="article-meta-item">👁 --</div>
           <div class="article-meta-item">💬 --</div>
         </div>
+        <div class="article-actions">
+          <button class="reaction-btn" id="btnLike" onclick="toggleReaction('like')">👍 <span id="likeCount">0</span></button>
+          <button class="reaction-btn" id="btnFavorite" onclick="toggleReaction('favorite')">⭐ <span id="favoriteCount">0</span></button>
+        </div>
       </div>
     </div>
     <div class="container">
@@ -429,6 +433,16 @@
           </div>
 
           <div class="two-col-grid">
+            <div class="chart-card" style="grid-column:1 / -1">
+              <div class="chart-header">
+                <div class="chart-title">浏览量趋势</div>
+                <div class="chart-period">过去 30 天</div>
+              </div>
+              <div class="chart-bars" id="dashboardViews30Bars"></div>
+            </div>
+          </div>
+
+          <div class="two-col-grid">
             <div class="chart-card">
               <div class="chart-header">
                 <div class="chart-title">页面访问量 TOP 5</div>
@@ -652,6 +666,34 @@
               <div style="display:flex;flex-direction:column;gap:.6rem">
                 <input class="settings-input" id="novelChapterFilename" placeholder="章节文件名，如 001-第一章.md" />
                 <textarea class="editor-textarea" id="novelChapterContent" style="min-height:380px"></textarea>
+              </div>
+            </div>
+          </div>
+
+          <div class="admin-modal hidden" id="novelMetaModal">
+            <div class="admin-modal-backdrop" onclick="closeNovelMetaModal()"></div>
+            <div class="admin-modal-card">
+              <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px">
+                <div style="font-size:14px;font-weight:700;color:var(--admin-text)">编辑小说信息</div>
+                <button class="btn btn-admin-outline btn-sm" onclick="closeNovelMetaModal()">关闭</button>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:10px">
+                <input class="settings-input" id="novelMetaTitle" placeholder="小说标题" />
+                <input class="settings-input" id="novelMetaGenre" placeholder="类型，如 科幻" />
+                <select class="settings-input" id="novelMetaStatus">
+                  <option value="ongoing">ongoing（连载中）</option>
+                  <option value="finished">finished（已完结）</option>
+                </select>
+                <div style="display:flex;gap:10px;align-items:center">
+                  <input class="settings-input" id="novelMetaCover" placeholder="封面图 URL（可留空）" style="flex:1" oninput="syncNovelCoverPreview()" />
+                  <input type="file" id="novelCoverFileInput" accept="image/*" style="display:none" onchange="uploadNovelCoverFile(this.files[0])" />
+                  <button class="btn btn-admin-outline btn-sm" onclick="document.getElementById('novelCoverFileInput').click()">上传封面</button>
+                </div>
+                <div class="admin-modal-cover" id="novelMetaCoverPreview">暂无封面</div>
+              </div>
+              <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:14px">
+                <button class="btn btn-admin-outline btn-sm" onclick="closeNovelMetaModal()">取消</button>
+                <button class="btn btn-admin btn-sm" onclick="saveNovelMetaModal()">保存</button>
               </div>
             </div>
           </div>

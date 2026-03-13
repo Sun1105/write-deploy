@@ -19,6 +19,7 @@ module.exports = async function handler(req, res) {
     if (route === 'posts') return handlePosts(req, res);
     if (route === 'post') return handlePost(req, res, segments);
     if (route === 'featured') return handleFeatured(req, res);
+    if (route === 'reactions') return handleReactions(req, res);
 
     if (route === 'settings') return handleSettings(req, res);
 
@@ -69,6 +70,10 @@ function getLocalPostsDir() {
   return path.join(process.cwd(), 'data', 'posts');
 }
 
+function getLocalNovelsDir() {
+  return path.join(process.cwd(), 'data', 'novels');
+}
+
 async function listLocalPostFiles() {
   try {
     const dir = getLocalPostsDir();
@@ -98,6 +103,66 @@ async function writeLocalPost(filename, content) {
 async function deleteLocalPost(filename) {
   const full = path.join(getLocalPostsDir(), filename);
   await fs.promises.unlink(full);
+}
+
+async function listLocalNovelIds() {
+  try {
+    const dir = getLocalNovelsDir();
+    const entries = await fs.promises.readdir(dir, { withFileTypes: true });
+    return entries.filter(e => e && e.isDirectory && e.isDirectory()).map(e => e.name);
+  } catch {
+    return [];
+  }
+}
+
+async function readLocalNovelMeta(novelId) {
+  const metaPath = path.join(getLocalNovelsDir(), novelId, 'meta.json');
+  const raw = await fs.promises.readFile(metaPath, 'utf8');
+  return JSON.parse(raw || '{}');
+}
+
+async function writeLocalNovelMeta(novelId, meta) {
+  const dir = path.join(getLocalNovelsDir(), novelId);
+  await fs.promises.mkdir(dir, { recursive: true });
+  const metaPath = path.join(dir, 'meta.json');
+  await fs.promises.writeFile(metaPath, JSON.stringify(meta, null, 2), 'utf8');
+}
+
+async function listLocalNovelChapterFiles(novelId) {
+  try {
+    const dir = path.join(getLocalNovelsDir(), novelId);
+    const entries = await fs.promises.readdir(dir, { withFileTypes: true });
+    return entries
+      .filter(e => e && e.isFile && e.isFile() && /\.md$/i.test(e.name || ''))
+      .map(e => e.name)
+      .sort((a, b) => a.localeCompare(b));
+  } catch {
+    return [];
+  }
+}
+
+async function readLocalNovelChapter(novelId, chapterFile) {
+  const full = path.join(getLocalNovelsDir(), novelId, chapterFile);
+  const content = await fs.promises.readFile(full, 'utf8');
+  return { content, sha: null };
+}
+
+async function writeLocalNovelChapter(novelId, chapterFile, content) {
+  const dir = path.join(getLocalNovelsDir(), novelId);
+  await fs.promises.mkdir(dir, { recursive: true });
+  const full = path.join(dir, chapterFile);
+  await fs.promises.writeFile(full, String(content || ''), 'utf8');
+  return { sha: null };
+}
+
+async function deleteLocalNovelChapter(novelId, chapterFile) {
+  const full = path.join(getLocalNovelsDir(), novelId, chapterFile);
+  await fs.promises.unlink(full);
+}
+
+async function deleteLocalNovel(novelId) {
+  const dir = path.join(getLocalNovelsDir(), novelId);
+  await fs.promises.rm(dir, { recursive: true, force: true });
 }
 
 function shouldUseLocalPosts() {
@@ -273,6 +338,15 @@ function extractFrontMatter(markdown) {
     else if (key === 'categories') out.categories = parseInlineArray(value);
   }
   return { frontMatter: out, body };
+}
+
+function extractFirstImageUrl(markdownBody) {
+  const s = String(markdownBody || '');
+  const md = s.match(/!\[[^\]]*]\(([^)\s]+)(?:\s+["'][^"']*["'])?\)/);
+  if (md && md[1]) return String(md[1]);
+  const html = s.match(/<img[^>]+src=["']([^"']+)["'][^>]*>/i);
+  if (html && html[1]) return String(html[1]);
+  return '';
 }
 
 function getAuthSecret() {
@@ -562,40 +636,85 @@ async function handleStats(req, res) {
   const commentToday = commentList.filter(c => c && c.date && String(c.date).slice(0, 10) === todayKey).length;
   const commentYesterday = commentList.filter(c => c && c.date && String(c.date).slice(0, 10) === yesterdayKey).length;
 
+  const views30Days = (() => {
+    const days = [];
+    const now = new Date();
+    const start = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+    start.setUTCDate(start.getUTCDate() - 29);
+    for (let i = 0; i < 30; i += 1) {
+      const d = new Date(start);
+      d.setUTCDate(start.getUTCDate() + i);
+      const key = d.toISOString().slice(0, 10);
+      days.push({ label: `${d.getUTCMonth() + 1}/${d.getUTCDate()}`, value: Number(daily[key] || 0) });
+    }
+    return days;
+  })();
+
   const pageViews = viewData.pages && typeof viewData.pages === 'object' ? viewData.pages : {};
   const postViews = viewData.posts && typeof viewData.posts === 'object' ? viewData.posts : {};
+  const knownPages = new Set(['home', 'articles', 'novels', 'about']);
   const topViewedPages = Object.entries(pageViews)
     .map(([id, count]) => ({ id: String(id), count: Number(count || 0) }))
+    .filter(x => knownPages.has(x.id))
     .sort((a, b) => b.count - a.count)
     .slice(0, 5);
 
-  const entries = await listDir(owner, repo, headers, postsDir);
-  const postFiles = entries.filter(e => e && e.type === 'file' && /\\.md$/i.test(e.name || ''));
+  const posts = await (async () => {
+    if (shouldUseLocalPosts()) {
+      const files = await listLocalPostFiles();
+      return await Promise.all(
+        files.map(async (name) => {
+          try {
+            const { content } = await readLocalPost(name);
+            const parsed = extractFrontMatter(String(content || ''));
+            const fm = parsed.frontMatter || {};
+            return {
+              filename: name,
+              title: fm.title || String(name || '').replace(/\.md$/i, ''),
+              date: fm.date || new Date().toISOString(),
+              published: typeof fm.published === 'boolean' ? fm.published : true,
+              archived: typeof fm.archived === 'boolean' ? fm.archived : false
+            };
+          } catch {
+            return {
+              filename: name,
+              title: String(name || '').replace(/\.md$/i, ''),
+              date: new Date().toISOString(),
+              published: true,
+              archived: false
+            };
+          }
+        })
+      );
+    }
 
-  const posts = await Promise.all(
-    postFiles.map(async (f) => {
-      try {
-        const { content } = await readText(owner, repo, headers, `${postsDir}/${f.name}`);
-        const parsed = extractFrontMatter(String(content || ''));
-        const fm = parsed.frontMatter || {};
-        return {
-          filename: f.name,
-          title: fm.title || String(f.name || '').replace(/\\.md$/i, ''),
-          date: fm.date || new Date().toISOString(),
-          published: typeof fm.published === 'boolean' ? fm.published : true,
-          archived: typeof fm.archived === 'boolean' ? fm.archived : false
-        };
-      } catch {
-        return {
-          filename: f.name,
-          title: String(f.name || '').replace(/\\.md$/i, ''),
-          date: new Date().toISOString(),
-          published: true,
-          archived: false
-        };
-      }
-    })
-  );
+    const entries = await listDir(owner, repo, headers, postsDir);
+    const postFiles = entries.filter(e => e && e.type === 'file' && /\.md$/i.test(e.name || ''));
+    return await Promise.all(
+      postFiles.map(async (f) => {
+        try {
+          const { content } = await readText(owner, repo, headers, `${postsDir}/${f.name}`);
+          const parsed = extractFrontMatter(String(content || ''));
+          const fm = parsed.frontMatter || {};
+          return {
+            filename: f.name,
+            title: fm.title || String(f.name || '').replace(/\.md$/i, ''),
+            date: fm.date || new Date().toISOString(),
+            published: typeof fm.published === 'boolean' ? fm.published : true,
+            archived: typeof fm.archived === 'boolean' ? fm.archived : false
+          };
+        } catch {
+          return {
+            filename: f.name,
+            title: String(f.name || '').replace(/\.md$/i, ''),
+            date: new Date().toISOString(),
+            published: true,
+            archived: false
+          };
+        }
+      })
+    );
+  })();
 
   const archivedPostCount = posts.filter(p => p && p.archived === true).length;
   const draftPostCount = posts.filter(p => p && p.archived !== true && p.published === false).length;
@@ -654,6 +773,7 @@ async function handleStats(req, res) {
       title: String(postTitleByFilename.get(String(filename)) || String(filename).replace(/\.md$/i, '')),
       count: Number(count || 0)
     }))
+    .filter(p => postTitleByFilename.has(p.filename))
     .sort((a, b) => b.count - a.count)
     .slice(0, 5);
 
@@ -676,6 +796,7 @@ async function handleStats(req, res) {
     publishedPostYesterday,
     statsUpdatedAt,
     activity14Days,
+    views30Days,
     topViewedPages,
     topViewedPosts,
     commentCountsByPost,
@@ -725,6 +846,8 @@ async function handlePosts(req, res) {
   const isAdmin = payload && payload.role === 'admin';
   if (shouldUseLocalPosts()) {
     try {
+      const viewsLocal = await readLocalJsonOr('views.json', { posts: {} });
+      const viewPosts = viewsLocal && typeof viewsLocal === 'object' && viewsLocal.posts && typeof viewsLocal.posts === 'object' ? viewsLocal.posts : {};
       const files = await listLocalPostFiles();
       const results = await Promise.all(
         files.map(async (name) => {
@@ -738,6 +861,7 @@ async function handlePosts(req, res) {
             categories: [],
             description: '',
             cover: '',
+            views: Number(Object.prototype.hasOwnProperty.call(viewPosts, name) ? viewPosts[name] : 0),
             published: true,
             archived: false
           };
@@ -751,6 +875,7 @@ async function handlePosts(req, res) {
             if (Array.isArray(fm.categories)) meta.categories = fm.categories;
             if (typeof fm.description === 'string') meta.description = fm.description;
             if (typeof fm.cover === 'string') meta.cover = fm.cover;
+            if (!meta.cover) meta.cover = extractFirstImageUrl(parsed.body);
             if (typeof fm.published === 'boolean') meta.published = fm.published;
             if (typeof fm.archived === 'boolean') meta.archived = fm.archived;
             if (!meta.date) meta.date = new Date().toISOString();
@@ -773,6 +898,9 @@ async function handlePosts(req, res) {
   const headers = githubHeaders(token);
   const dirPath = 'data/posts';
   try {
+    const views = await readJsonFileOr(owner, repo, headers, 'data/views.json', { posts: {} });
+    const viewData = views && views.data && typeof views.data === 'object' ? views.data : { posts: {} };
+    const viewPosts = viewData.posts && typeof viewData.posts === 'object' ? viewData.posts : {};
     const entries = await listDir(owner, repo, headers, dirPath);
     const files = entries.filter(e => e && e.type === 'file' && /\.md$/i.test(e.name || ''));
     const results = await Promise.all(
@@ -787,6 +915,7 @@ async function handlePosts(req, res) {
           categories: [],
           description: '',
           cover: '',
+          views: Number(Object.prototype.hasOwnProperty.call(viewPosts, file.name) ? viewPosts[file.name] : 0),
           published: true,
           archived: false
         };
@@ -800,6 +929,7 @@ async function handlePosts(req, res) {
           if (Array.isArray(fm.categories)) meta.categories = fm.categories;
           if (typeof fm.description === 'string') meta.description = fm.description;
           if (typeof fm.cover === 'string') meta.cover = fm.cover;
+          if (!meta.cover) meta.cover = extractFirstImageUrl(parsed.body);
           if (typeof fm.published === 'boolean') meta.published = fm.published;
           if (typeof fm.archived === 'boolean') meta.archived = fm.archived;
           if (!meta.date) meta.date = new Date().toISOString();
@@ -1089,6 +1219,104 @@ async function handleFeatured(req, res) {
   return res.status(200).json({ featured: top, totalViews });
 }
 
+async function handleReactions(req, res) {
+  const { owner, repo, token } = getGithubConfig();
+  const headers = githubHeaders(token);
+  const filePath = 'data/reactions.json';
+  const fallback = { counts: {}, users: {}, updatedAt: null };
+
+  const kind = (req.query && req.query.kind ? String(req.query.kind) : '') || (req.body && req.body.kind ? String(req.body.kind) : 'post');
+  const id = (req.query && req.query.id ? String(req.query.id) : '') || (req.body && req.body.id ? String(req.body.id) : '');
+  if (!kind || !id) return res.status(400).json({ error: 'Missing kind or id' });
+  if (!['post'].includes(kind)) return res.status(400).json({ error: 'Invalid kind' });
+  if (id.length > 400) return res.status(400).json({ error: 'Invalid id' });
+
+  const key = `${kind}:${id}`;
+  const existing = shouldUseLocalPosts()
+    ? { data: await readLocalJsonOr('reactions.json', fallback), sha: null }
+    : await readJsonFileOr(owner, repo, headers, filePath, fallback);
+  const data = existing && existing.data && typeof existing.data === 'object' ? existing.data : fallback;
+  const counts = data.counts && typeof data.counts === 'object' ? { ...data.counts } : {};
+  const users = data.users && typeof data.users === 'object' ? { ...data.users } : {};
+
+  const item = counts[key] && typeof counts[key] === 'object' ? { ...counts[key] } : { likes: 0, favorites: 0 };
+  item.likes = Number(item.likes || 0);
+  item.favorites = Number(item.favorites || 0);
+
+  const payload = parseToken(getBearerToken(req));
+  const uid = payload && payload.sub ? String(payload.sub) : '';
+  const userRecRaw = uid && users[uid] && typeof users[uid] === 'object' ? users[uid] : { likes: {}, favorites: {} };
+  const userRec = {
+    likes: userRecRaw.likes && typeof userRecRaw.likes === 'object' ? { ...userRecRaw.likes } : {},
+    favorites: userRecRaw.favorites && typeof userRecRaw.favorites === 'object' ? { ...userRecRaw.favorites } : {}
+  };
+
+  if (req.method === 'GET') {
+    return res.status(200).json({
+      kind,
+      id,
+      likes: item.likes,
+      favorites: item.favorites,
+      liked: uid ? Boolean(userRec.likes[key]) : false,
+      favorited: uid ? Boolean(userRec.favorites[key]) : false
+    });
+  }
+
+  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+  const user = await requireUser(req);
+  const userId = user && user.id ? String(user.id) : '';
+  if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+  const body = req.body || {};
+  const action = body.action ? String(body.action) : '';
+  if (!['like', 'favorite'].includes(action)) return res.status(400).json({ error: 'Invalid action' });
+
+  const current = users[userId] && typeof users[userId] === 'object' ? users[userId] : { likes: {}, favorites: {} };
+  const nextUser = {
+    likes: current.likes && typeof current.likes === 'object' ? { ...current.likes } : {},
+    favorites: current.favorites && typeof current.favorites === 'object' ? { ...current.favorites } : {}
+  };
+  const nextItem = { likes: item.likes, favorites: item.favorites };
+
+  if (action === 'like') {
+    const liked = Boolean(nextUser.likes[key]);
+    if (liked) {
+      delete nextUser.likes[key];
+      nextItem.likes = Math.max(0, nextItem.likes - 1);
+    } else {
+      nextUser.likes[key] = true;
+      nextItem.likes += 1;
+    }
+  } else {
+    const favorited = Boolean(nextUser.favorites[key]);
+    if (favorited) {
+      delete nextUser.favorites[key];
+      nextItem.favorites = Math.max(0, nextItem.favorites - 1);
+    } else {
+      nextUser.favorites[key] = true;
+      nextItem.favorites += 1;
+    }
+  }
+
+  counts[key] = nextItem;
+  users[userId] = nextUser;
+  const next = { counts, users, updatedAt: new Date().toISOString() };
+
+  if (shouldUseLocalPosts()) {
+    await writeLocalJson('reactions.json', next);
+  } else {
+    await writeJsonFile(owner, repo, token, filePath, next, existing.sha, `Update reactions ${action} ${key}`);
+  }
+
+  return res.status(200).json({
+    kind,
+    id,
+    likes: nextItem.likes,
+    favorites: nextItem.favorites,
+    liked: Boolean(nextUser.likes[key]),
+    favorited: Boolean(nextUser.favorites[key])
+  });
+}
+
 function extractBase64(data) {
   if (typeof data !== 'string') return null;
   const m = data.match(/^data:([A-Za-z-+/]+);base64,(.+)$/);
@@ -1137,9 +1365,30 @@ async function handleUpload(req, res) {
 
 async function handleNovels(req, res) {
   if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
+  const baseDir = 'data/novels';
+  if (shouldUseLocalPosts()) {
+    try {
+      const ids = await listLocalNovelIds();
+      const novels = await Promise.all(
+        ids.map(async (id) => {
+          let meta = { id, title: id, genre: '未分类', status: 'ongoing' };
+          try {
+            const m = await readLocalNovelMeta(id);
+            meta = { ...meta, ...(m && typeof m === 'object' ? m : {}) };
+          } catch {
+          }
+          const chapters = await listLocalNovelChapterFiles(id);
+          return { ...meta, id, chapters: chapters.length, firstChapter: chapters[0] || null };
+        })
+      );
+      return res.status(200).json(novels);
+    } catch {
+      return res.status(200).json([]);
+    }
+  }
+
   const { owner, repo, token } = getGithubConfig();
   const headers = githubHeaders(token);
-  const baseDir = 'data/novels';
   try {
     const list = await listDir(owner, repo, headers, baseDir);
     const dirs = list.filter(e => e && e.type === 'dir');
@@ -1159,9 +1408,67 @@ async function handleNovels(req, res) {
 }
 
 async function handleNovel(req, res) {
+  const baseDir = 'data/novels';
+  if (shouldUseLocalPosts()) {
+    if (req.method === 'GET') {
+      const id = req.query && req.query.id ? String(req.query.id) : '';
+      if (!id) return res.status(400).json({ error: 'Missing id' });
+      let meta = { id, title: id, genre: '未分类', status: 'ongoing' };
+      try {
+        meta = { ...meta, ...(await readLocalNovelMeta(id)) };
+      } catch {
+      }
+      const chapters = await listLocalNovelChapterFiles(id);
+      return res.status(200).json({ meta, chapters });
+    }
+
+    await requireAdmin(req);
+
+    if (req.method === 'POST') {
+      const body = req.body || {};
+      const title = body.title ? String(body.title).trim() : '';
+      const genre = body.genre ? String(body.genre).trim() : '未分类';
+      if (!title) return res.status(400).json({ success: false, error: 'Missing title' });
+      const id = `${Date.now()}-${slugify(title)}`;
+      const cover = body.cover ? String(body.cover).trim() : '';
+      const meta = { id, title, genre, status: 'ongoing', cover, created: new Date().toISOString(), updated: new Date().toISOString() };
+      await writeLocalNovelMeta(id, meta);
+      return res.status(200).json({ success: true, novel: meta });
+    }
+
+    if (req.method === 'PUT') {
+      const id = req.query && req.query.id ? String(req.query.id) : '';
+      if (!id) return res.status(400).json({ error: 'Missing id' });
+      const body = req.body || {};
+      let existing = { id, title: id, genre: '未分类', status: 'ongoing' };
+      try {
+        existing = { ...existing, ...(await readLocalNovelMeta(id)) };
+      } catch {
+      }
+      const next = { ...(existing || {}) };
+      if (body.title !== undefined) next.title = String(body.title).trim();
+      if (body.genre !== undefined) next.genre = String(body.genre).trim();
+      if (body.status !== undefined) next.status = String(body.status).trim();
+      if (body.cover !== undefined) next.cover = String(body.cover).trim();
+      next.id = id;
+      if (!next.created) next.created = new Date().toISOString();
+      next.updated = new Date().toISOString();
+      await writeLocalNovelMeta(id, next);
+      return res.status(200).json({ success: true, novel: next });
+    }
+
+    if (req.method === 'DELETE') {
+      const id = req.query && req.query.id ? String(req.query.id) : '';
+      if (!id) return res.status(400).json({ error: 'Missing id' });
+      await deleteLocalNovel(id);
+      return res.status(200).json({ success: true });
+    }
+
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
+
   const { owner, repo, token } = getGithubConfig();
   const headers = githubHeaders(token);
-  const baseDir = 'data/novels';
 
   if (req.method === 'GET') {
     const id = req.query && req.query.id ? String(req.query.id) : '';
@@ -1181,7 +1488,8 @@ async function handleNovel(req, res) {
     if (!title) return res.status(400).json({ success: false, error: 'Missing title' });
     const id = `${Date.now()}-${slugify(title)}`;
     const metaPath = `${baseDir}/${id}/meta.json`;
-    const meta = { id, title, genre, status: 'ongoing', created: new Date().toISOString(), updated: new Date().toISOString() };
+    const cover = body.cover ? String(body.cover).trim() : '';
+    const meta = { id, title, genre, status: 'ongoing', cover, created: new Date().toISOString(), updated: new Date().toISOString() };
     await writeText(owner, repo, token, metaPath, JSON.stringify(meta, null, 2), `Create novel ${id}`);
     return res.status(200).json({ success: true, novel: meta });
   }
@@ -1195,6 +1503,7 @@ async function handleNovel(req, res) {
     if (body.title !== undefined) next.title = String(body.title).trim();
     if (body.genre !== undefined) next.genre = String(body.genre).trim();
     if (body.status !== undefined) next.status = String(body.status).trim();
+    if (body.cover !== undefined) next.cover = String(body.cover).trim();
     next.id = id;
     if (!next.created) next.created = new Date().toISOString();
     next.updated = new Date().toISOString();
@@ -1228,14 +1537,73 @@ function slugify(input) {
 }
 
 async function handleNovelChapter(req, res) {
-  const { owner, repo, token } = getGithubConfig();
-  const headers = githubHeaders(token);
   const body = req.body || {};
   const novelId = (req.query && req.query.novelId ? String(req.query.novelId) : '') || (body.novelId ? String(body.novelId) : '');
   const chapterFile = (req.query && req.query.chapterFile ? String(req.query.chapterFile) : '') || (body.filename ? String(body.filename) : '');
   if (!novelId) return res.status(400).json({ error: 'Missing novelId' });
 
   const baseDir = `data/novels/${novelId}`;
+  if (shouldUseLocalPosts()) {
+    let meta = { id: novelId, title: novelId, genre: '未分类', status: 'ongoing' };
+    try {
+      meta = { ...meta, ...(await readLocalNovelMeta(novelId)) };
+    } catch {
+    }
+    const files = await listLocalNovelChapterFiles(novelId);
+    const chapters = files.map(name => ({ filename: name, title: String(name || '').replace(/\.md$/i, '') }));
+
+    if (req.method === 'GET') {
+      if (!chapterFile) {
+        return res.status(200).json({
+          novelTitle: meta && meta.title ? meta.title : novelId,
+          chapters
+        });
+      }
+      const normalized = normalizeChapterFilename(chapterFile);
+      try {
+        const chapter = await readLocalNovelChapter(novelId, normalized);
+        return res.status(200).json({
+          novelTitle: meta && meta.title ? meta.title : novelId,
+          title: normalized.replace(/\.md$/i, ''),
+          filename: normalized,
+          sha: null,
+          content: chapter.content,
+          chapters
+        });
+      } catch {
+        return res.status(404).json({ error: 'Chapter not found' });
+      }
+    }
+
+    await requireAdmin(req);
+    const filename = normalizeChapterFilename(chapterFile);
+
+    if (req.method === 'POST') {
+      const content = typeof body.content === 'string' ? body.content : '';
+      await writeLocalNovelChapter(novelId, filename, content);
+      return res.status(200).json({ success: true, filename, sha: null });
+    }
+
+    if (req.method === 'PUT') {
+      const content = typeof body.content === 'string' ? body.content : '';
+      await writeLocalNovelChapter(novelId, filename, content);
+      return res.status(200).json({ success: true, filename, sha: null });
+    }
+
+    if (req.method === 'DELETE') {
+      try {
+        await deleteLocalNovelChapter(novelId, filename);
+      } catch {
+        return res.status(404).json({ error: 'Chapter not found' });
+      }
+      return res.status(200).json({ success: true, filename });
+    }
+
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  const { owner, repo, token } = getGithubConfig();
+  const headers = githubHeaders(token);
   const meta = await readJsonFileOr(owner, repo, headers, `${baseDir}/meta.json`, { title: novelId });
   const list = await listDir(owner, repo, headers, baseDir);
   const chapters = list
