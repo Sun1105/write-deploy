@@ -1,9 +1,9 @@
 {
   "id": "1773469053175-novel",
   "title": "我的小说",
-  "genre": "未分类",
+  "genre": "仙侠",
   "status": "ongoing",
-  "cover": "",
+  "cover": "https://raw.githubusercontent.com/Sun1105/write-deploy/main/images/青龙1.png?v=1773469118628",
   "created": "2026-03-14T06:17:33.175Z",
-  "updated": "2026-03-14T06:17:33.175Z"
+  "updated": "2026-03-14T06:18:45.390Z"
 }
