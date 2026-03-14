@@ -252,8 +252,11 @@ async function githubJson(url, options) {
 }
 
 async function getContent(owner, repo, headers, filePath) {
+  const { branch } = getGithubConfig();
   const ep = encodePath(filePath);
-  return githubJson(`https://api.github.com/repos/${owner}/${repo}/contents/${ep}`, {
+  const url = new URL(`https://api.github.com/repos/${owner}/${repo}/contents/${ep}`);
+  if (branch) url.searchParams.set('ref', branch);
+  return githubJson(String(url), {
     method: 'GET',
     headers
   });
@@ -282,11 +285,13 @@ async function writeText(owner, repo, token, filePath, content, message, sha) {
     err.status = 500;
     throw err;
   }
+  const { branch } = getGithubConfig();
   const ep = encodePath(filePath);
   const body = {
     message: message || `Update ${filePath}`,
     content: Buffer.from(String(content || '')).toString('base64')
   };
+  if (branch) body.branch = branch;
   if (sha) body.sha = sha;
   const data = await githubJson(`https://api.github.com/repos/${owner}/${repo}/contents/${ep}`, {
     method: 'PUT',
@@ -302,11 +307,13 @@ async function deleteFile(owner, repo, token, filePath, message, sha) {
     err.status = 500;
     throw err;
   }
+  const { branch } = getGithubConfig();
   const ep = encodePath(filePath);
   const body = {
     message: message || `Delete ${filePath}`,
     sha
   };
+  if (branch) body.branch = branch;
   const data = await githubJson(`https://api.github.com/repos/${owner}/${repo}/contents/${ep}`, {
     method: 'DELETE',
     headers: githubHeaders(token),
