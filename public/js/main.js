@@ -510,14 +510,20 @@ async function fetchStats() {
               const filename = p && p.filename ? String(p.filename) : '';
               const title = p && p.title ? String(p.title) : '';
               const count = Number(p && p.count ? p.count : 0);
+              const kind = p && p.kind ? String(p.kind) : 'post';
+              const metric = p && p.metric ? String(p.metric) : 'comments';
+              const chapter = p && p.chapter ? String(p.chapter) : '';
               const no = String(idx + 1).padStart(2, '0');
               const color = colors[idx] || 'var(--admin-accent)';
+              const icon = kind === 'chapter' ? '📖' : '📝';
+              const countText = metric === 'views' ? `👁 ${count}` : `💬 ${count}`;
               return `
                 <div style="display:flex;align-items:center;gap:.75rem">
                   <span style="font-family:'DM Mono',monospace;font-size:11px;color:${color};width:20px">${no}</span>
-                  <div style="flex:1;font-size:13.5px;color:rgba(249,250,251,.8)">${escapeHtml(title)}</div>
-                  <span style="font-family:'DM Mono',monospace;font-size:11.5px;color:var(--admin-muted)">${count}</span>
-                  <button class="btn btn-admin-outline btn-sm" onclick="dashboardEditPost('${filename}')">编辑</button>
+                  <div style="flex:1;font-size:13.5px;color:rgba(249,250,251,.8);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHtml(`${icon} ${title}`)}</div>
+                  <span style="font-family:'DM Mono',monospace;font-size:11.5px;color:var(--admin-muted)">${escapeHtml(countText)}</span>
+                  ${filename ? `<button class="btn btn-admin-outline btn-sm" onclick="dashboardEditPost('${filename}')">编辑</button>` : ''}
+                  ${!filename && chapter ? `<button class="btn btn-admin-outline btn-sm" onclick="setMode('front');showPage('chapter','${escapeJsString(chapter)}')">阅读</button>` : ''}
                 </div>
               `;
             })
@@ -566,13 +572,17 @@ async function fetchStats() {
               const filename = p && p.filename ? String(p.filename) : '';
               const title = p && p.title ? String(p.title) : filename.replace(/\.md$/i, '');
               const count = Number(p && p.count ? p.count : 0);
+              const kind = p && p.kind ? String(p.kind) : 'post';
+              const chapter = p && p.chapter ? String(p.chapter) : '';
               const no = String(idx + 1).padStart(2, '0');
+              const icon = kind === 'chapter' ? '📖' : '📝';
               return `
                 <div style="display:flex;align-items:center;gap:.75rem">
                   <span style="font-family:'DM Mono',monospace;font-size:11px;color:var(--admin-muted);width:20px">${no}</span>
-                  <div style="flex:1;font-size:13.5px;color:rgba(249,250,251,.8);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHtml(title)}</div>
+                  <div style="flex:1;font-size:13.5px;color:rgba(249,250,251,.8);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHtml(`${icon} ${title}`)}</div>
                   <span style="font-family:'DM Mono',monospace;font-size:11.5px;color:var(--admin-muted)">${count.toLocaleString()}</span>
-                  <button class="btn btn-admin-outline btn-sm" onclick="dashboardEditPost('${filename}')">编辑</button>
+                  ${filename ? `<button class="btn btn-admin-outline btn-sm" onclick="dashboardEditPost('${filename}')">编辑</button>` : ''}
+                  ${!filename && chapter ? `<button class="btn btn-admin-outline btn-sm" onclick="setMode('front');showPage('chapter','${escapeJsString(chapter)}')">阅读</button>` : ''}
                 </div>
               `;
             })
@@ -636,7 +646,7 @@ async function fetchStats() {
                       <div style="font-size:13.5px;color:rgba(249,250,251,.85);font-weight:600">${escapeHtml(user)}</div>
                       <span style="font-size:12px;color:${statusColor}">${escapeHtml(statusLabel)}</span>
                     </div>
-                    <div style="font-size:12px;color:var(--admin-muted)">${escapeHtml(date)} · ${escapeHtml(post)}</div>
+                    <div style="font-size:12px;color:var(--admin-muted)">${escapeHtml(date)}</div>
                     <div style="margin-top:.25rem;font-size:13px;color:rgba(249,250,251,.78);line-height:1.55">${escapeHtml(snippet)}</div>
                   </div>
                   <div style="display:flex;gap:.35rem;flex-wrap:wrap;justify-content:flex-end">

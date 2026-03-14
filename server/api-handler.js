@@ -601,7 +601,7 @@ async function handleLogin(req, res) {
   const expectedPassword = process.env.ADMIN_PASSWORD ? String(process.env.ADMIN_PASSWORD) : '';
   if (expectedUsername && expectedPassword && username === expectedUsername && password === expectedPassword) {
     const user = { id: 'admin', username, name: username, role: 'admin' };
-    return res.status(200).json({ success: true, token: issueToken(user), user: { name: user.name, role: user.role, username: user.username } });
+    return res.status(200).json({ success: true, token: issueToken(user), user: { name: user.name, role: user.role, username: user.username, createdAt: null } });
   }
 
   if (shouldUseLocalPosts()) {
@@ -615,7 +615,7 @@ async function handleLogin(req, res) {
     const computed = hashPassword(password, salt);
     if (computed !== hash) return res.status(401).json({ success: false, message: '用户名或密码错误' });
     const user = { id: found.id, username: found.username, name: found.name || found.username, role: found.role || 'user' };
-    return res.status(200).json({ success: true, token: issueToken(user), user: { name: user.name, role: user.role, username: user.username } });
+    return res.status(200).json({ success: true, token: issueToken(user), user: { name: user.name, role: user.role, username: user.username, createdAt: found.createdAt || null } });
   }
 
   const { owner, repo, token } = getGithubConfig();
@@ -633,7 +633,7 @@ async function handleLogin(req, res) {
   if (computed !== hash) return res.status(401).json({ success: false, message: '用户名或密码错误' });
 
   const user = { id: found.id, username: found.username, name: found.name || found.username, role: found.role || 'user' };
-  return res.status(200).json({ success: true, token: issueToken(user), user: { name: user.name, role: user.role, username: user.username } });
+  return res.status(200).json({ success: true, token: issueToken(user), user: { name: user.name, role: user.role, username: user.username, createdAt: found.createdAt || null } });
 }
 
 async function handleRegister(req, res) {
@@ -660,7 +660,7 @@ async function handleRegister(req, res) {
     const user = { id: randomId(), username, name: name || username, role, status: 'active', salt, hash, createdAt: new Date().toISOString() };
     users.push(user);
     await writeLocalJson('users.json', users);
-    return res.status(200).json({ success: true, user: { name: user.name, role: user.role, username: user.username } });
+    return res.status(200).json({ success: true, user: { name: user.name, role: user.role, username: user.username, createdAt: user.createdAt } });
   }
 
   const { owner, repo, token } = getGithubConfig();
@@ -681,14 +681,49 @@ async function handleRegister(req, res) {
   users.push(user);
   await writeJsonFile(owner, repo, token, usersFile, users, existing.sha, 'Register user');
 
-  return res.status(200).json({ success: true, user: { name: user.name, role: user.role, username: user.username } });
+  return res.status(200).json({ success: true, user: { name: user.name, role: user.role, username: user.username, createdAt: user.createdAt } });
 }
 
 async function handleMe(req, res) {
   if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
   try {
     const user = await requireUser(req);
-    return res.status(200).json({ authenticated: true, user });
+    const uid = user && (user.sub || user.id) ? String(user.sub || user.id) : '';
+    const uname = user && user.username ? String(user.username) : '';
+    let createdAt = user && user.createdAt ? String(user.createdAt) : '';
+    let name = user && user.name ? String(user.name) : '';
+    let role = user && user.role ? String(user.role) : '';
+
+    try {
+      if (shouldUseLocalPosts()) {
+        const list = await readLocalJsonOr('users.json', []);
+        const users = Array.isArray(list) ? list : [];
+        const found = users.find(u => u && ((uid && String(u.id) === uid) || (uname && String(u.username) === uname)));
+        if (found) {
+          if (found.createdAt) createdAt = String(found.createdAt);
+          if (found.name) name = String(found.name);
+          if (found.role) role = String(found.role);
+        }
+      } else {
+        const { owner, repo, token } = getGithubConfig();
+        const headers = githubHeaders(token);
+        const usersRead = await readJsonFileOrWithError(owner, repo, headers, 'data/users.json', []);
+        const users = Array.isArray(usersRead.data) ? usersRead.data : [];
+        const found = users.find(u => u && ((uid && String(u.id) === uid) || (uname && String(u.username) === uname)));
+        if (found) {
+          if (found.createdAt) createdAt = String(found.createdAt);
+          if (found.name) name = String(found.name);
+          if (found.role) role = String(found.role);
+        }
+      }
+    } catch {
+    }
+
+    const nextUser = { ...user };
+    if (createdAt) nextUser.createdAt = createdAt;
+    if (name) nextUser.name = name;
+    if (role) nextUser.role = role;
+    return res.status(200).json({ authenticated: true, user: nextUser });
   } catch {
     return res.status(200).json({ authenticated: false });
   }
@@ -863,6 +898,7 @@ async function handleStats(req, res) {
 
   const pageViews = viewData.pages && typeof viewData.pages === 'object' ? viewData.pages : {};
   const postViews = viewData.posts && typeof viewData.posts === 'object' ? viewData.posts : {};
+  const chapterViews = viewData.chapters && typeof viewData.chapters === 'object' ? viewData.chapters : {};
   const knownPages = new Set(['home', 'articles', 'novels', 'about']);
   const topViewedPages = Object.entries(pageViews)
     .map(([id, count]) => ({ id: String(id), count: Number(count || 0) }))
@@ -952,9 +988,116 @@ async function handleStats(req, res) {
     commentsByPost.set(key, (commentsByPost.get(key) || 0) + 1);
   }
   const commentCountsByPost = Object.fromEntries(commentsByPost.entries());
-  const topPosts = posts
+
+  const inferTitleFromChapterFilename = (filename) => {
+    const base = String(filename || '').replace(/\.md$/i, '');
+    const m = base.match(/^\d{3,}[-_](.+)$/);
+    const after = m ? String(m[1] || '').trim() : '';
+    return after || base;
+  };
+
+  const resolveChapterEntry = async (chapterKey) => {
+    const raw = String(chapterKey || '');
+    const [novelId, rawChapterFile] = raw.split('/');
+    if (!novelId || !rawChapterFile) return null;
+
+    const getNovelTitleLocal = async () => {
+      try {
+        const meta = await readLocalNovelMeta(novelId);
+        if (meta && meta.title) return String(meta.title);
+      } catch {
+      }
+      return novelId;
+    };
+    const getNovelTitleGitHub = async () => {
+      try {
+        const meta = await readJsonFileOr(owner, repo, headers, `data/novels/${novelId}/meta.json`, { title: novelId });
+        if (meta && meta.data && meta.data.title) return String(meta.data.title);
+      } catch {
+      }
+      return novelId;
+    };
+
+    if (shouldUseLocalPosts()) {
+      const novelTitle = await getNovelTitleLocal();
+      let files = [];
+      try {
+        files = await listLocalNovelChapterFiles(novelId);
+      } catch {
+        files = [];
+      }
+      const normalized = (() => {
+        if (files.includes(rawChapterFile)) return rawChapterFile;
+        const base = String(rawChapterFile || '').replace(/\.md$/i, '');
+        const m = base.match(/^(\d{3,})/);
+        const prefix = m ? String(m[1]) : '';
+        if (!prefix) return '';
+        const candidates = files.filter(f => String(f || '').startsWith(prefix)).sort((a, b) => String(a).localeCompare(String(b)));
+        return candidates[0] || '';
+      })();
+      if (!normalized) return null;
+      try {
+        const chapter = await readLocalNovelChapter(novelId, normalized);
+        const parsed = extractChapterTitleAndBody(chapter && chapter.content ? chapter.content : '');
+        const chapterTitle = parsed.title || inferTitleFromChapterFilename(normalized);
+        return { chapter: `${novelId}/${normalized}`, title: `${novelTitle} · ${chapterTitle}` };
+      } catch {
+        return null;
+      }
+    }
+
+    const novelTitle = await getNovelTitleGitHub();
+    let files = [];
+    try {
+      const list = await listDir(owner, repo, headers, `data/novels/${novelId}`);
+      files = list.filter(e => e && e.type === 'file' && /\.md$/i.test(e.name || '')).map(e => String(e.name || ''));
+    } catch {
+      files = [];
+    }
+    const normalized = (() => {
+      if (files.includes(rawChapterFile)) return rawChapterFile;
+      const base = String(rawChapterFile || '').replace(/\.md$/i, '');
+      const m = base.match(/^(\d{3,})/);
+      const prefix = m ? String(m[1]) : '';
+      if (!prefix) return '';
+      const candidates = files.filter(f => String(f || '').startsWith(prefix)).sort((a, b) => String(a).localeCompare(String(b)));
+      return candidates[0] || '';
+    })();
+    if (!normalized) return null;
+    try {
+      const chapter = await readText(owner, repo, headers, `data/novels/${novelId}/${normalized}`);
+      const parsed = extractChapterTitleAndBody(chapter && chapter.content ? chapter.content : '');
+      const chapterTitle = parsed.title || inferTitleFromChapterFilename(normalized);
+      return { chapter: `${novelId}/${normalized}`, title: `${novelTitle} · ${chapterTitle}` };
+    } catch {
+      return null;
+    }
+  };
+
+  const topViewedChaptersRaw = Object.entries(chapterViews)
+    .map(([key, count]) => ({ chapter: String(key), count: Number(count || 0) }))
+    .filter(x => x.chapter && x.count > 0)
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 30);
+  const topViewedChaptersAgg = new Map();
+  for (const x of topViewedChaptersRaw) {
+    const resolved = await resolveChapterEntry(x.chapter);
+    if (!resolved || !resolved.title || !resolved.chapter) continue;
+    const prev = topViewedChaptersAgg.get(resolved.chapter);
+    if (!prev) {
+      topViewedChaptersAgg.set(resolved.chapter, { kind: 'chapter', metric: 'views', chapter: resolved.chapter, title: resolved.title, count: x.count });
+    } else {
+      prev.count += x.count;
+    }
+  }
+  const topViewedChapters = Array.from(topViewedChaptersAgg.values())
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 5);
+
+  const topPosts = (posts || [])
     .filter(p => p && p.archived !== true && p.published !== false)
-    .map(p => ({ title: p.title, filename: p.filename, count: commentsByPost.get(p.filename) || 0 }))
+    .map(p => ({ kind: 'post', metric: 'comments', title: p.title, filename: p.filename, count: commentsByPost.get(p.filename) || 0 }))
+    .concat(topViewedChapters.filter(x => x && x.title).map(x => ({ kind: x.kind, metric: 'views', title: x.title, chapter: x.chapter, count: x.count })))
     .sort((a, b) => b.count - a.count)
     .slice(0, 5);
 
@@ -985,13 +1128,52 @@ async function handleStats(req, res) {
     }));
 
   const postTitleByFilename = new Map(posts.map(p => [p.filename, p.title]));
-  const topViewedPosts = Object.entries(postViews)
+  const filesByTs = new Map();
+  for (const p of posts) {
+    const fname = p && p.filename ? String(p.filename) : '';
+    if (!fname) continue;
+    const m = fname.match(/^(\d{13})/);
+    const ts = m ? String(m[1]) : '';
+    if (!ts) continue;
+    const arr = filesByTs.get(ts) || [];
+    arr.push(fname);
+    filesByTs.set(ts, arr);
+  }
+
+  const viewAgg = new Map();
+  for (const [rawKey, rawCount] of Object.entries(postViews)) {
+    const key = String(rawKey || '');
+    const count = Number(rawCount || 0);
+    if (!key || !count) continue;
+
+    const base = key.split('/').pop();
+    let target = null;
+    if (postTitleByFilename.has(key)) target = key;
+    else if (base && postTitleByFilename.has(base)) target = base;
+    else {
+      const m = (base || key).match(/^(\d{13})/);
+      const ts = m ? String(m[1]) : '';
+      const candidates = ts ? (filesByTs.get(ts) || []) : [];
+      if (candidates.length === 1) target = candidates[0];
+      else if (candidates.length > 1) target = candidates.slice().sort((a, b) => a.length - b.length)[0];
+    }
+    if (!target) continue;
+    viewAgg.set(target, (viewAgg.get(target) || 0) + count);
+  }
+
+  const topViewedPosts = Array.from(viewAgg.entries())
     .map(([filename, count]) => ({
-      filename: String(filename),
-      title: String(postTitleByFilename.get(String(filename)) || String(filename).replace(/\.md$/i, '')),
+      kind: 'post',
+      metric: 'views',
+      filename,
+      title: String(postTitleByFilename.get(filename) || String(filename).replace(/\.md$/i, '')),
       count: Number(count || 0)
     }))
-    .filter(p => postTitleByFilename.has(p.filename))
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 5);
+
+  const topViewedPostsCombined = topViewedPosts
+    .concat(topViewedChapters.filter(x => x && x.title).map(x => ({ kind: x.kind, metric: 'views', title: x.title, chapter: x.chapter, count: x.count })))
     .sort((a, b) => b.count - a.count)
     .slice(0, 5);
 
@@ -1016,7 +1198,7 @@ async function handleStats(req, res) {
     activity14Days,
     views30Days,
     topViewedPages,
-    topViewedPosts,
+    topViewedPosts: topViewedPostsCombined,
     commentCountsByPost,
     topPosts,
     recentPosts,
