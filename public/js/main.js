@@ -84,6 +84,38 @@ function checkAuth() {
     }
     if (CURRENT_USER) updateNavUser();
   }
+  verifyAuthToken().catch(() => {});
+}
+
+async function verifyAuthToken() {
+  const token = getAuthToken();
+  if (!token) return;
+  try {
+    const res = await fetch(apiUrl('/me'), { headers: withAuthHeaders({}) });
+    const data = await safeJson(res) || {};
+    const ok = Boolean(data && data.authenticated);
+    if (ok && data.user) {
+      const nextUser = { ...(CURRENT_USER || {}), ...(data.user || {}) };
+      CURRENT_USER = nextUser;
+      localStorage.setItem('user_info', JSON.stringify({ name: nextUser.name, role: nextUser.role, username: nextUser.username, createdAt: nextUser.createdAt }));
+      updateNavUser();
+      return;
+    }
+  } catch {
+  }
+  handleUnauthorized(null, false);
+}
+
+function handleUnauthorized(message, navigate = true) {
+  localStorage.removeItem('auth_token');
+  localStorage.removeItem('user_info');
+  CURRENT_USER = null;
+  updateNavGuest();
+  if (navigate) {
+    setMode('front');
+    showPage('login');
+  }
+  if (message) showToast(message);
 }
 
 async function handleLogin() {
@@ -1169,6 +1201,10 @@ async function saveNovelChapterFromEditor() {
     });
     const data = await safeJson(res) || {};
     if (!res.ok) {
+      if (res.status === 401) {
+        handleUnauthorized('登录已失效，请重新登录');
+        return;
+      }
       showToast(data.error ? `保存失败: ${data.error}` : '保存失败');
       return;
     }
@@ -2098,6 +2134,10 @@ async function toggleReaction(action) {
     });
     const data = await safeJson(res) || {};
     if (!res.ok) {
+      if (res.status === 401) {
+        handleUnauthorized('登录已失效，请重新登录');
+        return;
+      }
       showToast(data && data.error ? `操作失败: ${data.error}` : '操作失败');
       return;
     }
@@ -2889,6 +2929,10 @@ async function refreshNovelChaptersList() {
   const res = await fetch(apiUrl(`/novel-chapter?novelId=${encodeURIComponent(currentNovelId)}`), { headers: withAuthHeaders({}) });
   const data = await safeJson(res) || {};
   if (!res.ok) {
+    if (res.status === 401) {
+      handleUnauthorized('登录已失效，请重新登录');
+      return;
+    }
     const msg = data && (data.error || data.message) ? String(data.error || data.message) : '加载失败';
     showToast(`章节列表加载失败: ${msg}`);
     listEl.innerHTML = `<div style="color:var(--admin-muted);font-size:13px;padding:.5rem 0">${escapeHtml(msg)}</div>`;
@@ -2934,6 +2978,10 @@ async function loadNovelChapterForEdit(novelId, chapterFile) {
   const res = await fetch(apiUrl(`/novel-chapter?novelId=${encodeURIComponent(novelId)}&chapterFile=${encodeURIComponent(chapterFile)}`), { headers: withAuthHeaders({}) });
   const data = await safeJson(res) || {};
   if (!res.ok) {
+    if (res.status === 401) {
+      handleUnauthorized('登录已失效，请重新登录');
+      return;
+    }
     showToast(data && data.error ? `加载失败: ${data.error}` : '加载失败');
     return;
   }
@@ -2967,6 +3015,10 @@ async function saveNovelChapter() {
   });
   const data = await safeJson(res) || {};
   if (!res.ok) {
+    if (res.status === 401) {
+      handleUnauthorized('登录已失效，请重新登录');
+      return;
+    }
     showToast(data.error ? `保存失败: ${data.error}` : '保存失败');
     return;
   }
@@ -2996,6 +3048,10 @@ async function deleteNovelChapter() {
   });
   const data = await safeJson(res) || {};
   if (!res.ok) {
+    if (res.status === 401) {
+      handleUnauthorized('登录已失效，请重新登录');
+      return;
+    }
     showToast(data.error ? `删除失败: ${data.error}` : '删除失败');
     return;
   }

@@ -350,7 +350,7 @@ function extractFirstImageUrl(markdownBody) {
 }
 
 function getAuthSecret() {
-  const secret = process.env.AUTH_SECRET || process.env.GITHUB_TOKEN || '';
+  const secret = process.env.AUTH_SECRET || '';
   return secret ? String(secret) : 'dev-secret';
 }
 
