@@ -1955,7 +1955,13 @@ async function handleNovels(req, res) {
         const id = dir.name;
         const meta = await readJsonFileOr(owner, repo, headers, `${baseDir}/${id}/meta.json`, { title: id });
         const chapterList = await listDir(owner, repo, headers, `${baseDir}/${id}`);
-        const chapters = chapterList.filter(e => e && e.type === 'file' && /\\.md$/i.test(e.name || '')).map(e => e.name).sort();
+        let chapters = chapterList.filter(e => e && e.type === 'file' && /\\.md$/i.test(e.name || '')).map(e => e.name).sort();
+        if (!chapters.length) {
+          try {
+            chapters = await listLocalNovelChapterFiles(id);
+          } catch {
+          }
+        }
         const firstChapter = chapters[0] || null;
         let firstChapterTitle = '';
         if (firstChapter) {
@@ -1964,9 +1970,24 @@ async function handleNovels(req, res) {
             const parsed = extractChapterTitleAndBody(ch && ch.content ? ch.content : '');
             firstChapterTitle = parsed.title || '';
           } catch {
+            try {
+              const ch = await readLocalNovelChapter(id, firstChapter);
+              const parsed = extractChapterTitleAndBody(ch && ch.content ? ch.content : '');
+              firstChapterTitle = parsed.title || '';
+            } catch {
+            }
           }
         }
-        return { ...(meta.data || { title: id }), id, chapters: chapters.length, firstChapter, firstChapterTitle };
+        let metaOut = meta.data || { title: id };
+        if (!metaOut || typeof metaOut !== 'object') metaOut = { title: id };
+        if (!metaOut.title || metaOut.title === id) {
+          try {
+            const localMeta = await readLocalNovelMeta(id);
+            if (localMeta && typeof localMeta === 'object') metaOut = { ...metaOut, ...localMeta };
+          } catch {
+          }
+        }
+        return { ...metaOut, id, chapters: chapters.length, firstChapter, firstChapterTitle };
       })
     );
     return res.status(200).json(novels);
