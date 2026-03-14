@@ -1904,32 +1904,35 @@ async function handleUpload(req, res) {
 async function handleNovels(req, res) {
   if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
   const baseDir = 'data/novels';
-  if (shouldUseLocalPosts()) {
-    try {
-      const ids = await listLocalNovelIds();
-      const novels = await Promise.all(
-        ids.map(async (id) => {
-          let meta = { id, title: id, genre: '未分类', status: 'ongoing' };
+  const readLocal = async () => {
+    const ids = await listLocalNovelIds();
+    const novels = await Promise.all(
+      ids.map(async (id) => {
+        let meta = { id, title: id, genre: '未分类', status: 'ongoing' };
+        try {
+          const m = await readLocalNovelMeta(id);
+          meta = { ...meta, ...(m && typeof m === 'object' ? m : {}) };
+        } catch {
+        }
+        const chapters = await listLocalNovelChapterFiles(id);
+        const firstChapter = chapters[0] || null;
+        let firstChapterTitle = '';
+        if (firstChapter) {
           try {
-            const m = await readLocalNovelMeta(id);
-            meta = { ...meta, ...(m && typeof m === 'object' ? m : {}) };
+            const ch = await readLocalNovelChapter(id, firstChapter);
+            const parsed = extractChapterTitleAndBody(ch && ch.content ? ch.content : '');
+            firstChapterTitle = parsed.title || '';
           } catch {
           }
-          const chapters = await listLocalNovelChapterFiles(id);
-          const firstChapter = chapters[0] || null;
-          let firstChapterTitle = '';
-          if (firstChapter) {
-            try {
-              const ch = await readLocalNovelChapter(id, firstChapter);
-              const parsed = extractChapterTitleAndBody(ch && ch.content ? ch.content : '');
-              firstChapterTitle = parsed.title || '';
-            } catch {
-            }
-          }
-          return { ...meta, id, chapters: chapters.length, firstChapter, firstChapterTitle };
-        })
-      );
-      return res.status(200).json(novels);
+        }
+        return { ...meta, id, chapters: chapters.length, firstChapter, firstChapterTitle };
+      })
+    );
+    return novels;
+  };
+  if (shouldUseLocalPosts()) {
+    try {
+      return res.status(200).json(await readLocal());
     } catch {
       return res.status(200).json([]);
     }
@@ -1940,6 +1943,13 @@ async function handleNovels(req, res) {
   try {
     const list = await listDir(owner, repo, headers, baseDir);
     const dirs = list.filter(e => e && e.type === 'dir');
+    if (!dirs.length) {
+      try {
+        const local = await readLocal();
+        if (Array.isArray(local) && local.length) return res.status(200).json(local);
+      } catch {
+      }
+    }
     const novels = await Promise.all(
       dirs.map(async (dir) => {
         const id = dir.name;
@@ -1960,8 +1970,12 @@ async function handleNovels(req, res) {
       })
     );
     return res.status(200).json(novels);
-  } catch {
-    return res.status(200).json([]);
+  } catch (err) {
+    try {
+      return res.status(200).json(await readLocal());
+    } catch {
+      return res.status(500).json({ error: err && err.message ? String(err.message) : 'Failed to load novels' });
+    }
   }
 }
 
@@ -2031,10 +2045,36 @@ async function handleNovel(req, res) {
   if (req.method === 'GET') {
     const id = req.query && req.query.id ? String(req.query.id) : '';
     if (!id) return res.status(400).json({ error: 'Missing id' });
-    const meta = await readJsonFileOr(owner, repo, headers, `${baseDir}/${id}/meta.json`, { id, title: id, genre: '未分类', status: 'ongoing' });
-    const chapterList = await listDir(owner, repo, headers, `${baseDir}/${id}`);
-    const chapters = chapterList.filter(e => e && e.type === 'file' && /\\.md$/i.test(e.name || '')).map(e => e.name).sort();
-    return res.status(200).json({ meta: meta.data || {}, chapters });
+    try {
+      const meta = await readJsonFileOr(owner, repo, headers, `${baseDir}/${id}/meta.json`, { id, title: id, genre: '未分类', status: 'ongoing' });
+      const chapterList = await listDir(owner, repo, headers, `${baseDir}/${id}`);
+      const chapters = chapterList.filter(e => e && e.type === 'file' && /\\.md$/i.test(e.name || '')).map(e => e.name).sort();
+      if (!chapters.length) {
+        try {
+          let localMeta = { id, title: id, genre: '未分类', status: 'ongoing' };
+          try {
+            localMeta = { ...localMeta, ...(await readLocalNovelMeta(id)) };
+          } catch {
+          }
+          const localChapters = await listLocalNovelChapterFiles(id);
+          if (localChapters.length) return res.status(200).json({ meta: localMeta, chapters: localChapters });
+        } catch {
+        }
+      }
+      return res.status(200).json({ meta: meta.data || {}, chapters });
+    } catch (err) {
+      try {
+        let meta = { id, title: id, genre: '未分类', status: 'ongoing' };
+        try {
+          meta = { ...meta, ...(await readLocalNovelMeta(id)) };
+        } catch {
+        }
+        const chapters = await listLocalNovelChapterFiles(id);
+        return res.status(200).json({ meta, chapters });
+      } catch {
+        return res.status(500).json({ error: err && err.message ? String(err.message) : 'Failed to load novel' });
+      }
+    }
   }
 
   await requireAdmin(req);
@@ -2195,24 +2235,69 @@ async function handleNovelChapter(req, res) {
 
   const { owner, repo, token } = getGithubConfig();
   const headers = githubHeaders(token);
+  const readLocalList = async () => {
+    let meta = { id: novelId, title: novelId, genre: '未分类', status: 'ongoing' };
+    try {
+      meta = { ...meta, ...(await readLocalNovelMeta(novelId)) };
+    } catch {
+    }
+    const files = await listLocalNovelChapterFiles(novelId);
+    const chapters = await Promise.all(
+      files.map(async (name) => {
+        const fallbackTitle = String(name || '').replace(/\.md$/i, '');
+        try {
+          const chapter = await readLocalNovelChapter(novelId, name);
+          const parsed = extractChapterTitleAndBody(chapter && chapter.content ? chapter.content : '');
+          return { filename: name, title: parsed.title || fallbackTitle };
+        } catch {
+          return { filename: name, title: fallbackTitle };
+        }
+      })
+    );
+    return { meta, chapters };
+  };
   const meta = await readJsonFileOr(owner, repo, headers, `${baseDir}/meta.json`, { title: novelId });
-  const list = await listDir(owner, repo, headers, baseDir);
-  const chapterFiles = list
-    .filter(e => e && e.type === 'file' && /\\.md$/i.test(e.name || ''))
-    .map(e => e.name)
-    .sort((a, b) => a.localeCompare(b));
-  const chapters = await Promise.all(
-    chapterFiles.map(async (name) => {
-      const fallbackTitle = String(name || '').replace(/\\.md$/i, '');
+  let chapters;
+  try {
+    const list = await listDir(owner, repo, headers, baseDir);
+    const chapterFiles = list
+      .filter(e => e && e.type === 'file' && /\\.md$/i.test(e.name || ''))
+      .map(e => e.name)
+      .sort((a, b) => a.localeCompare(b));
+    if (!chapterFiles.length) {
       try {
-        const chapter = await readText(owner, repo, headers, `${baseDir}/${name}`);
-        const parsed = extractChapterTitleAndBody(chapter && chapter.content ? chapter.content : '');
-        return { filename: name, title: parsed.title || fallbackTitle };
+        const local = await readLocalList();
+        if (local && Array.isArray(local.chapters) && local.chapters.length) {
+          chapters = local.chapters;
+          if (meta && meta.data && (!meta.data.title || meta.data.title === novelId)) {
+            meta.data = local.meta;
+          }
+        }
       } catch {
-        return { filename: name, title: fallbackTitle };
       }
-    })
-  );
+    }
+    if (!chapters) {
+    chapters = await Promise.all(
+      chapterFiles.map(async (name) => {
+        const fallbackTitle = String(name || '').replace(/\\.md$/i, '');
+        try {
+          const chapter = await readText(owner, repo, headers, `${baseDir}/${name}`);
+          const parsed = extractChapterTitleAndBody(chapter && chapter.content ? chapter.content : '');
+          return { filename: name, title: parsed.title || fallbackTitle };
+        } catch {
+          return { filename: name, title: fallbackTitle };
+        }
+      })
+    );
+    }
+  } catch (err) {
+    try {
+      const local = await readLocalList();
+      chapters = local.chapters;
+    } catch {
+      return res.status(500).json({ error: err && err.message ? String(err.message) : 'Failed to load chapter list' });
+    }
+  }
 
   if (req.method === 'GET') {
     if (!chapterFile) {
@@ -2222,17 +2307,35 @@ async function handleNovelChapter(req, res) {
       });
     }
     const normalized = normalizeChapterFilename(chapterFile);
-    const chapter = await readText(owner, repo, headers, `${baseDir}/${normalized}`).catch(() => ({ content: null, sha: null }));
-    if (chapter.content == null) return res.status(404).json({ error: 'Chapter not found' });
-    const parsed = extractChapterTitleAndBody(chapter && chapter.content ? chapter.content : '');
-    return res.status(200).json({
-      novelTitle: meta.data && meta.data.title ? meta.data.title : novelId,
-      title: parsed.title || normalized.replace(/\\.md$/i, ''),
-      filename: normalized,
-      sha: chapter.sha,
-      content: parsed.body,
-      chapters
-    });
+    try {
+      const chapter = await readText(owner, repo, headers, `${baseDir}/${normalized}`).catch(() => ({ content: null, sha: null }));
+      if (chapter.content == null) return res.status(404).json({ error: 'Chapter not found' });
+      const parsed = extractChapterTitleAndBody(chapter && chapter.content ? chapter.content : '');
+      return res.status(200).json({
+        novelTitle: meta.data && meta.data.title ? meta.data.title : novelId,
+        title: parsed.title || normalized.replace(/\\.md$/i, ''),
+        filename: normalized,
+        sha: chapter.sha,
+        content: parsed.body,
+        chapters
+      });
+    } catch (err) {
+      try {
+        const local = await readLocalList();
+        const chapter = await readLocalNovelChapter(novelId, normalized);
+        const parsed = extractChapterTitleAndBody(chapter && chapter.content ? chapter.content : '');
+        return res.status(200).json({
+          novelTitle: local.meta.title || novelId,
+          title: parsed.title || normalized.replace(/\\.md$/i, ''),
+          filename: normalized,
+          sha: null,
+          content: parsed.body,
+          chapters: local.chapters
+        });
+      } catch {
+        return res.status(500).json({ error: err && err.message ? String(err.message) : 'Failed to load chapter' });
+      }
+    }
   }
 
   await requireAdmin(req);
