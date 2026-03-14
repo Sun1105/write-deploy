@@ -10,32 +10,32 @@ module.exports = async function handler(req, res) {
     const segments = normalizeCatchAll(req.query && req.query.path);
     const route = segments[0] ? String(segments[0]) : '';
 
-    if (route === 'login') return handleLogin(req, res);
-    if (route === 'register') return handleRegister(req, res);
-    if (route === 'me') return handleMe(req, res);
+    if (route === 'login') return await handleLogin(req, res);
+    if (route === 'register') return await handleRegister(req, res);
+    if (route === 'me') return await handleMe(req, res);
 
-    if (route === 'stats') return handleStats(req, res);
+    if (route === 'stats') return await handleStats(req, res);
 
-    if (route === 'posts') return handlePosts(req, res);
-    if (route === 'post') return handlePost(req, res, segments);
-    if (route === 'featured') return handleFeatured(req, res);
-    if (route === 'reactions') return handleReactions(req, res);
+    if (route === 'posts') return await handlePosts(req, res);
+    if (route === 'post') return await handlePost(req, res, segments);
+    if (route === 'featured') return await handleFeatured(req, res);
+    if (route === 'reactions') return await handleReactions(req, res);
 
-    if (route === 'settings') return handleSettings(req, res);
+    if (route === 'settings') return await handleSettings(req, res);
 
-    if (route === 'comments') return handleComments(req, res);
-    if (route === 'comment') return handleComment(req, res);
+    if (route === 'comments') return await handleComments(req, res);
+    if (route === 'comment') return await handleComment(req, res);
 
-    if (route === 'view') return handleView(req, res);
+    if (route === 'view') return await handleView(req, res);
 
-    if (route === 'upload') return handleUpload(req, res);
+    if (route === 'upload') return await handleUpload(req, res);
 
-    if (route === 'novels') return handleNovels(req, res);
-    if (route === 'novel') return handleNovel(req, res);
-    if (route === 'novel-chapter') return handleNovelChapter(req, res);
+    if (route === 'novels') return await handleNovels(req, res);
+    if (route === 'novel') return await handleNovel(req, res);
+    if (route === 'novel-chapter') return await handleNovelChapter(req, res);
 
-    if (route === 'users') return handleUsers(req, res);
-    if (route === 'user') return handleUser(req, res);
+    if (route === 'users') return await handleUsers(req, res);
+    if (route === 'user') return await handleUser(req, res);
 
     return res.status(404).json({ error: 'Not found' });
   } catch (err) {
@@ -58,11 +58,30 @@ function normalizeCatchAll(value) {
 }
 
 function getGithubConfig() {
+  const owner =
+    process.env.GITHUB_OWNER ||
+    process.env.VERCEL_GIT_REPO_OWNER ||
+    'Sun1105';
+  const repo =
+    process.env.GITHUB_REPO ||
+    process.env.VERCEL_GIT_REPO_SLUG ||
+    'write-deploy';
+  const token =
+    process.env.GITHUB_TOKEN ||
+    process.env.GH_TOKEN ||
+    process.env.GITHUB_ACCESS_TOKEN ||
+    process.env.GITHUB_PAT ||
+    '';
+  const branch =
+    process.env.GITHUB_BRANCH ||
+    process.env.VERCEL_GIT_COMMIT_REF ||
+    process.env.GITHUB_REF_NAME ||
+    'main';
   return {
-    owner: process.env.GITHUB_OWNER || 'Sun1105',
-    repo: process.env.GITHUB_REPO || 'write-deploy',
-    token: process.env.GITHUB_TOKEN || '',
-    branch: process.env.GITHUB_BRANCH || 'main'
+    owner,
+    repo,
+    token,
+    branch
   };
 }
 
@@ -169,8 +188,7 @@ function shouldUseLocalPosts() {
   const forced = process.env.CONTENT_SOURCE ? String(process.env.CONTENT_SOURCE).toLowerCase() : '';
   if (forced === 'local') return true;
   if (forced === 'github') return false;
-  const token = process.env.GITHUB_TOKEN ? String(process.env.GITHUB_TOKEN) : '';
-  if (token) return false;
+  if (process.env.VERCEL || process.env.NOW_REGION) return false;
   return true;
 }
 
@@ -261,7 +279,7 @@ async function readText(owner, repo, headers, filePath) {
 async function writeText(owner, repo, token, filePath, content, message, sha) {
   if (!token) {
     const err = new Error('Missing GITHUB_TOKEN');
-    err.status = 401;
+    err.status = 500;
     throw err;
   }
   const ep = encodePath(filePath);
@@ -281,7 +299,7 @@ async function writeText(owner, repo, token, filePath, content, message, sha) {
 async function deleteFile(owner, repo, token, filePath, message, sha) {
   if (!token) {
     const err = new Error('Missing GITHUB_TOKEN');
-    err.status = 401;
+    err.status = 500;
     throw err;
   }
   const ep = encodePath(filePath);
@@ -316,11 +334,17 @@ function stripQuotes(s) {
 
 function extractFrontMatter(markdown) {
   if (typeof markdown !== 'string') return { frontMatter: {}, body: '' };
-  if (!markdown.startsWith('---')) return { frontMatter: {}, body: markdown };
-  const end = markdown.indexOf('\n---\n', 3);
-  if (end === -1) return { frontMatter: {}, body: markdown };
-  const fmText = markdown.slice(3, end).trim();
-  const body = markdown.slice(end + 5).replace(/^\n+/, '');
+  const normalized = String(markdown || '').replace(/^\uFEFF/, '').replace(/^\s+/, '');
+  const start = normalized.match(/^---\r?\n/);
+  if (!start) return { frontMatter: {}, body: normalized };
+  const startLen = start[0].length;
+  const rest = normalized.slice(startLen);
+  const endMatch = rest.match(/\r?\n---\r?\n/);
+  if (!endMatch || endMatch.index == null) return { frontMatter: {}, body: normalized };
+  const endIdx = startLen + endMatch.index;
+  const endLen = endMatch[0].length;
+  const fmText = normalized.slice(startLen, endIdx).trim();
+  const body = normalized.slice(endIdx + endLen).replace(/^\r?\n+/, '');
   const lines = fmText.split('\n');
   const out = {};
   for (const line of lines) {
@@ -347,6 +371,62 @@ function extractFirstImageUrl(markdownBody) {
   const html = s.match(/<img[^>]+src=["']([^"']+)["'][^>]*>/i);
   if (html && html[1]) return String(html[1]);
   return '';
+}
+
+function extractFirstHeadingText(markdownBody) {
+  const s = String(markdownBody || '');
+  const lines = s.split(/\r?\n/);
+  let inFence = false;
+  for (const raw of lines) {
+    const line = String(raw || '');
+    if (/^\s*```/.test(line)) {
+      inFence = !inFence;
+      continue;
+    }
+    if (inFence) continue;
+    const m = line.match(/^\s{0,3}#{1,6}\s+(.+?)\s*$/);
+    if (!m) continue;
+    const text = String(m[1] || '').replace(/\s*#+\s*$/, '').trim();
+    if (text) return text;
+  }
+  return '';
+}
+
+function extractChapterTitleAndBody(markdown) {
+  const parsed = extractFrontMatter(String(markdown || ''));
+  const fm = parsed.frontMatter || {};
+  const body = String(parsed.body || '');
+  const fromFm = fm && fm.title ? String(fm.title).trim() : '';
+  if (fromFm) return { title: fromFm, body };
+
+  const heading = extractFirstHeadingText(body);
+  if (!heading) return { title: '', body };
+
+  const lines = body.split(/\r?\n/);
+  let inFence = false;
+  let removed = false;
+  const kept = [];
+  for (const raw of lines) {
+    const line = String(raw || '');
+    if (/^\s*```/.test(line)) {
+      inFence = !inFence;
+      kept.push(line);
+      continue;
+    }
+    if (!removed && !inFence) {
+      const m = line.match(/^\s{0,3}#{1,6}\s+(.+?)\s*$/);
+      if (m) {
+        const t = String(m[1] || '').replace(/\s*#+\s*$/, '').trim();
+        if (t) {
+          removed = true;
+          continue;
+        }
+      }
+    }
+    kept.push(line);
+  }
+  const nextBody = kept.join('\n').replace(/^\s+/, '');
+  return { title: heading, body: nextBody };
 }
 
 function getAuthSecret() {
@@ -452,6 +532,29 @@ function safeUsername(username) {
   return u;
 }
 
+function safeDisplayName(name) {
+  const s = String(name || '').trim();
+  if (!s) return '';
+  const cleaned = s.replace(/[\u0000-\u001f\u007f]/g, '').trim();
+  if (!cleaned) return '';
+  if (cleaned.length > 30) return '';
+  return cleaned;
+}
+
+function buildUserIndex(list) {
+  const byId = new Map();
+  const byUsername = new Map();
+  const arr = Array.isArray(list) ? list : [];
+  for (const u of arr) {
+    if (!u || typeof u !== 'object') continue;
+    const id = u.id !== undefined ? String(u.id) : '';
+    const username = u.username !== undefined ? String(u.username) : '';
+    if (id) byId.set(id, u);
+    if (username) byUsername.set(username, u);
+  }
+  return { byId, byUsername };
+}
+
 async function readJsonFileOr(owner, repo, headers, filePath, fallback) {
   try {
     const { content, sha } = await readText(owner, repo, headers, filePath);
@@ -463,6 +566,16 @@ async function readJsonFileOr(owner, repo, headers, filePath, fallback) {
   }
 }
 
+async function readJsonFileOrWithError(owner, repo, headers, filePath, fallback) {
+  try {
+    const { content, sha } = await readText(owner, repo, headers, filePath);
+    const parsed = JSON.parse(content || 'null');
+    return { data: parsed ?? fallback, sha, err: null };
+  } catch (err) {
+    return { data: fallback, sha: null, err };
+  }
+}
+
 async function writeJsonFile(owner, repo, token, filePath, data, sha, message) {
   const text = JSON.stringify(data, null, 2);
   const result = await writeText(owner, repo, token, filePath, text, message, sha || undefined);
@@ -471,7 +584,7 @@ async function writeJsonFile(owner, repo, token, filePath, data, sha, message) {
 
 async function getSettings(owner, repo, headers) {
   const filePath = 'data/settings.json';
-  const fallback = { title: '拾墨', description: '', author: '', allowRegister: true };
+  const fallback = { title: '拾墨', description: '', author: '', allowRegister: true, homeIntro: '', footerIntro: '', aboutSubtitle: '', aboutTagline: '', aboutContent: '' };
   const { data } = await readJsonFileOr(owner, repo, headers, filePath, fallback);
   if (!data || typeof data !== 'object') return fallback;
   return { ...fallback, ...data };
@@ -491,7 +604,22 @@ async function handleLogin(req, res) {
     return res.status(200).json({ success: true, token: issueToken(user), user: { name: user.name, role: user.role, username: user.username } });
   }
 
+  if (shouldUseLocalPosts()) {
+    const users = await readLocalJsonOr('users.json', []);
+    const list = Array.isArray(users) ? users : [];
+    const found = list.find(u => u && u.username === username);
+    if (!found) return res.status(401).json({ success: false, message: '用户名或密码错误' });
+    if (found.status === 'banned') return res.status(403).json({ success: false, message: '账号已被封禁' });
+    const salt = found.salt || '';
+    const hash = found.hash || '';
+    const computed = hashPassword(password, salt);
+    if (computed !== hash) return res.status(401).json({ success: false, message: '用户名或密码错误' });
+    const user = { id: found.id, username: found.username, name: found.name || found.username, role: found.role || 'user' };
+    return res.status(200).json({ success: true, token: issueToken(user), user: { name: user.name, role: user.role, username: user.username } });
+  }
+
   const { owner, repo, token } = getGithubConfig();
+  if (!token && (process.env.VERCEL || process.env.NOW_REGION)) return res.status(500).json({ success: false, message: 'Missing GITHUB_TOKEN' });
   const headers = githubHeaders(token);
   const usersFile = 'data/users.json';
   const { data: users } = await readJsonFileOr(owner, repo, headers, usersFile, []);
@@ -513,10 +641,30 @@ async function handleRegister(req, res) {
   const body = req.body || {};
   const username = safeUsername(body.username);
   const password = String(body.password || '');
-  const name = body.name ? String(body.name).trim() : username;
+  const name = safeDisplayName(body.name) || username;
   if (!username || password.length < 6) return res.status(400).json({ success: false, message: '用户名不合法或密码太短' });
 
+  if (shouldUseLocalPosts()) {
+    const settingsFallback = { title: '拾墨', description: '', author: '', allowRegister: true, homeIntro: '', footerIntro: '', aboutSubtitle: '', aboutTagline: '', aboutContent: '' };
+    const settings = await readLocalJsonOr('settings.json', settingsFallback);
+    const allowRegister = !(settings && typeof settings === 'object' && settings.allowRegister === false);
+    if (!allowRegister) return res.status(403).json({ success: false, message: '当前已关闭注册' });
+
+    const existingUsers = await readLocalJsonOr('users.json', []);
+    const users = Array.isArray(existingUsers) ? existingUsers : [];
+    if (users.some(u => u && u.username === username)) return res.status(409).json({ success: false, message: '用户名已存在' });
+
+    const salt = crypto.randomBytes(16).toString('hex');
+    const hash = hashPassword(password, salt);
+    const role = users.length === 0 ? 'admin' : 'user';
+    const user = { id: randomId(), username, name: name || username, role, status: 'active', salt, hash, createdAt: new Date().toISOString() };
+    users.push(user);
+    await writeLocalJson('users.json', users);
+    return res.status(200).json({ success: true, user: { name: user.name, role: user.role, username: user.username } });
+  }
+
   const { owner, repo, token } = getGithubConfig();
+  if (!token && (process.env.VERCEL || process.env.NOW_REGION)) return res.status(500).json({ success: false, message: 'Missing GITHUB_TOKEN' });
   const headers = githubHeaders(token);
   const settings = await getSettings(owner, repo, headers);
   if (!settings.allowRegister) return res.status(403).json({ success: false, message: '当前已关闭注册' });
@@ -549,10 +697,19 @@ async function handleMe(req, res) {
 async function handleUsers(req, res) {
   if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
   await requireAdmin(req);
+  if (shouldUseLocalPosts()) {
+    const users = await readLocalJsonOr('users.json', []);
+    const list = Array.isArray(users) ? users : [];
+    const safe = list.map(u => ({ id: u.id, username: u.username, name: u.name, role: u.role, status: u.status || 'active', createdAt: u.createdAt }));
+    return res.status(200).json(safe);
+  }
   const { owner, repo, token } = getGithubConfig();
   const headers = githubHeaders(token);
   const usersFile = 'data/users.json';
-  const { data: users } = await readJsonFileOr(owner, repo, headers, usersFile, []);
+  const { data: users, err } = await readJsonFileOrWithError(owner, repo, headers, usersFile, []);
+  if (!token && (process.env.VERCEL || process.env.NOW_REGION) && err && (err.status === 401 || err.status === 404)) {
+    return res.status(500).json({ error: 'Missing GITHUB_TOKEN' });
+  }
   const list = Array.isArray(users) ? users : [];
   const safe = list.map(u => ({ id: u.id, username: u.username, name: u.name, role: u.role, status: u.status || 'active', createdAt: u.createdAt }));
   return res.status(200).json(safe);
@@ -562,6 +719,40 @@ async function handleUser(req, res) {
   await requireAdmin(req);
   const id = req.query && req.query.id ? String(req.query.id) : '';
   if (!id) return res.status(400).json({ error: 'Missing id' });
+
+  if (shouldUseLocalPosts()) {
+    const users = await readLocalJsonOr('users.json', []);
+    const list = Array.isArray(users) ? users : [];
+    const idx = list.findIndex(u => u && (String(u.id) === id || String(u.username) === id));
+    if (idx === -1) return res.status(404).json({ error: 'User not found' });
+
+    if (req.method === 'PUT') {
+      const role = req.body && req.body.role !== undefined ? String(req.body.role) : '';
+      const status = req.body && req.body.status !== undefined ? String(req.body.status) : '';
+      const name = req.body && req.body.name !== undefined ? safeDisplayName(req.body.name) : '';
+      if (req.body && req.body.name !== undefined && !name) return res.status(400).json({ error: 'Invalid name' });
+      if (role && role !== 'admin' && role !== 'user') return res.status(400).json({ error: 'Invalid role' });
+      if (status && status !== 'active' && status !== 'banned') return res.status(400).json({ error: 'Invalid status' });
+      const nextUsers = list.slice();
+      nextUsers[idx] = {
+        ...nextUsers[idx],
+        ...(req.body && req.body.name !== undefined ? { name } : {}),
+        ...(role ? { role } : {}),
+        ...(status ? { status } : {})
+      };
+      await writeLocalJson('users.json', nextUsers);
+      return res.status(200).json({ success: true });
+    }
+
+    if (req.method === 'DELETE') {
+      const nextUsers = list.slice();
+      nextUsers.splice(idx, 1);
+      await writeLocalJson('users.json', nextUsers);
+      return res.status(200).json({ success: true });
+    }
+
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
 
   const { owner, repo, token } = getGithubConfig();
   const headers = githubHeaders(token);
@@ -575,11 +766,14 @@ async function handleUser(req, res) {
   if (req.method === 'PUT') {
     const role = req.body && req.body.role !== undefined ? String(req.body.role) : '';
     const status = req.body && req.body.status !== undefined ? String(req.body.status) : '';
+    const name = req.body && req.body.name !== undefined ? safeDisplayName(req.body.name) : '';
+    if (req.body && req.body.name !== undefined && !name) return res.status(400).json({ error: 'Invalid name' });
     if (role && role !== 'admin' && role !== 'user') return res.status(400).json({ error: 'Invalid role' });
     if (status && status !== 'active' && status !== 'banned') return res.status(400).json({ error: 'Invalid status' });
     const nextUsers = users.slice();
     nextUsers[idx] = {
       ...nextUsers[idx],
+      ...(req.body && req.body.name !== undefined ? { name } : {}),
       ...(role ? { role } : {}),
       ...(status ? { status } : {})
     };
@@ -610,11 +804,28 @@ async function handleStats(req, res) {
   const usersFile = 'data/users.json';
   const viewsFile = 'data/views.json';
 
-  const comments = await readJsonFileOr(owner, repo, headers, commentsFile, []);
-  const commentList = Array.isArray(comments.data) ? comments.data : [];
+  const { commentList, userList } = await (async () => {
+    if (shouldUseLocalPosts()) {
+      const commentsLocal = await readLocalJsonOr('comments.json', []);
+      const usersLocal = await readLocalJsonOr('users.json', []);
+      return {
+        commentList: Array.isArray(commentsLocal) ? commentsLocal : [],
+        userList: Array.isArray(usersLocal) ? usersLocal : []
+      };
+    }
 
-  const users = await readJsonFileOr(owner, repo, headers, usersFile, []);
-  const userList = Array.isArray(users.data) ? users.data : [];
+    const commentsRead = await readJsonFileOrWithError(owner, repo, headers, commentsFile, []);
+    const usersRead = await readJsonFileOrWithError(owner, repo, headers, usersFile, []);
+    if (!token && (process.env.VERCEL || process.env.NOW_REGION) && ((commentsRead.err && (commentsRead.err.status === 401 || commentsRead.err.status === 404)) || (usersRead.err && (usersRead.err.status === 401 || usersRead.err.status === 404)))) {
+      const err = new Error('Missing GITHUB_TOKEN');
+      err.status = 500;
+      throw err;
+    }
+    return {
+      commentList: Array.isArray(commentsRead.data) ? commentsRead.data : [],
+      userList: Array.isArray(usersRead.data) ? usersRead.data : []
+    };
+  })();
 
   const views = shouldUseLocalPosts()
     ? { data: await readLocalJsonOr('views.json', { total: 0, pages: {}, posts: {}, chapters: {}, daily: {} }), sha: null }
@@ -753,6 +964,7 @@ async function handleStats(req, res) {
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
     .slice(0, 8);
 
+  const userIndex = buildUserIndex(userList);
   const recentComments = commentList
     .slice()
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
@@ -760,7 +972,13 @@ async function handleStats(req, res) {
     .map(c => ({
       id: c.id,
       post: c.post,
-      user: c.user,
+      user: (() => {
+        const userId = c && c.userId !== undefined ? String(c.userId) : '';
+        const username = c && c.username !== undefined ? String(c.username) : '';
+        const legacy = c && c.user !== undefined ? String(c.user) : '';
+        const rec = (userId && userIndex.byId.get(userId)) || (username && userIndex.byUsername.get(username)) || (legacy && userIndex.byUsername.get(legacy)) || null;
+        return rec && rec.name ? String(rec.name) : (legacy || username || 'Anonymous');
+      })(),
       date: c.date,
       status: c.status,
       content: c.content
@@ -870,6 +1088,10 @@ async function handlePosts(req, res) {
             const parsed = extractFrontMatter(String(content || ''));
             const fm = parsed.frontMatter || {};
             if (fm.title) meta.title = fm.title;
+            else {
+              const inferred = extractFirstHeadingText(parsed.body);
+              if (inferred) meta.title = inferred;
+            }
             if (fm.date) meta.date = fm.date;
             if (Array.isArray(fm.tags)) meta.tags = fm.tags;
             if (Array.isArray(fm.categories)) meta.categories = fm.categories;
@@ -924,6 +1146,10 @@ async function handlePosts(req, res) {
           const parsed = extractFrontMatter(content);
           const fm = parsed.frontMatter || {};
           if (fm.title) meta.title = fm.title;
+          else {
+            const inferred = extractFirstHeadingText(parsed.body);
+            if (inferred) meta.title = inferred;
+          }
           if (fm.date) meta.date = fm.date;
           if (Array.isArray(fm.tags)) meta.tags = fm.tags;
           if (Array.isArray(fm.categories)) meta.categories = fm.categories;
@@ -1025,22 +1251,43 @@ async function handleSettings(req, res) {
   const { owner, repo, token } = getGithubConfig();
   const headers = githubHeaders(token);
   const filePath = 'data/settings.json';
-  const fallback = { title: '拾墨', description: '', author: '', allowRegister: true };
+  const fallback = { title: '拾墨', description: '', author: '', allowRegister: true, homeIntro: '', footerIntro: '', aboutSubtitle: '', aboutTagline: '', aboutContent: '' };
 
   if (req.method === 'GET') {
+    if (shouldUseLocalPosts()) {
+      const settings = await readLocalJsonOr('settings.json', fallback);
+      return res.status(200).json({ ...fallback, ...(settings && typeof settings === 'object' ? settings : {}) });
+    }
     const settings = await getSettings(owner, repo, headers);
     return res.status(200).json(settings);
   }
 
   await requireAdmin(req);
   if (req.method !== 'PUT') return res.status(405).json({ error: 'Method not allowed' });
+  if (!token && (process.env.VERCEL || process.env.NOW_REGION)) return res.status(500).json({ error: 'Missing GITHUB_TOKEN' });
   const body = req.body || {};
-  const existing = await readJsonFileOr(owner, repo, headers, filePath, fallback);
+  let existing = { data: fallback, sha: null };
+  if (shouldUseLocalPosts()) {
+    const local = await readLocalJsonOr('settings.json', fallback);
+    existing = { data: local, sha: null };
+  } else {
+    existing = await readJsonFileOr(owner, repo, headers, filePath, fallback);
+  }
   const next = { ...(existing.data || fallback) };
   if (body.title !== undefined) next.title = String(body.title);
   if (body.description !== undefined) next.description = String(body.description);
+  if (body.author !== undefined) next.author = String(body.author);
+  if (body.homeIntro !== undefined) next.homeIntro = String(body.homeIntro);
+  if (body.footerIntro !== undefined) next.footerIntro = String(body.footerIntro);
+  if (body.aboutSubtitle !== undefined) next.aboutSubtitle = String(body.aboutSubtitle);
+  if (body.aboutTagline !== undefined) next.aboutTagline = String(body.aboutTagline);
+  if (body.aboutContent !== undefined) next.aboutContent = String(body.aboutContent);
   if (body.allowRegister !== undefined) next.allowRegister = Boolean(body.allowRegister);
-  await writeJsonFile(owner, repo, token, filePath, next, existing.sha, 'Update settings');
+  if (shouldUseLocalPosts()) {
+    await writeLocalJson('settings.json', next);
+  } else {
+    await writeJsonFile(owner, repo, token, filePath, next, existing.sha, 'Update settings');
+  }
   return res.status(200).json({ success: true });
 }
 
@@ -1048,33 +1295,113 @@ async function handleComments(req, res) {
   const { owner, repo, token } = getGithubConfig();
   const headers = githubHeaders(token);
   const filePath = 'data/comments.json';
+  const usersFile = 'data/users.json';
 
   if (req.method === 'GET') {
+    if (shouldUseLocalPosts()) {
+      const post = req.query && req.query.post ? String(req.query.post) : '';
+      const payload = parseToken(getBearerToken(req));
+      const isAdmin = payload && payload.role === 'admin';
+      const data = await readLocalJsonOr('comments.json', []);
+      const list = Array.isArray(data) ? data : [];
+      let filtered = post ? list.filter(c => c && c.post === post) : list;
+      if (!isAdmin) filtered = filtered.filter(c => c && c.status === 'approved');
+      filtered.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+      const users = await readLocalJsonOr('users.json', []);
+      const index = buildUserIndex(users);
+      const mapped = filtered.map((c) => {
+        if (!c || typeof c !== 'object') return c;
+        const userId = c.userId !== undefined ? String(c.userId) : '';
+        const username = c.username !== undefined ? String(c.username) : '';
+        const legacy = c.user !== undefined ? String(c.user) : '';
+        const rec = (userId && index.byId.get(userId)) || (username && index.byUsername.get(username)) || (legacy && index.byUsername.get(legacy)) || null;
+        const display = rec && rec.name ? String(rec.name) : (legacy || username || 'Anonymous');
+        return { ...c, userId: userId || (rec && rec.id ? String(rec.id) : ''), username: username || (rec && rec.username ? String(rec.username) : ''), user: display };
+      });
+      return res.status(200).json(mapped);
+    }
+
     const post = req.query && req.query.post ? String(req.query.post) : '';
     const payload = parseToken(getBearerToken(req));
     const isAdmin = payload && payload.role === 'admin';
-    const { data } = await readJsonFileOr(owner, repo, headers, filePath, []);
+    const commentsRead = await readJsonFileOrWithError(owner, repo, headers, filePath, []);
+    if (!token && (process.env.VERCEL || process.env.NOW_REGION) && commentsRead.err && (commentsRead.err.status === 401 || commentsRead.err.status === 404)) {
+      return res.status(500).json({ error: 'Missing GITHUB_TOKEN' });
+    }
+    const { data } = commentsRead;
     const list = Array.isArray(data) ? data : [];
     let filtered = post ? list.filter(c => c && c.post === post) : list;
     if (!isAdmin) filtered = filtered.filter(c => c && c.status === 'approved');
     filtered.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-    return res.status(200).json(filtered);
+    const usersRead = await readJsonFileOrWithError(owner, repo, headers, usersFile, []);
+    if (!token && (process.env.VERCEL || process.env.NOW_REGION) && usersRead.err && (usersRead.err.status === 401 || usersRead.err.status === 404)) {
+      return res.status(500).json({ error: 'Missing GITHUB_TOKEN' });
+    }
+    const { data: users } = usersRead;
+    const index = buildUserIndex(users);
+    const mapped = filtered.map((c) => {
+      if (!c || typeof c !== 'object') return c;
+      const userId = c.userId !== undefined ? String(c.userId) : '';
+      const username = c.username !== undefined ? String(c.username) : '';
+      const legacy = c.user !== undefined ? String(c.user) : '';
+      const rec = (userId && index.byId.get(userId)) || (username && index.byUsername.get(username)) || (legacy && index.byUsername.get(legacy)) || null;
+      const display = rec && rec.name ? String(rec.name) : (legacy || username || 'Anonymous');
+      return { ...c, userId: userId || (rec && rec.id ? String(rec.id) : ''), username: username || (rec && rec.username ? String(rec.username) : ''), user: display };
+    });
+    return res.status(200).json(mapped);
   }
 
   if (req.method === 'POST') {
     const user = await requireUser(req);
+    if (shouldUseLocalPosts()) {
+      const body = req.body || {};
+      const post = body.post ? String(body.post) : '';
+      const content = body.content ? String(body.content) : '';
+      if (!post || !content) return res.status(400).json({ error: 'Missing post or content' });
+      const existing = await readLocalJsonOr('comments.json', []);
+      const list = Array.isArray(existing) ? existing : [];
+      const users = await readLocalJsonOr('users.json', []);
+      const index = buildUserIndex(users);
+      const uid = user && (user.sub || user.id) ? String(user.sub || user.id) : '';
+      const uname = user && user.username ? String(user.username) : '';
+      const rec = (uid && index.byId.get(uid)) || (uname && index.byUsername.get(uname)) || null;
+      const display = rec && rec.name ? String(rec.name) : (uname || 'Anonymous');
+      const comment = {
+        id: randomId(),
+        post,
+        content,
+        userId: uid,
+        username: uname,
+        user: display,
+        date: new Date().toISOString(),
+        status: 'pending'
+      };
+      list.push(comment);
+      await writeLocalJson('comments.json', list);
+      return res.status(200).json({ success: true, comment });
+    }
+    if (!token && (process.env.VERCEL || process.env.NOW_REGION)) return res.status(500).json({ error: 'Missing GITHUB_TOKEN' });
     const body = req.body || {};
     const post = body.post ? String(body.post) : '';
     const content = body.content ? String(body.content) : '';
     if (!post || !content) return res.status(400).json({ error: 'Missing post or content' });
 
-    const existing = await readJsonFileOr(owner, repo, headers, filePath, []);
+    const existing = await readJsonFileOrWithError(owner, repo, headers, filePath, []);
     const list = Array.isArray(existing.data) ? existing.data : [];
+    const usersRead = await readJsonFileOrWithError(owner, repo, headers, usersFile, []);
+    const { data: users } = usersRead;
+    const index = buildUserIndex(users);
+    const uid = user && (user.sub || user.id) ? String(user.sub || user.id) : '';
+    const uname = user && user.username ? String(user.username) : '';
+    const rec = (uid && index.byId.get(uid)) || (uname && index.byUsername.get(uname)) || null;
+    const display = rec && rec.name ? String(rec.name) : (uname || 'Anonymous');
     const comment = {
       id: randomId(),
       post,
       content,
-      user: user.username || 'user',
+      userId: uid,
+      username: uname,
+      user: display,
       date: new Date().toISOString(),
       status: 'pending'
     };
@@ -1094,12 +1421,44 @@ async function handleComment(req, res) {
   if (!id) return res.status(400).json({ error: 'Missing id' });
 
   await requireAdmin(req);
-  const existing = await readJsonFileOr(owner, repo, headers, filePath, []);
+  if (shouldUseLocalPosts()) {
+    const data = await readLocalJsonOr('comments.json', []);
+    const list = Array.isArray(data) ? data : [];
+    if (req.method === 'PUT') {
+      const status = req.body && req.body.status ? String(req.body.status) : '';
+      if (!status) return res.status(400).json({ error: 'Missing status' });
+      if (!['pending', 'approved', 'hidden'].includes(status)) return res.status(400).json({ error: 'Invalid status' });
+      let changed = false;
+      const next = list.map(c => {
+        if (c && c.id === id) {
+          changed = true;
+          return { ...c, status };
+        }
+        return c;
+      });
+      if (!changed) return res.status(404).json({ error: 'Comment not found' });
+      await writeLocalJson('comments.json', next);
+      return res.status(200).json({ success: true });
+    }
+
+    if (req.method === 'DELETE') {
+      const next = list.filter(c => !(c && c.id === id));
+      if (next.length === list.length) return res.status(404).json({ error: 'Comment not found' });
+      await writeLocalJson('comments.json', next);
+      return res.status(200).json({ success: true });
+    }
+
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  if (!token && (process.env.VERCEL || process.env.NOW_REGION)) return res.status(500).json({ error: 'Missing GITHUB_TOKEN' });
+  const existing = await readJsonFileOrWithError(owner, repo, headers, filePath, []);
   const list = Array.isArray(existing.data) ? existing.data : [];
 
   if (req.method === 'PUT') {
     const status = req.body && req.body.status ? String(req.body.status) : '';
     if (!status) return res.status(400).json({ error: 'Missing status' });
+    if (!['pending', 'approved', 'hidden'].includes(status)) return res.status(400).json({ error: 'Invalid status' });
     let changed = false;
     const next = list.map(c => {
       if (c && c.id === id) {
@@ -1196,7 +1555,8 @@ async function handleFeatured(req, res) {
         const published = typeof fm.published === 'boolean' ? fm.published : true;
         const archived = typeof fm.archived === 'boolean' ? fm.archived : false;
         if (published === false || archived === true) return null;
-        const title = fm.title || filename.replace(/\.md$/i, '');
+        const inferred = extractFirstHeadingText(parsed.body);
+        const title = fm.title || inferred || filename.replace(/\.md$/i, '');
         const date = fm.date || new Date().toISOString();
         const description = typeof fm.description === 'string' ? fm.description : '';
         const cover = typeof fm.cover === 'string' ? fm.cover : '';
@@ -1256,19 +1616,19 @@ async function handleReactions(req, res) {
       kind,
       id,
       likes: item.likes,
-      favorites: item.favorites,
+      favorites: 0,
       liked: uid ? Boolean(userRec.likes[key]) : false,
-      favorited: uid ? Boolean(userRec.favorites[key]) : false
+      favorited: false
     });
   }
 
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
   const user = await requireUser(req);
-  const userId = user && user.id ? String(user.id) : '';
+  const userId = user && (user.sub || user.id) ? String(user.sub || user.id) : '';
   if (!userId) return res.status(401).json({ error: 'Unauthorized' });
   const body = req.body || {};
   const action = body.action ? String(body.action) : '';
-  if (!['like', 'favorite'].includes(action)) return res.status(400).json({ error: 'Invalid action' });
+  if (!['like'].includes(action)) return res.status(400).json({ error: 'Invalid action' });
 
   const current = users[userId] && typeof users[userId] === 'object' ? users[userId] : { likes: {}, favorites: {} };
   const nextUser = {
@@ -1277,24 +1637,13 @@ async function handleReactions(req, res) {
   };
   const nextItem = { likes: item.likes, favorites: item.favorites };
 
-  if (action === 'like') {
-    const liked = Boolean(nextUser.likes[key]);
-    if (liked) {
-      delete nextUser.likes[key];
-      nextItem.likes = Math.max(0, nextItem.likes - 1);
-    } else {
-      nextUser.likes[key] = true;
-      nextItem.likes += 1;
-    }
+  const liked = Boolean(nextUser.likes[key]);
+  if (liked) {
+    delete nextUser.likes[key];
+    nextItem.likes = Math.max(0, nextItem.likes - 1);
   } else {
-    const favorited = Boolean(nextUser.favorites[key]);
-    if (favorited) {
-      delete nextUser.favorites[key];
-      nextItem.favorites = Math.max(0, nextItem.favorites - 1);
-    } else {
-      nextUser.favorites[key] = true;
-      nextItem.favorites += 1;
-    }
+    nextUser.likes[key] = true;
+    nextItem.likes += 1;
   }
 
   counts[key] = nextItem;
@@ -1311,9 +1660,9 @@ async function handleReactions(req, res) {
     kind,
     id,
     likes: nextItem.likes,
-    favorites: nextItem.favorites,
+    favorites: 0,
     liked: Boolean(nextUser.likes[key]),
-    favorited: Boolean(nextUser.favorites[key])
+    favorited: false
   });
 }
 
@@ -1378,7 +1727,17 @@ async function handleNovels(req, res) {
           } catch {
           }
           const chapters = await listLocalNovelChapterFiles(id);
-          return { ...meta, id, chapters: chapters.length, firstChapter: chapters[0] || null };
+          const firstChapter = chapters[0] || null;
+          let firstChapterTitle = '';
+          if (firstChapter) {
+            try {
+              const ch = await readLocalNovelChapter(id, firstChapter);
+              const parsed = extractChapterTitleAndBody(ch && ch.content ? ch.content : '');
+              firstChapterTitle = parsed.title || '';
+            } catch {
+            }
+          }
+          return { ...meta, id, chapters: chapters.length, firstChapter, firstChapterTitle };
         })
       );
       return res.status(200).json(novels);
@@ -1398,7 +1757,17 @@ async function handleNovels(req, res) {
         const meta = await readJsonFileOr(owner, repo, headers, `${baseDir}/${id}/meta.json`, { title: id });
         const chapterList = await listDir(owner, repo, headers, `${baseDir}/${id}`);
         const chapters = chapterList.filter(e => e && e.type === 'file' && /\\.md$/i.test(e.name || '')).map(e => e.name).sort();
-        return { ...(meta.data || { title: id }), id, chapters: chapters.length, firstChapter: chapters[0] || null };
+        const firstChapter = chapters[0] || null;
+        let firstChapterTitle = '';
+        if (firstChapter) {
+          try {
+            const ch = await readText(owner, repo, headers, `${baseDir}/${id}/${firstChapter}`);
+            const parsed = extractChapterTitleAndBody(ch && ch.content ? ch.content : '');
+            firstChapterTitle = parsed.title || '';
+          } catch {
+          }
+        }
+        return { ...(meta.data || { title: id }), id, chapters: chapters.length, firstChapter, firstChapterTitle };
       })
     );
     return res.status(200).json(novels);
@@ -1543,6 +1912,14 @@ async function handleNovelChapter(req, res) {
   if (!novelId) return res.status(400).json({ error: 'Missing novelId' });
 
   const baseDir = `data/novels/${novelId}`;
+  const buildChapterMarkdown = (title, content) => {
+    const t = title ? String(title).trim() : '';
+    const b = typeof content === 'string' ? String(content) : '';
+    const bodyText = b.replace(/^\uFEFF/, '');
+    if (!t) return bodyText;
+    const safeTitle = t.replace(/\r?\n/g, ' ').trim();
+    return `---\ntitle: ${safeTitle}\n---\n\n${bodyText}\n`;
+  };
   if (shouldUseLocalPosts()) {
     let meta = { id: novelId, title: novelId, genre: '未分类', status: 'ongoing' };
     try {
@@ -1550,7 +1927,18 @@ async function handleNovelChapter(req, res) {
     } catch {
     }
     const files = await listLocalNovelChapterFiles(novelId);
-    const chapters = files.map(name => ({ filename: name, title: String(name || '').replace(/\.md$/i, '') }));
+    const chapters = await Promise.all(
+      files.map(async (name) => {
+        const fallbackTitle = String(name || '').replace(/\.md$/i, '');
+        try {
+          const chapter = await readLocalNovelChapter(novelId, name);
+          const parsed = extractChapterTitleAndBody(chapter && chapter.content ? chapter.content : '');
+          return { filename: name, title: parsed.title || fallbackTitle };
+        } catch {
+          return { filename: name, title: fallbackTitle };
+        }
+      })
+    );
 
     if (req.method === 'GET') {
       if (!chapterFile) {
@@ -1562,12 +1950,13 @@ async function handleNovelChapter(req, res) {
       const normalized = normalizeChapterFilename(chapterFile);
       try {
         const chapter = await readLocalNovelChapter(novelId, normalized);
+        const parsed = extractChapterTitleAndBody(chapter && chapter.content ? chapter.content : '');
         return res.status(200).json({
           novelTitle: meta && meta.title ? meta.title : novelId,
-          title: normalized.replace(/\.md$/i, ''),
+          title: parsed.title || normalized.replace(/\.md$/i, ''),
           filename: normalized,
           sha: null,
-          content: chapter.content,
+          content: parsed.body,
           chapters
         });
       } catch {
@@ -1577,16 +1966,29 @@ async function handleNovelChapter(req, res) {
 
     await requireAdmin(req);
     const filename = normalizeChapterFilename(chapterFile);
+    const requestedTitle = body.title !== undefined ? String(body.title).trim() : null;
 
     if (req.method === 'POST') {
       const content = typeof body.content === 'string' ? body.content : '';
-      await writeLocalNovelChapter(novelId, filename, content);
+      const md = buildChapterMarkdown(requestedTitle || '', content);
+      await writeLocalNovelChapter(novelId, filename, md);
       return res.status(200).json({ success: true, filename, sha: null });
     }
 
     if (req.method === 'PUT') {
       const content = typeof body.content === 'string' ? body.content : '';
-      await writeLocalNovelChapter(novelId, filename, content);
+      let nextTitle = requestedTitle;
+      if (nextTitle == null) {
+        try {
+          const existing = await readLocalNovelChapter(novelId, filename);
+          const parsed = extractChapterTitleAndBody(existing && existing.content ? existing.content : '');
+          nextTitle = parsed.title || '';
+        } catch {
+          nextTitle = '';
+        }
+      }
+      const md = buildChapterMarkdown(nextTitle || '', content);
+      await writeLocalNovelChapter(novelId, filename, md);
       return res.status(200).json({ success: true, filename, sha: null });
     }
 
@@ -1606,10 +2008,22 @@ async function handleNovelChapter(req, res) {
   const headers = githubHeaders(token);
   const meta = await readJsonFileOr(owner, repo, headers, `${baseDir}/meta.json`, { title: novelId });
   const list = await listDir(owner, repo, headers, baseDir);
-  const chapters = list
+  const chapterFiles = list
     .filter(e => e && e.type === 'file' && /\\.md$/i.test(e.name || ''))
-    .map(e => ({ filename: e.name, title: String(e.name || '').replace(/\\.md$/i, '') }))
-    .sort((a, b) => a.filename.localeCompare(b.filename));
+    .map(e => e.name)
+    .sort((a, b) => a.localeCompare(b));
+  const chapters = await Promise.all(
+    chapterFiles.map(async (name) => {
+      const fallbackTitle = String(name || '').replace(/\\.md$/i, '');
+      try {
+        const chapter = await readText(owner, repo, headers, `${baseDir}/${name}`);
+        const parsed = extractChapterTitleAndBody(chapter && chapter.content ? chapter.content : '');
+        return { filename: name, title: parsed.title || fallbackTitle };
+      } catch {
+        return { filename: name, title: fallbackTitle };
+      }
+    })
+  );
 
   if (req.method === 'GET') {
     if (!chapterFile) {
@@ -1621,12 +2035,13 @@ async function handleNovelChapter(req, res) {
     const normalized = normalizeChapterFilename(chapterFile);
     const chapter = await readText(owner, repo, headers, `${baseDir}/${normalized}`).catch(() => ({ content: null, sha: null }));
     if (chapter.content == null) return res.status(404).json({ error: 'Chapter not found' });
+    const parsed = extractChapterTitleAndBody(chapter && chapter.content ? chapter.content : '');
     return res.status(200).json({
       novelTitle: meta.data && meta.data.title ? meta.data.title : novelId,
-      title: normalized.replace(/\\.md$/i, ''),
+      title: parsed.title || normalized.replace(/\\.md$/i, ''),
       filename: normalized,
       sha: chapter.sha,
-      content: chapter.content,
+      content: parsed.body,
       chapters
     });
   }
@@ -1634,17 +2049,30 @@ async function handleNovelChapter(req, res) {
   await requireAdmin(req);
   const filename = normalizeChapterFilename(chapterFile);
   const filePath = `${baseDir}/${filename}`;
+  const requestedTitle = body.title !== undefined ? String(body.title).trim() : null;
 
   if (req.method === 'POST') {
     const content = typeof body.content === 'string' ? body.content : '';
-    const result = await writeText(owner, repo, token, filePath, content, `Create chapter ${filename}`);
+    const md = buildChapterMarkdown(requestedTitle || '', content);
+    const result = await writeText(owner, repo, token, filePath, md, `Create chapter ${filename}`);
     return res.status(200).json({ success: true, filename, sha: result && result.content ? result.content.sha : undefined });
   }
 
   if (req.method === 'PUT') {
     const content = typeof body.content === 'string' ? body.content : '';
+    let nextTitle = requestedTitle;
+    if (nextTitle == null) {
+      try {
+        const existing = await readText(owner, repo, headers, filePath);
+        const parsed = extractChapterTitleAndBody(existing && existing.content ? existing.content : '');
+        nextTitle = parsed.title || '';
+      } catch {
+        nextTitle = '';
+      }
+    }
     const sha = body.sha ? String(body.sha) : (await readText(owner, repo, headers, filePath)).sha;
-    const result = await writeText(owner, repo, token, filePath, content, `Update chapter ${filename}`, sha);
+    const md = buildChapterMarkdown(nextTitle || '', content);
+    const result = await writeText(owner, repo, token, filePath, md, `Update chapter ${filename}`, sha);
     return res.status(200).json({ success: true, filename, sha: result && result.content ? result.content.sha : undefined });
   }
 

@@ -6,6 +6,7 @@ async function main() {
   const rootDir = process.cwd();
   const outDir = path.join(rootDir, 'public');
 
+  const startAt = Date.now();
   await rmIfExists(outDir);
   await fs.promises.mkdir(outDir, { recursive: true });
 
@@ -38,6 +39,9 @@ async function main() {
     await fs.promises.mkdir(path.dirname(outPath), { recursive: true });
     await fs.promises.writeFile(outPath, html, 'utf8');
   }
+
+  const ms = Date.now() - startAt;
+  process.stdout.write(`Generated ${pages.length} pages into ${outDir} (${ms}ms)\n`);
 }
 
 function renderLayout(rootDir, locals) {
@@ -84,4 +88,3 @@ main().catch((err) => {
   process.stderr.write(String(err && err.stack ? err.stack : err));
   process.exit(1);
 });
-

@@ -20,7 +20,7 @@
         <div>
           <div class="hero-eyebrow">Personal Writing Platform</div>
           <h1 class="hero-title">记录生命中的<br><em>每一刻灵光</em></h1>
-          <p class="hero-desc">文字是我与世界的桥梁。这里有我对生活的思考、对文学的探索，以及那些尚未完成的故事。</p>
+          <p class="hero-desc" id="homeIntroText">文字是我与世界的桥梁。这里有我对生活的思考、对文学的探索，以及那些尚未完成的故事。</p>
           <div class="hero-actions">
             <button class="hero-btn-primary" onclick="showPage('articles')">浏览文章</button>
             <button class="hero-btn-outline" onclick="showPage('novels')">阅读小说</button>
@@ -74,7 +74,7 @@
     <footer class="front-footer">
       <div class="footer-inner">
         <div class="footer-logo">拾墨</div>
-        <p style="font-size:13px;margin-top:.5rem;max-width:360px;line-height:1.7">一个关于文字、思考与创作的私人空间。感谢你的到来。</p>
+        <p id="footerIntroText" style="font-size:13px;margin-top:.5rem;max-width:360px;line-height:1.7">一个关于文字、思考与创作的私人空间。感谢你的到来。</p>
         <div class="footer-bottom">
           <span>© 2024 拾墨 · 保留所有权利</span>
           <span>Powered by Next.js · Neon · Vercel</span>
@@ -101,7 +101,6 @@
         </div>
         <div class="article-actions">
           <button class="reaction-btn" id="btnLike" onclick="toggleReaction('like')">👍 <span id="likeCount">0</span></button>
-          <button class="reaction-btn" id="btnFavorite" onclick="toggleReaction('favorite')">⭐ <span id="favoriteCount">0</span></button>
         </div>
       </div>
     </div>
@@ -187,15 +186,15 @@
     <div class="page-hero">
       <div class="page-hero-inner">
         <h1>关于作者</h1>
-        <p>一个喜欢用文字思考的人</p>
+        <p id="aboutHeroSubtitle">一个喜欢用文字思考的人</p>
       </div>
     </div>
     <div class="container-sm" style="padding:3rem 2rem 5rem">
       <div style="display:flex;gap:3rem;align-items:flex-start;margin-bottom:3rem">
         <div style="width:120px;height:120px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--gold));flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:2.5rem;color:white">✍</div>
         <div>
-          <h2 style="font-family:'Playfair Display',serif;font-size:1.8rem;margin-bottom:.5rem">某位写作者</h2>
-          <p style="color:var(--ink-3);font-size:.9rem;margin-bottom:1rem;font-family:'DM Mono',monospace">作家 · 随笔作者 · 小说创作者</p>
+          <h2 id="aboutAuthorName" style="font-family:'Playfair Display',serif;font-size:1.8rem;margin-bottom:.5rem">某位写作者</h2>
+          <p id="aboutAuthorTagline" style="color:var(--ink-3);font-size:.9rem;margin-bottom:1rem;font-family:'DM Mono',monospace">作家 · 随笔作者 · 小说创作者</p>
           <div style="display:flex;gap:.75rem;flex-wrap:wrap">
             <span class="tag tag-green">文学</span>
             <span class="tag tag-gold">哲学</span>
@@ -204,9 +203,7 @@
           </div>
         </div>
       </div>
-      <div style="font-size:1.02rem;line-height:1.9;color:var(--ink-2)">
-        <p>这是一个关于文字与思考的私人空间。</p>
-      </div>
+      <div id="aboutAuthorContent" style="font-size:1.02rem;line-height:1.9;color:var(--ink-2)"><p>这是一个关于文字与思考的私人空间。</p></div>
     </div>
   </div>
 

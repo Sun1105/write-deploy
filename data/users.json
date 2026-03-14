@@ -2,7 +2,7 @@
   {
     "id": "26f72472c30c3bf531641d911c6758d1",
     "username": "sun466492052@gmail.com",
-    "name": "sun1105",
+    "name": "作者",
     "role": "admin",
     "salt": "8c16880f24bdc0a105d6dac599c2a6f9",
     "hash": "bcf9ff7d6b5182ee834b629b82563809a642f82910f8853c25cb6fd1e6bf3232f75fbfddf774d813cdcf14c3ce7d7004c509e0198f66feadb8e87aa52d909e11",
@@ -11,11 +11,31 @@
   {
     "id": "65a8f008d9985a399d66dd09f0032544",
     "username": "466492052@qq.com",
-    "name": "sun1105_2",
+    "name": "普通测试用户",
     "role": "user",
     "status": "active",
     "salt": "4acae9fe86d782afbaa0855fa6841fa5",
     "hash": "e094119ba403276e3a3b6449a6f73db2cc83be41eb325e1b4ac5ddce0418b3776ea6ada1042476f20fb9d5e110ec7b2f3ab9f4aa81ad7d30f70a801711bdc808",
     "createdAt": "2026-03-13T01:19:49.072Z"
+  },
+  {
+    "id": "361859efbd764eea785b852660a91864",
+    "username": "u1@test.com",
+    "name": "测试用户1",
+    "role": "user",
+    "status": "banned",
+    "salt": "5f320d8e6185b82b4f0be16c079ebb74",
+    "hash": "306723a5332c2506b772df7846c952eee7386e1a47a3baf4c161fa852ffc4729cbe14ac50811b33936510d6788e545b7f776777a9a86256815f4eada286af7ab",
+    "createdAt": "2026-03-14T10:36:22.075Z"
+  },
+  {
+    "id": "99432a75ddac782e97f3745b4e8df7e9",
+    "username": "u2@test.com",
+    "name": "测试用户2",
+    "role": "user",
+    "status": "active",
+    "salt": "2040375b4c7089e005722eb87c292134",
+    "hash": "643e40520c02de7a5c011076197c7d4ba6ab30d7691b06ebf15d36017d52747503f6b5ad802157cb468e9830a6e659f181805b6842e531b44245f8bf69a7a1f8",
+    "createdAt": "2026-03-14T10:37:58.644Z"
   }
 ]

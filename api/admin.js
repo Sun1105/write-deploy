@@ -9,7 +9,7 @@ module.exports = async function admin(req, res) {
 function getRouteParam(req) {
   try {
     const host = (req.headers && (req.headers.host || req.headers.Host)) || 'localhost';
-    const url = new URL(req.url || '', `http://${host}`);
+    const url = new URL(req.url || '', `https://${host}`);
     return url.searchParams.get('route') || '';
   } catch {
     return (req.query && req.query.route) ? String(req.query.route) : '';

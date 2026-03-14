@@ -38,6 +38,8 @@ let frontLatestCache = null;
 let frontNovelCache = null;
 let frontChapterCtx = null;
 let currentFrontArticleId = '';
+let currentFrontArticleCover = '';
+let currentNovelChapterTitle = '';
 
 function apiUrl(pathname) {
   const p = pathname.startsWith('/') ? pathname : `/${pathname}`;
@@ -65,6 +67,7 @@ function withAuthHeaders(headers) {
 // ── INIT ──
 window.addEventListener('DOMContentLoaded', () => {
   checkAuth();
+  applyFrontSettings();
   initEditorToolbar();
   initEditorMode();
   initRegisterForm();
@@ -72,6 +75,43 @@ window.addEventListener('DOMContentLoaded', () => {
   trackView('page', 'home');
   // If hash is present, route to it? For now default home
 });
+
+async function applyFrontSettings() {
+  try {
+    const res = await fetch(apiUrl('/settings'));
+    const data = await safeJson(res) || {};
+    if (!res.ok || !data) return;
+
+    const homeIntroEl = document.getElementById('homeIntroText');
+    const footerIntroEl = document.getElementById('footerIntroText');
+    const aboutSubtitleEl = document.getElementById('aboutHeroSubtitle');
+    const aboutNameEl = document.getElementById('aboutAuthorName');
+    const aboutTaglineEl = document.getElementById('aboutAuthorTagline');
+    const aboutContentEl = document.getElementById('aboutAuthorContent');
+
+    const homeIntro = data.homeIntro ? String(data.homeIntro) : '';
+    const footerIntro = data.footerIntro ? String(data.footerIntro) : '';
+    const aboutSubtitle = data.aboutSubtitle ? String(data.aboutSubtitle) : '';
+    const aboutTagline = data.aboutTagline ? String(data.aboutTagline) : '';
+    const aboutContent = data.aboutContent ? String(data.aboutContent) : '';
+    const author = data.author ? String(data.author) : '';
+    const description = data.description ? String(data.description) : '';
+
+    if (homeIntroEl && homeIntro) homeIntroEl.textContent = homeIntro;
+    if (footerIntroEl && footerIntro) footerIntroEl.textContent = footerIntro;
+    if (aboutSubtitleEl) aboutSubtitleEl.textContent = aboutSubtitle || description || aboutSubtitleEl.textContent;
+    if (aboutNameEl) aboutNameEl.textContent = author || aboutNameEl.textContent;
+    if (aboutTaglineEl && aboutTagline) aboutTaglineEl.textContent = aboutTagline;
+    if (aboutContentEl && aboutContent) {
+      if (window.marked && window.DOMPurify) {
+        aboutContentEl.innerHTML = DOMPurify.sanitize(marked.parse(aboutContent));
+      } else {
+        aboutContentEl.textContent = aboutContent;
+      }
+    }
+  } catch {
+  }
+}
 
 // ── AUTH ──
 function checkAuth() {
@@ -143,7 +183,7 @@ async function handleLogin() {
         showPage('home');
       }
     } else {
-      const msg = data.message || data.error || '登录失败';
+      const msg = data.message || data.error || `登录失败（HTTP ${res.status}）`;
       showToast(`登录失败: ${msg}`);
     }
   } catch (err) {
@@ -198,7 +238,7 @@ async function handleRegister() {
       showToast('注册成功！请登录');
       showPage('login');
     } else {
-      const msg = data.message || data.error || '注册失败';
+      const msg = data.message || data.error || `注册失败（HTTP ${res.status}）`;
       showToast(`注册失败: ${msg}`);
     }
   } catch (err) {
@@ -213,7 +253,7 @@ function updateNavUser() {
     if (!actions) return;
     const initial = CURRENT_USER.name ? String(CURRENT_USER.name).slice(0, 1) : 'U';
     const title = CURRENT_USER.role === 'admin' ? '进入后台' : '个人信息';
-    actions.innerHTML = `<div class="nav-avatar" onclick="openUserCenter()" title="${escapeHtml(title)}">${escapeHtml(initial)}</div><button class="btn btn-ghost btn-sm" onclick="logout()">退出</button>`;
+    actions.innerHTML = `<button class="btn btn-ghost btn-sm" onclick="openFrontSearch()">搜索</button><button class="btn btn-ghost btn-sm" onclick="scrollToTop()">置顶</button><div class="nav-actions-divider"></div><div class="nav-avatar" onclick="openUserCenter()" title="${escapeHtml(title)}">${escapeHtml(initial)}</div><button class="btn btn-ghost btn-sm" onclick="logout()">退出</button>`;
 
     const adminName = document.querySelector('.admin-user-name');
     const adminRole = document.querySelector('.admin-user-role');
@@ -225,7 +265,114 @@ function updateNavUser() {
 function updateNavGuest() {
   const actions = document.querySelector('.nav-actions');
   if (!actions) return;
-  actions.innerHTML = `<button class="btn btn-ghost btn-sm" onclick="showPage('login')">登录</button><button class="btn btn-primary btn-sm" onclick="showPage('register')">注册</button>`;
+  actions.innerHTML = `<button class="btn btn-ghost btn-sm" onclick="openFrontSearch()">搜索</button><button class="btn btn-ghost btn-sm" onclick="scrollToTop()">置顶</button><div class="nav-actions-divider"></div><button class="btn btn-ghost btn-sm" onclick="showPage('login')">登录</button><button class="btn btn-primary btn-sm" onclick="showPage('register')">注册</button>`;
+}
+
+function scrollToTop() {
+  try {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  } catch {
+    window.scrollTo(0, 0);
+  }
+}
+
+function ensureFrontSearchModal() {
+  let modal = document.getElementById('frontSearchModal');
+  if (modal) return modal;
+  modal = document.createElement('div');
+  modal.id = 'frontSearchModal';
+  modal.className = 'front-modal hidden';
+  modal.innerHTML = `
+    <div class="front-modal-backdrop" onclick="closeFrontSearch()"></div>
+    <div class="front-modal-card" role="dialog" aria-modal="true">
+      <div class="front-modal-head">
+        <div class="front-modal-title">搜索文章</div>
+        <button class="btn btn-ghost btn-sm" onclick="closeFrontSearch()">关闭</button>
+      </div>
+      <div class="front-modal-body">
+        <input id="frontSearchInput" class="front-search-input" placeholder="输入标题/摘要/分类/标签…" />
+        <div id="frontSearchResults" class="front-search-results"></div>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(modal);
+  modal.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') closeFrontSearch();
+  });
+  return modal;
+}
+
+async function ensureFrontPostsForSearch() {
+  if (Array.isArray(frontPostsCache) && frontPostsCache.length) return;
+  try {
+    const res = await fetch(apiUrl('/posts'));
+    const data = await safeJson(res);
+    if (res.ok && Array.isArray(data)) frontPostsCache = data;
+  } catch {
+  }
+}
+
+async function openFrontSearch() {
+  const modal = ensureFrontSearchModal();
+  modal.classList.remove('hidden');
+  await ensureFrontPostsForSearch();
+  const input = document.getElementById('frontSearchInput');
+  const results = document.getElementById('frontSearchResults');
+  if (!input || !results) return;
+
+  const render = () => {
+    const q = String(input.value || '').trim().toLowerCase();
+    const list = Array.isArray(frontPostsCache) ? frontPostsCache : [];
+    const hits = q
+      ? list.filter(p => {
+        const t = String(p && p.title ? p.title : '').toLowerCase();
+        const d = String(p && p.description ? p.description : '').toLowerCase();
+        const c = String(p && p.categories && p.categories[0] ? p.categories[0] : '').toLowerCase();
+        const tags = Array.isArray(p && p.tags) ? p.tags.map(x => String(x || '').toLowerCase()).join(' ') : '';
+        return t.includes(q) || d.includes(q) || c.includes(q) || tags.includes(q);
+      })
+      : list.slice(0, 20);
+
+    const shown = hits.slice(0, 30);
+    results.innerHTML = shown.length
+      ? shown.map(p => {
+        const filename = p && p.filename ? String(p.filename) : '';
+        const title = p && p.title ? String(p.title) : filename.replace(/\.md$/i, '');
+        const date = p && p.date ? new Date(p.date).toLocaleDateString() : '';
+        const desc = p && p.description ? String(p.description) : '';
+        const cat = p && p.categories && p.categories[0] ? String(p.categories[0]) : '';
+        return `
+          <div class="front-search-item" onclick="frontSearchOpenArticle('${escapeHtml(filename)}')">
+            <div class="front-search-item-title">${escapeHtml(title)}</div>
+            <div class="front-search-item-meta">${escapeHtml(cat)}${cat && date ? ' · ' : ''}${escapeHtml(date)}</div>
+            <div class="front-search-item-desc">${escapeHtml(desc || '')}</div>
+          </div>
+        `;
+      }).join('')
+      : `<div class="front-search-empty">暂无匹配结果</div>`;
+  };
+
+  input.oninput = render;
+  input.onkeydown = (e) => {
+    if (e.key === 'Enter') {
+      const first = results.querySelector('.front-search-item');
+      if (first && first.getAttribute('onclick')) first.click();
+    }
+  };
+  input.value = '';
+  render();
+  setTimeout(() => input.focus(), 0);
+}
+
+function closeFrontSearch() {
+  const modal = document.getElementById('frontSearchModal');
+  if (modal) modal.classList.add('hidden');
+}
+
+function frontSearchOpenArticle(filename) {
+  closeFrontSearch();
+  if (!filename) return;
+  showPage('article', filename);
 }
 
 function logout() {
@@ -248,7 +395,11 @@ async function fetchStats() {
   try {
     const res = await fetch(apiUrl('/stats'), { headers: withAuthHeaders({}) });
     const data = await safeJson(res) || {};
-    if (!res.ok) return;
+    if (!res.ok) {
+      if (res.status === 401) return handleUnauthorized('登录已失效，请重新登录');
+      showToast(data && data.error ? `加载概览失败: ${data.error}` : '加载概览失败');
+      return;
+    }
     adminPostCommentCounts = data && typeof data.commentCountsByPost === 'object' && data.commentCountsByPost ? data.commentCountsByPost : {};
 
     const viewCount = Number(data.viewCount || 0);
@@ -1273,21 +1424,25 @@ function renameFilenameWithSlug(filename, slug) {
 }
 
 function splitFrontMatter(markdown) {
-  const text = String(markdown || '');
-  if (!text.startsWith('---')) {
-    return { frontMatter: {}, body: text };
-  }
-  const end = text.indexOf('\n---\n', 3);
-  if (end === -1) {
-    return { frontMatter: {}, body: text };
-  }
-  const fmText = text.slice(3, end).trim();
-  const body = text.slice(end + 5);
-  return { frontMatter: parseFrontMatter(fmText), body: body.replace(/^\n+/, '') };
+  const raw = String(markdown || '');
+  const text = raw.replace(/^\uFEFF/, '').replace(/^\s+/, '');
+  const start = text.match(/^---\r?\n/);
+  if (!start) return { frontMatter: {}, body: text };
+
+  const startLen = start[0].length;
+  const rest = text.slice(startLen);
+  const endMatch = rest.match(/\r?\n---\r?\n/);
+  if (!endMatch || endMatch.index == null) return { frontMatter: {}, body: text };
+
+  const endIdx = startLen + endMatch.index;
+  const endLen = endMatch[0].length;
+  const fmText = text.slice(startLen, endIdx).trim();
+  const body = text.slice(endIdx + endLen).replace(/^\r?\n+/, '');
+  return { frontMatter: parseFrontMatter(fmText), body };
 }
 
 function parseFrontMatter(fmText) {
-  const lines = String(fmText || '').split('\n');
+  const lines = String(fmText || '').split(/\r?\n/);
   const out = {};
   for (const line of lines) {
     const idx = line.indexOf(':');
@@ -1492,7 +1647,7 @@ async function loadChapter(novelId, chapterFile) {
     const tocList = document.querySelector('.chapter-toc-list');
     tocList.innerHTML = data.chapters.map(c => `
       <div class="chapter-toc-item ${c.filename === chapterFile ? 'current' : ''}" onclick="showPage('chapter', '${novelId}/${c.filename}')">
-        <span class="chapter-toc-num">#</span>${c.title}
+        <span class="chapter-toc-num">#</span>${escapeHtml(String(c && c.title ? c.title : c && c.filename ? c.filename : ''))}
       </div>
     `).join('');
 
@@ -1536,6 +1691,7 @@ async function renderFrontendNovels() {
         const status = n && n.status ? String(n.status) : 'ongoing';
         const chapters = Number(n && n.chapters ? n.chapters : 0);
         const firstChapter = n && n.firstChapter ? String(n.firstChapter) : '';
+        const firstChapterTitle = n && n.firstChapterTitle ? String(n.firstChapterTitle) : '';
         const id = n && n.id ? String(n.id) : '';
         const cover = n && n.cover ? String(n.cover) : '';
         const canRead = Boolean(id && firstChapter);
@@ -1549,6 +1705,7 @@ async function renderFrontendNovels() {
             </div>
             <div class="novel-list-body">
               <div style="display:flex;align-items:center;justify-content:space-between"><span class="tag tag-blue">${escapeHtml(genre)}</span><span class="tag tag-green" style="font-size:10px">${status === 'finished' ? '已完结' : '连载中'}</span></div>
+              ${firstChapterTitle ? `<div style="margin-top:.5rem;color:var(--ink-3);font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">开篇：${escapeHtml(firstChapterTitle)}</div>` : ''}
               <div class="novel-info-row">
                 <span class="novel-chapters-count">${chapters} 章</span>
                 ${canRead
@@ -1571,6 +1728,7 @@ async function renderFrontendNovels() {
         const chapters = Number(n && n.chapters ? n.chapters : 0);
         const id = n && n.id ? String(n.id) : '';
         const firstChapter = n && n.firstChapter ? String(n.firstChapter) : '';
+        const firstChapterTitle = n && n.firstChapterTitle ? String(n.firstChapterTitle) : '';
         const cover = n && n.cover ? String(n.cover) : '';
         return `
           <div class="novel-card" onclick="showPage('chapter', '${id}/${firstChapter}')">
@@ -1582,7 +1740,7 @@ async function renderFrontendNovels() {
             <div class="novel-body">
               <div class="novel-genre">${escapeHtml(genre)}</div>
               <div class="novel-title">${escapeHtml(title)}</div>
-              <div class="novel-stats"><span>${chapters} 章</span></div>
+              <div class="novel-stats"><span>${chapters} 章</span>${firstChapterTitle ? `<span style="margin-left:.5rem;color:var(--ink-4);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:200px;display:inline-block;vertical-align:bottom">· ${escapeHtml(firstChapterTitle)}</span>` : ''}</div>
             </div>
           </div>
         `;
@@ -1611,10 +1769,17 @@ async function loadArticle(filename) {
     let title = filename.replace('.md', '');
     let date = new Date().toLocaleDateString();
     let tags = [];
+    let cover = '';
     
     if (fm.title) title = fm.title;
     if (fm.date) date = new Date(fm.date).toLocaleDateString();
     if (Array.isArray(fm.tags)) tags = fm.tags;
+    if (fm.cover) cover = String(fm.cover);
+    if (!cover) {
+      const cached = Array.isArray(frontPostsCache) ? frontPostsCache.find(p => p && String(p.filename || '') === String(filename)) : null;
+      cover = cached && cached.cover ? String(cached.cover) : '';
+    }
+    currentFrontArticleCover = cover;
     
     // Update UI
     document.querySelector('.article-headline').textContent = title;
@@ -1665,22 +1830,38 @@ function syncArticleMediaPanel() {
     .concat(imgs.map((el, idx) => ({ kind: 'img', el, idx })))
     .concat(videos.map((el, idx) => ({ kind: 'video', el, idx })))
     .concat(audios.map((el, idx) => ({ kind: 'audio', el, idx })));
+
+  const label = `<div class="media-panel-label">配图与媒体</div>`;
   if (!items.length) {
-    panel.innerHTML = `<div style="color:var(--ink-4);font-family:'DM Mono',monospace;font-size:12px">暂无媒体</div>`;
+    const cover = String(currentFrontArticleCover || '').trim();
+    if (cover) {
+      panel.innerHTML = `${label}<div class="media-item" data-kind="cover"><img class="media-img" src="${escapeHtml(cover)}" alt=""><div class="media-caption">封面</div></div>`;
+      const el = panel.querySelector('.media-item[data-kind="cover"]');
+      if (el) {
+        el.addEventListener('click', () => {
+          try { window.open(cover, '_blank'); } catch { }
+          scrollToTop();
+        });
+      }
+      return;
+    }
+    panel.innerHTML = `${label}<div class="media-empty">暂无媒体</div>`;
     return;
   }
-  panel.innerHTML = items.map((it, i) => {
+  panel.innerHTML = label + items.map((it, i) => {
     if (it.kind === 'img') {
       const src = it.el && it.el.getAttribute ? String(it.el.getAttribute('src') || '') : '';
-      return `<div class="media-item" data-i="${i}"><img class="media-img" src="${escapeHtml(src)}" alt=""></div>`;
+      const alt = it.el && it.el.getAttribute ? String(it.el.getAttribute('alt') || '') : '';
+      const caption = alt ? alt : `图片 ${i + 1}`;
+      return `<div class="media-item" data-i="${i}"><img class="media-img" src="${escapeHtml(src)}" alt=""><div class="media-caption">${escapeHtml(caption)}</div></div>`;
     }
     if (it.kind === 'video') {
       const src = it.el && it.el.getAttribute ? String(it.el.getAttribute('src') || '') : '';
       return src
-        ? `<div class="media-item" data-i="${i}"><video class="media-img media-video-thumb" muted playsinline preload="metadata" src="${escapeHtml(src)}"></video></div>`
-        : `<div class="media-item" data-i="${i}"><div class="media-img">🎬</div></div>`;
+        ? `<div class="media-item" data-i="${i}"><video class="media-img media-video-thumb" muted playsinline preload="metadata" src="${escapeHtml(src)}"></video><div class="media-caption">视频 ${i + 1}</div></div>`
+        : `<div class="media-item" data-i="${i}"><div class="media-img">🎬</div><div class="media-caption">视频 ${i + 1}</div></div>`;
     }
-    return `<div class="media-item" data-i="${i}"><div class="media-img">🎵</div></div>`;
+    return `<div class="media-item" data-i="${i}"><div class="media-img">🎵</div><div class="media-caption">音频 ${i + 1}</div></div>`;
   }).join('');
   panel.querySelectorAll('.media-item').forEach(el => {
     el.addEventListener('click', () => {
@@ -1795,14 +1976,21 @@ function syncArticleMediaPanel() {
      const res = await fetch(apiUrl('/comments'), {
        method: 'POST',
       headers: withAuthHeaders({ 'Content-Type': 'application/json' }),
-      body: JSON.stringify({ post: postId, content, user: CURRENT_USER ? CURRENT_USER.name : 'Anonymous' })
+      body: JSON.stringify({ post: postId, content })
      });
      const data = await safeJson(res) || {};
-     if (data.success) {
+    if (!res.ok) {
+      if (res.status === 401) return handleUnauthorized('登录已失效，请重新登录');
+      showToast(data && data.error ? `评论提交失败: ${data.error}` : '评论提交失败');
+      return;
+    }
+    if (data && data.success) {
        showToast('评论已提交，等待审核');
        textarea.value = '';
        loadComments(postId);
+      return;
      }
+    showToast(data && (data.message || data.error) ? `评论提交失败: ${data.message || data.error}` : '评论提交失败');
    } catch (err) { showToast('评论提交失败'); }
  }
 
@@ -2095,7 +2283,12 @@ async function refreshReactions() {
   try {
     const res = await fetch(apiUrl(`/reactions?kind=post&id=${encodeURIComponent(id)}`), { headers: withAuthHeaders({}) });
     const data = await safeJson(res) || {};
-    if (!res.ok) return;
+    if (!res.ok) {
+      if (res.status === 401) {
+        handleUnauthorized('登录已失效，请重新登录');
+      }
+      return;
+    }
     renderReactions(data);
   } catch {
   }
@@ -2103,17 +2296,11 @@ async function refreshReactions() {
 
 function renderReactions(data) {
   const likeCountEl = document.getElementById('likeCount');
-  const favCountEl = document.getElementById('favoriteCount');
   const btnLike = document.getElementById('btnLike');
-  const btnFav = document.getElementById('btnFavorite');
   const likes = Number(data && data.likes ? data.likes : 0);
-  const favs = Number(data && data.favorites ? data.favorites : 0);
   const liked = Boolean(data && data.liked);
-  const favorited = Boolean(data && data.favorited);
   if (likeCountEl) likeCountEl.textContent = likes.toLocaleString();
-  if (favCountEl) favCountEl.textContent = favs.toLocaleString();
   if (btnLike) btnLike.classList.toggle('active', liked);
-  if (btnFav) btnFav.classList.toggle('active', favorited);
 }
 
 async function toggleReaction(action) {
@@ -2121,6 +2308,7 @@ async function toggleReaction(action) {
     showPage('login');
     return;
   }
+  if (action !== 'like') return;
   const id = String(currentFrontArticleId || '').trim();
   if (!id) {
     showToast('请先打开文章再操作');
@@ -2203,13 +2391,19 @@ function updateReadingProgress() {
 
 function getRandomGradient(str) {
   const colors = [
-    'linear-gradient(135deg,#1a3a2e,#2d6b52)',
-    'linear-gradient(135deg,#3d2a1a,#7a4f2d)',
-    'linear-gradient(135deg,#0a1a2a,#1a3a5c)',
-    'linear-gradient(135deg,#1a0a2a,#3d1a5c)',
-    'linear-gradient(135deg,#1a2a0a,#3d5c1a)'
+    'linear-gradient(135deg,#0f172a,#2563eb)',
+    'linear-gradient(135deg,#0f172a,#06b6d4)',
+    'linear-gradient(135deg,#111827,#10b981)',
+    'linear-gradient(135deg,#111827,#f59e0b)',
+    'linear-gradient(135deg,#111827,#ef4444)',
+    'linear-gradient(135deg,#0f172a,#a855f7)',
+    'linear-gradient(135deg,#111827,#fb7185)',
+    'linear-gradient(135deg,#0b1220,#64748b)'
   ];
-  return colors[str.length % colors.length];
+  const s = String(str || '');
+  let h = 0;
+  for (let i = 0; i < s.length; i += 1) h = (h * 31 + s.charCodeAt(i)) >>> 0;
+  return colors[h % colors.length];
 }
 
 function getRandomIcon(str) {
@@ -2280,12 +2474,22 @@ async function fetchSettings() {
   try {
     const res = await fetch(apiUrl('/settings'));
     const data = await safeJson(res) || {};
-    const rows = document.querySelectorAll('.settings-row input');
-    if (rows.length >= 3) {
-      rows[0].value = data.title || '';
-      rows[1].value = data.description || '';
-      rows[2].value = data.author || '';
-    }
+    const titleEl = document.getElementById('settingsSiteTitle');
+    const descEl = document.getElementById('settingsSiteDescription');
+    const authorEl = document.getElementById('settingsAuthorName');
+    const homeIntroEl = document.getElementById('settingsHomeIntro');
+    const footerIntroEl = document.getElementById('settingsFooterIntro');
+    const aboutSubtitleEl = document.getElementById('settingsAboutSubtitle');
+    const aboutTaglineEl = document.getElementById('settingsAboutTagline');
+    const aboutContentEl = document.getElementById('settingsAboutContent');
+    if (titleEl) titleEl.value = data.title || '';
+    if (descEl) descEl.value = data.description || '';
+    if (authorEl) authorEl.value = data.author || '';
+    if (homeIntroEl) homeIntroEl.value = data.homeIntro || '';
+    if (footerIntroEl) footerIntroEl.value = data.footerIntro || '';
+    if (aboutSubtitleEl) aboutSubtitleEl.value = data.aboutSubtitle || '';
+    if (aboutTaglineEl) aboutTaglineEl.value = data.aboutTagline || '';
+    if (aboutContentEl) aboutContentEl.value = data.aboutContent || '';
     const toggle = document.querySelector('.settings-toggle');
     if (toggle) {
       const on = data.allowRegister !== false;
@@ -2295,12 +2499,24 @@ async function fetchSettings() {
 }
 
 async function saveSettings() {
-  const rows = document.querySelectorAll('.settings-row input');
+  const titleEl = document.getElementById('settingsSiteTitle');
+  const descEl = document.getElementById('settingsSiteDescription');
+  const authorEl = document.getElementById('settingsAuthorName');
+  const homeIntroEl = document.getElementById('settingsHomeIntro');
+  const footerIntroEl = document.getElementById('settingsFooterIntro');
+  const aboutSubtitleEl = document.getElementById('settingsAboutSubtitle');
+  const aboutTaglineEl = document.getElementById('settingsAboutTagline');
+  const aboutContentEl = document.getElementById('settingsAboutContent');
   const toggle = document.querySelector('.settings-toggle');
   const settings = {
-    title: rows[0].value,
-    description: rows[1].value,
-    author: rows[2].value,
+    title: titleEl ? titleEl.value : '',
+    description: descEl ? descEl.value : '',
+    author: authorEl ? authorEl.value : '',
+    homeIntro: homeIntroEl ? homeIntroEl.value : '',
+    footerIntro: footerIntroEl ? footerIntroEl.value : '',
+    aboutSubtitle: aboutSubtitleEl ? aboutSubtitleEl.value : '',
+    aboutTagline: aboutTaglineEl ? aboutTaglineEl.value : '',
+    aboutContent: aboutContentEl ? aboutContentEl.value : '',
     allowRegister: toggle ? toggle.classList.contains('on') : true
   };
   
@@ -2310,8 +2526,13 @@ async function saveSettings() {
       headers: withAuthHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify(settings)
     });
-    if (res.ok) showToast('设置已保存');
-    else showToast('保存失败');
+    const data = await safeJson(res) || {};
+    if (!res.ok) {
+      if (res.status === 401) return handleUnauthorized('登录已失效，请重新登录');
+      showToast(data && data.error ? `保存失败: ${data.error}` : '保存失败');
+      return;
+    }
+    showToast('设置已保存');
   } catch (err) { showToast('保存出错'); }
 }
 
@@ -2320,6 +2541,7 @@ async function fetchAdminComments() {
     const res = await fetch(apiUrl('/comments'), { headers: withAuthHeaders({}) });
     const raw = await safeJson(res);
     if (!res.ok) {
+      if (res.status === 401) return handleUnauthorized('登录已失效，请重新登录');
       showToast(raw && raw.error ? `加载评论失败: ${raw.error}` : '加载评论失败');
       return;
     }
@@ -2449,6 +2671,7 @@ async function fetchAdminUsers() {
     const res = await fetch(apiUrl('/users'), { headers: withAuthHeaders({}) });
     const raw = await safeJson(res);
     if (!res.ok) {
+      if (res.status === 401) return handleUnauthorized('登录已失效，请重新登录');
       showToast(raw && raw.error ? `加载用户失败: ${raw.error}` : '加载用户失败');
       return;
     }
@@ -2554,6 +2777,7 @@ function renderAdminUsers() {
         <td style="font-family:'DM Mono',monospace;font-size:12px;color:var(--admin-muted)">${escapeHtml(created)}</td>
         <td>
           <div style="display:flex;gap:.4rem;flex-wrap:wrap">
+            <button class="btn btn-admin-outline btn-sm" onclick="setUserName('${id}', '${escapeJsString(name)}')">改昵称</button>
             <button class="btn btn-admin-outline btn-sm" onclick="setUserRole('${id}', '${toggleTo}')">${toggleLabel}</button>
             <button class="btn btn-admin-outline btn-sm" onclick="setUserStatus('${id}', '${banTo}')">${banLabel}</button>
             <button class="btn btn-sm" style="color:var(--red);border:1px solid rgba(239,68,68,.3);border-radius:5px;padding:.3rem .7rem;font-size:12px;background:transparent" onclick="deleteUser('${id}')">删除</button>
@@ -2562,6 +2786,30 @@ function renderAdminUsers() {
       </tr>
     `;
   }).join('');
+}
+
+async function setUserName(id, currentName) {
+  const next = prompt('请输入新的昵称（最多 30 个字符）', String(currentName || '').trim());
+  if (next == null) return;
+  const name = String(next).trim();
+  if (!name) return showToast('昵称不能为空');
+  if (name.length > 30) return showToast('昵称最多 30 个字符');
+  try {
+    const res = await fetch(apiUrl(`/user?id=${encodeURIComponent(id)}`), {
+      method: 'PUT',
+      headers: withAuthHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify({ name })
+    });
+    const data = await safeJson(res) || {};
+    if (!res.ok) {
+      showToast(data.error ? `操作失败: ${data.error}` : '操作失败');
+      return;
+    }
+    showToast('已更新昵称');
+    await fetchAdminUsers();
+  } catch {
+    showToast('操作失败');
+  }
 }
 
 async function setUserRole(id, role) {
@@ -2633,6 +2881,7 @@ async function moderateComment(id, status) {
     });
     const data = await safeJson(res) || {};
     if (!res.ok) {
+      if (res.status === 401) return handleUnauthorized('登录已失效，请重新登录');
       showToast(data.error ? `操作失败: ${data.error}` : '操作失败');
       return;
     }
@@ -2646,6 +2895,7 @@ async function deleteComment(id) {
     const res = await fetch(apiUrl(`/comment?id=${encodeURIComponent(id)}`), { method: 'DELETE', headers: withAuthHeaders({}) });
     const data = await safeJson(res) || {};
     if (!res.ok) {
+      if (res.status === 401) return handleUnauthorized('登录已失效，请重新登录');
       showToast(data.error ? `删除失败: ${data.error}` : '删除失败');
       return;
     }
@@ -2947,8 +3197,10 @@ async function refreshNovelChaptersList() {
     : `<div style="color:var(--admin-muted);font-size:13px;padding:.5rem 0">暂无章节</div>`;
 
   const filenameInput = document.getElementById('novelChapterFilename');
+  const titleInput = document.getElementById('novelChapterTitle');
   const contentInput = document.getElementById('novelChapterContent');
   if (filenameInput) filenameInput.value = '';
+  if (titleInput) titleInput.value = '';
   if (contentInput) contentInput.value = '';
 }
 
@@ -2960,10 +3212,13 @@ async function newNovelChapter() {
 
   currentNovelChapterFile = normalized;
   currentNovelChapterSha = null;
+  currentNovelChapterTitle = '';
 
   const filenameInput = document.getElementById('novelChapterFilename');
+  const titleInput = document.getElementById('novelChapterTitle');
   const contentInput = document.getElementById('novelChapterContent');
   if (filenameInput) filenameInput.value = normalized;
+  if (titleInput) titleInput.value = '';
   if (contentInput) contentInput.value = '';
 }
 
@@ -2971,9 +3226,11 @@ async function loadNovelChapterForEdit(novelId, chapterFile) {
   currentNovelId = novelId;
   currentNovelChapterFile = chapterFile;
   currentNovelChapterSha = null;
+  currentNovelChapterTitle = '';
 
   const filenameInput = document.getElementById('novelChapterFilename');
   if (filenameInput) filenameInput.value = chapterFile;
+  const titleInput = document.getElementById('novelChapterTitle');
 
   const res = await fetch(apiUrl(`/novel-chapter?novelId=${encodeURIComponent(novelId)}&chapterFile=${encodeURIComponent(chapterFile)}`), { headers: withAuthHeaders({}) });
   const data = await safeJson(res) || {};
@@ -2987,14 +3244,19 @@ async function loadNovelChapterForEdit(novelId, chapterFile) {
   }
   const contentInput = document.getElementById('novelChapterContent');
   if (contentInput) contentInput.value = String(data.content || '');
+  const title = data && data.title ? String(data.title) : '';
+  currentNovelChapterTitle = title;
+  if (titleInput) titleInput.value = title;
   currentNovelChapterSha = data.sha || null;
 }
 
 async function saveNovelChapter() {
   if (!currentNovelId) return;
   const filenameInput = document.getElementById('novelChapterFilename');
+  const titleInput = document.getElementById('novelChapterTitle');
   const contentInput = document.getElementById('novelChapterContent');
   const filename = filenameInput ? filenameInput.value.trim() : '';
+  const title = titleInput ? titleInput.value.trim() : '';
   const content = contentInput ? contentInput.value : '';
   if (!filename) {
     showToast('请填写章节文件名');
@@ -3009,6 +3271,7 @@ async function saveNovelChapter() {
     body: JSON.stringify({
       novelId: currentNovelId,
       filename,
+      title,
       content,
       sha: currentNovelChapterSha || undefined
     })
@@ -3025,6 +3288,7 @@ async function saveNovelChapter() {
 
   currentNovelChapterFile = data.filename || filename;
   currentNovelChapterSha = data.sha || currentNovelChapterSha;
+  currentNovelChapterTitle = title;
   showToast('已保存');
   frontNovelCache = null;
   await refreshNovelChaptersList();
@@ -3058,9 +3322,12 @@ async function deleteNovelChapter() {
 
   currentNovelChapterFile = null;
   currentNovelChapterSha = null;
+  currentNovelChapterTitle = '';
   const filenameInput = document.getElementById('novelChapterFilename');
+  const titleInput = document.getElementById('novelChapterTitle');
   const contentInput = document.getElementById('novelChapterContent');
   if (filenameInput) filenameInput.value = '';
+  if (titleInput) titleInput.value = '';
   if (contentInput) contentInput.value = '';
   showToast('已删除');
   frontNovelCache = null;
@@ -3120,6 +3387,10 @@ window.frontOpenComment = frontOpenComment;
 window.toggleFrontCommentLike = toggleFrontCommentLike;
 window.replyToComment = replyToComment;
 window.toggleReaction = toggleReaction;
+window.openFrontSearch = openFrontSearch;
+window.closeFrontSearch = closeFrontSearch;
+window.frontSearchOpenArticle = frontSearchOpenArticle;
+window.scrollToTop = scrollToTop;
 window.goPrevChapter = goPrevChapter;
 window.goNextChapter = goNextChapter;
 window.logout = logout;
@@ -3155,6 +3426,7 @@ window.moderateComment = moderateComment;
 window.deleteComment = deleteComment;
 window.submitComment = submitComment;
 window.fetchAdminUsers = fetchAdminUsers;
+window.setUserName = setUserName;
 window.setUserRole = setUserRole;
 window.setUserStatus = setUserStatus;
 window.deleteUser = deleteUser;

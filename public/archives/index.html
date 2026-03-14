@@ -36,7 +36,7 @@
         <div>
           <div class="hero-eyebrow">Personal Writing Platform</div>
           <h1 class="hero-title">记录生命中的<br><em>每一刻灵光</em></h1>
-          <p class="hero-desc">文字是我与世界的桥梁。这里有我对生活的思考、对文学的探索，以及那些尚未完成的故事。</p>
+          <p class="hero-desc" id="homeIntroText">文字是我与世界的桥梁。这里有我对生活的思考、对文学的探索，以及那些尚未完成的故事。</p>
           <div class="hero-actions">
             <button class="hero-btn-primary" onclick="showPage('articles')">浏览文章</button>
             <button class="hero-btn-outline" onclick="showPage('novels')">阅读小说</button>
@@ -90,7 +90,7 @@
     <footer class="front-footer">
       <div class="footer-inner">
         <div class="footer-logo">拾墨</div>
-        <p style="font-size:13px;margin-top:.5rem;max-width:360px;line-height:1.7">一个关于文字、思考与创作的私人空间。感谢你的到来。</p>
+        <p id="footerIntroText" style="font-size:13px;margin-top:.5rem;max-width:360px;line-height:1.7">一个关于文字、思考与创作的私人空间。感谢你的到来。</p>
         <div class="footer-bottom">
           <span>© 2024 拾墨 · 保留所有权利</span>
           <span>Powered by Next.js · Neon · Vercel</span>
@@ -117,7 +117,6 @@
         </div>
         <div class="article-actions">
           <button class="reaction-btn" id="btnLike" onclick="toggleReaction('like')">👍 <span id="likeCount">0</span></button>
-          <button class="reaction-btn" id="btnFavorite" onclick="toggleReaction('favorite')">⭐ <span id="favoriteCount">0</span></button>
         </div>
       </div>
     </div>
@@ -203,15 +202,15 @@
     <div class="page-hero">
       <div class="page-hero-inner">
         <h1>关于作者</h1>
-        <p>一个喜欢用文字思考的人</p>
+        <p id="aboutHeroSubtitle">一个喜欢用文字思考的人</p>
       </div>
     </div>
     <div class="container-sm" style="padding:3rem 2rem 5rem">
       <div style="display:flex;gap:3rem;align-items:flex-start;margin-bottom:3rem">
         <div style="width:120px;height:120px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--gold));flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:2.5rem;color:white">✍</div>
         <div>
-          <h2 style="font-family:'Playfair Display',serif;font-size:1.8rem;margin-bottom:.5rem">某位写作者</h2>
-          <p style="color:var(--ink-3);font-size:.9rem;margin-bottom:1rem;font-family:'DM Mono',monospace">作家 · 随笔作者 · 小说创作者</p>
+          <h2 id="aboutAuthorName" style="font-family:'Playfair Display',serif;font-size:1.8rem;margin-bottom:.5rem">某位写作者</h2>
+          <p id="aboutAuthorTagline" style="color:var(--ink-3);font-size:.9rem;margin-bottom:1rem;font-family:'DM Mono',monospace">作家 · 随笔作者 · 小说创作者</p>
           <div style="display:flex;gap:.75rem;flex-wrap:wrap">
             <span class="tag tag-green">文学</span>
             <span class="tag tag-gold">哲学</span>
@@ -220,9 +219,7 @@
           </div>
         </div>
       </div>
-      <div style="font-size:1.02rem;line-height:1.9;color:var(--ink-2)">
-        <p>这是一个关于文字与思考的私人空间。</p>
-      </div>
+      <div id="aboutAuthorContent" style="font-size:1.02rem;line-height:1.9;color:var(--ink-2)"><p>这是一个关于文字与思考的私人空间。</p></div>
     </div>
   </div>
 
@@ -354,7 +351,7 @@
         <div class="admin-nav-item" id="adminNav-settings" onclick="showAdminPage('settings')">
           <span class="nav-icon">⚙️</span> 网站设置
         </div>
-        <div class="admin-nav-item" onclick="setMode('front')">
+        <div class="admin-nav-item" onclick="setMode('front');showPage('home')">
           <span class="nav-icon">🌐</span> 前台预览
         </div>
       </nav>
@@ -665,6 +662,7 @@
               </div>
               <div style="display:flex;flex-direction:column;gap:.6rem">
                 <input class="settings-input" id="novelChapterFilename" placeholder="章节文件名，如 001-第一章.md" />
+                <input class="settings-input" id="novelChapterTitle" placeholder="章节标题（展示用）" />
                 <textarea class="editor-textarea" id="novelChapterContent" style="min-height:380px"></textarea>
               </div>
             </div>
@@ -755,15 +753,44 @@
             <div class="settings-body">
               <div class="settings-row">
                 <div class="settings-label-wrap"><div class="settings-label">网站名称</div><div class="settings-desc">显示在浏览器标签和网站 Logo 处</div></div>
-                <input class="settings-input" value="拾墨">
+                <input class="settings-input" id="settingsSiteTitle" value="拾墨">
               </div>
               <div class="settings-row">
                 <div class="settings-label-wrap"><div class="settings-label">网站简介</div><div class="settings-desc">显示在 SEO meta description 和关于页</div></div>
-                <input class="settings-input" value="一个关于文字、思考与创作的私人空间">
+                <input class="settings-input" id="settingsSiteDescription" value="一个关于文字、思考与创作的私人空间">
               </div>
               <div class="settings-row">
                 <div class="settings-label-wrap"><div class="settings-label">作者名</div><div class="settings-desc">文章署名与关于页显示</div></div>
-                <input class="settings-input" value="某位写作者">
+                <input class="settings-input" id="settingsAuthorName" value="某位写作者">
+              </div>
+            </div>
+          </div>
+
+          <div class="settings-section">
+            <div class="settings-section-header">
+              <div class="settings-section-title">首页与关于</div>
+              <div class="settings-section-desc">自定义首页文案与关于作者内容</div>
+            </div>
+            <div class="settings-body">
+              <div class="settings-row settings-row-full">
+                <div class="settings-label-wrap"><div class="settings-label">首页介绍</div><div class="settings-desc">显示在首页顶部大段文字</div></div>
+                <textarea class="editor-textarea" id="settingsHomeIntro" style="min-height:90px"></textarea>
+              </div>
+              <div class="settings-row settings-row-full">
+                <div class="settings-label-wrap"><div class="settings-label">页脚介绍</div><div class="settings-desc">显示在首页页脚</div></div>
+                <textarea class="editor-textarea" id="settingsFooterIntro" style="min-height:90px"></textarea>
+              </div>
+              <div class="settings-row">
+                <div class="settings-label-wrap"><div class="settings-label">关于页副标题</div><div class="settings-desc">显示在关于作者页顶部</div></div>
+                <input class="settings-input" id="settingsAboutSubtitle" placeholder="例如：一个喜欢用文字思考的人">
+              </div>
+              <div class="settings-row">
+                <div class="settings-label-wrap"><div class="settings-label">作者标签</div><div class="settings-desc">显示在作者名下方</div></div>
+                <input class="settings-input" id="settingsAboutTagline" placeholder="例如：作家 · 随笔作者 · 小说创作者">
+              </div>
+              <div class="settings-row settings-row-full">
+                <div class="settings-label-wrap"><div class="settings-label">关于作者内容</div><div class="settings-desc">支持 Markdown</div></div>
+                <textarea class="editor-textarea" id="settingsAboutContent" style="min-height:140px"></textarea>
               </div>
             </div>
           </div>

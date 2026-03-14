@@ -3,7 +3,9 @@
   "private": true,
   "version": "0.0.1",
   "scripts": {
-    "build": "node scripts/generate-static.cjs"
+    "build": "node scripts/generate-static.cjs",
+    "dev": "node scripts/dev-server.cjs",
+    "dev:watch": "node scripts/dev-server.cjs --watch"
   },
   "dependencies": {
     "ejs": "^3.1.10"
