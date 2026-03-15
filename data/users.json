@@ -37,15 +37,5 @@
     "salt": "2040375b4c7089e005722eb87c292134",
     "hash": "643e40520c02de7a5c011076197c7d4ba6ab30d7691b06ebf15d36017d52747503f6b5ad802157cb468e9830a6e659f181805b6842e531b44245f8bf69a7a1f8",
     "createdAt": "2026-03-14T10:37:58.644Z"
-  },
-  {
-    "id": "66486109f40e2f1314908fb3a29eae84",
-    "username": "u_created@test.com",
-    "name": "带时间",
-    "role": "user",
-    "status": "active",
-    "salt": "8f5ca553982051b6112cc8fbde46ce53",
-    "hash": "0bd2b102ba0b89bbaac34fc775a2beedf79c202354b599274236c7d6e9d181a5a9bcab6d033bd120440c925668556b1e2d92d2a78a05dc9f47c41a5631429c5a",
-    "createdAt": "2026-03-14T11:28:16.180Z"
   }
 ]

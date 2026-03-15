@@ -3,44 +3,48 @@
     <aside class="admin-sidebar">
       <div class="admin-sidebar-logo">
         <div class="admin-logo-text">拾墨</div>
-        <div class="admin-logo-sub">管理后台 · Admin</div>
+        <div class="admin-logo-sub" data-i18n="admin.subtitle">管理后台 · Admin</div>
       </div>
       <nav class="admin-nav">
-        <div class="admin-nav-section-label">内容管理</div>
+        <div class="admin-nav-section-label" data-i18n="admin.section.content">内容管理</div>
         <div class="admin-nav-item active" id="adminNav-dashboard" onclick="showAdminPage('dashboard')">
-          <span class="nav-icon">📊</span> 数据概览
+          <span class="nav-icon">📊</span> <span data-i18n="admin.dashboard">数据概览</span>
         </div>
         <div class="admin-nav-item" id="adminNav-articles" onclick="showAdminPage('articles')">
-          <span class="nav-icon">📝</span> 文章管理
+          <span class="nav-icon">📝</span> <span data-i18n="admin.articles">文章管理</span>
         </div>
         <div class="admin-nav-item" id="adminNav-editor" onclick="newPost()">
-          <span class="nav-icon">✏️</span> 写作编辑器
+          <span class="nav-icon">✏️</span> <span data-i18n="admin.editor">写作编辑器</span>
         </div>
         <div class="admin-nav-item" id="adminNav-novels" onclick="showAdminPage('novels')">
-          <span class="nav-icon">📖</span> 小说管理
+          <span class="nav-icon">📖</span> <span data-i18n="admin.novels">小说管理</span>
         </div>
-        <div class="admin-nav-section-label">社区管理</div>
+        <div class="admin-nav-section-label" data-i18n="admin.section.community">社区管理</div>
         <div class="admin-nav-item" id="adminNav-comments" onclick="showAdminPage('comments')">
-          <span class="nav-icon">💬</span> 评论审核
+          <span class="nav-icon">💬</span> <span data-i18n="admin.comments">评论审核</span>
           <span class="admin-nav-badge" id="adminNavCommentsBadge">0</span>
         </div>
         <div class="admin-nav-item" id="adminNav-users" onclick="showAdminPage('users')">
-          <span class="nav-icon">👥</span> 用户管理
+          <span class="nav-icon">👥</span> <span data-i18n="admin.users">用户管理</span>
         </div>
-        <div class="admin-nav-section-label">系统</div>
+        <div class="admin-nav-section-label" data-i18n="admin.section.system">系统</div>
         <div class="admin-nav-item" id="adminNav-settings" onclick="showAdminPage('settings')">
-          <span class="nav-icon">⚙️</span> 网站设置
+          <span class="nav-icon">⚙️</span> <span data-i18n="admin.settings">网站设置</span>
         </div>
         <div class="admin-nav-item" onclick="setMode('front');showPage('home')">
-          <span class="nav-icon">🌐</span> 前台预览
+          <span class="nav-icon">🌐</span> <span data-i18n="admin.preview">前台预览</span>
         </div>
       </nav>
       <div class="admin-sidebar-footer">
+        <div style="display:flex;gap:.5rem;margin-bottom:1rem">
+          <button class="btn btn-admin-outline btn-sm" id="adminThemeToggle" onclick="toggleTheme()"></button>
+          <button class="btn btn-admin-outline btn-sm" id="adminLangToggle" onclick="toggleLang()"></button>
+        </div>
         <div class="admin-user-info">
           <div class="admin-user-avatar">作</div>
           <div>
-            <div class="admin-user-name">某位作者</div>
-            <div class="admin-user-role">Administrator</div>
+            <div class="admin-user-name" data-i18n="admin.user.placeholderName">某位作者</div>
+            <div class="admin-user-role" data-i18n="admin.user.placeholderRole">Administrator</div>
           </div>
         </div>
       </div>
@@ -49,8 +53,8 @@
     <div class="admin-main">
       <div class="admin-page active" id="adminPage-dashboard">
         <div class="admin-header">
-          <div class="admin-page-title">数据概览</div>
-          <div id="dashboardUpdatedAt" style="margin-left:auto;font-family:'DM Mono',monospace;font-size:12px;color:var(--admin-muted)">最近 30 天 · 更新于 --</div>
+          <div class="admin-page-title" data-i18n="admin.page.dashboard">数据概览</div>
+          <div id="dashboardUpdatedAt" style="margin-left:auto;font-family:'DM Mono',monospace;font-size:12px;color:var(--admin-muted)" data-i18n="admin.dashboard.updatedAt">最近 30 天 · 更新于 --</div>
         </div>
         <div class="admin-content">
           <div class="stats-grid">
@@ -60,7 +64,7 @@
                 <span class="stat-change stat-up" id="statViewChange">--</span>
               </div>
               <div class="stat-value" id="statViewCount">--</div>
-              <div class="stat-label">总页面访问量</div>
+              <div class="stat-label" data-i18n="admin.stat.totalViews">总页面访问量</div>
             </div>
             <div class="stat-card">
               <div class="stat-card-top">
@@ -68,7 +72,7 @@
                 <span class="stat-change stat-up" id="statUserChange">--</span>
               </div>
               <div class="stat-value" id="statUserCount">--</div>
-              <div class="stat-label">注册用户</div>
+              <div class="stat-label" data-i18n="admin.stat.users">注册用户</div>
             </div>
             <div class="stat-card">
               <div class="stat-card-top">
@@ -76,7 +80,7 @@
                 <span class="stat-change stat-up" id="statCommentChange">--</span>
               </div>
               <div class="stat-value" id="statCommentCount">--</div>
-              <div class="stat-label">评论总数</div>
+              <div class="stat-label" data-i18n="admin.stat.comments">评论总数</div>
             </div>
             <div class="stat-card">
               <div class="stat-card-top">
@@ -84,25 +88,25 @@
                 <span class="stat-change stat-up" id="statPostChange">--</span>
               </div>
               <div class="stat-value" id="statPostCount">--</div>
-              <div class="stat-label">已发布文章</div>
+              <div class="stat-label" data-i18n="admin.stat.publishedPosts">已发布文章</div>
             </div>
           </div>
 
           <div class="two-col-grid">
             <div class="chart-card">
               <div class="chart-header">
-                <div class="chart-title">内容活跃度</div>
-                <div class="chart-period">过去 14 天</div>
+                <div class="chart-title" data-i18n="admin.chart.activity">内容活跃度</div>
+                <div class="chart-period" data-i18n="admin.period.last14days">过去 14 天</div>
               </div>
               <div class="chart-bars" id="dashboardActivityBars"></div>
             </div>
 
             <div class="chart-card">
               <div class="chart-header">
-                <div class="chart-title">热门内容 TOP 5（按互动/阅读）</div>
+                <div class="chart-title" data-i18n="admin.chart.topContent">热门内容 TOP 5（按互动/阅读）</div>
                 <div style="display:flex;align-items:center;gap:.5rem">
-                  <div class="chart-period">最近</div>
-                  <button class="btn btn-admin-outline btn-sm" onclick="dashboardViewMoreTopPosts()">查看更多</button>
+                  <div class="chart-period" data-i18n="admin.period.recent">最近</div>
+                  <button class="btn btn-admin-outline btn-sm" onclick="dashboardViewMoreTopPosts()" data-i18n="admin.action.viewMore">查看更多</button>
                 </div>
               </div>
               <div id="dashboardTopPosts" style="display:flex;flex-direction:column;gap:.75rem"></div>
@@ -112,8 +116,8 @@
           <div class="two-col-grid">
             <div class="chart-card" style="grid-column:1 / -1">
               <div class="chart-header">
-                <div class="chart-title">浏览量趋势</div>
-                <div class="chart-period">过去 30 天</div>
+                <div class="chart-title" data-i18n="admin.chart.viewsTrend">浏览量趋势</div>
+                <div class="chart-period" data-i18n="admin.period.last30days">过去 30 天</div>
               </div>
               <div class="chart-bars" id="dashboardViews30Bars"></div>
             </div>
@@ -122,18 +126,18 @@
           <div class="two-col-grid">
             <div class="chart-card">
               <div class="chart-header">
-                <div class="chart-title">页面访问量 TOP 5</div>
-                <div class="chart-period">累计</div>
+                <div class="chart-title" data-i18n="admin.chart.topPages">页面访问量 TOP 5</div>
+                <div class="chart-period" data-i18n="admin.period.total">累计</div>
               </div>
               <div id="dashboardTopViewedPages" style="display:flex;flex-direction:column;gap:.75rem"></div>
             </div>
 
             <div class="chart-card">
               <div class="chart-header">
-                <div class="chart-title">内容访问量 TOP 5</div>
+                <div class="chart-title" data-i18n="admin.chart.topContentViews">内容访问量 TOP 5</div>
                 <div style="display:flex;align-items:center;gap:.5rem">
-                  <div class="chart-period">累计</div>
-                  <button class="btn btn-admin-outline btn-sm" onclick="dashboardViewMorePosts('all')">查看更多</button>
+                  <div class="chart-period" data-i18n="admin.period.total">累计</div>
+                  <button class="btn btn-admin-outline btn-sm" onclick="dashboardViewMorePosts('all')" data-i18n="admin.action.viewMore">查看更多</button>
                 </div>
               </div>
               <div id="dashboardTopViewedPosts" style="display:flex;flex-direction:column;gap:.75rem"></div>
@@ -143,11 +147,11 @@
           <div class="two-col-grid">
             <div class="chart-card">
               <div class="chart-header">
-                <div class="chart-title">最新文章动态</div>
+                <div class="chart-title" data-i18n="admin.chart.latestPosts">最新文章动态</div>
                 <div style="display:flex;align-items:center;gap:.5rem">
-                  <div class="chart-period">最近 8 条</div>
-                  <button class="btn btn-admin-outline btn-sm" onclick="dashboardViewMorePosts('published')">已发布</button>
-                  <button class="btn btn-admin-outline btn-sm" onclick="dashboardViewMorePosts('all')">全部</button>
+                  <div class="chart-period" data-i18n="admin.period.recent8">最近 8 条</div>
+                  <button class="btn btn-admin-outline btn-sm" onclick="dashboardViewMorePosts('published')" data-i18n="admin.filter.published">已发布</button>
+                  <button class="btn btn-admin-outline btn-sm" onclick="dashboardViewMorePosts('all')" data-i18n="admin.filter.all">全部</button>
                 </div>
               </div>
               <div id="dashboardRecentPosts" style="display:flex;flex-direction:column;gap:.6rem"></div>
@@ -155,13 +159,13 @@
 
             <div class="chart-card">
               <div class="chart-header">
-                <div class="chart-title">最新评论</div>
+                <div class="chart-title" data-i18n="admin.chart.latestComments">最新评论</div>
                 <div style="display:flex;align-items:center;gap:.5rem">
-                  <div class="chart-period">最近 8 条</div>
-                  <button class="btn btn-admin-outline btn-sm" onclick="dashboardViewMoreComments('pending')">待审核</button>
-                  <button class="btn btn-admin-outline btn-sm" onclick="dashboardViewMoreComments('all')">全部</button>
+                  <div class="chart-period" data-i18n="admin.period.recent8">最近 8 条</div>
+                  <button class="btn btn-admin-outline btn-sm" onclick="dashboardViewMoreComments('pending')" data-i18n="admin.filter.pending">待审核</button>
+                  <button class="btn btn-admin-outline btn-sm" onclick="dashboardViewMoreComments('all')" data-i18n="admin.filter.all">全部</button>
                   <div style="display:flex;align-items:center;gap:.35rem;color:var(--admin-muted);font-size:12px">
-                    <span>优先待审核</span>
+                    <span data-i18n="admin.pref.prioritizePending">优先待审核</span>
                     <div class="settings-toggle" id="dashboardPreferPendingToggle"><div class="settings-toggle-knob"></div></div>
                   </div>
                 </div>
@@ -171,45 +175,45 @@
           </div>
 
           <div class="admin-quick-links">
-            <div class="quick-link" onclick="newPost()"><div class="quick-link-icon">✏️</div><div class="quick-link-label">写新文章</div></div>
-            <div class="quick-link" onclick="showAdminPage('comments')"><div class="quick-link-icon">💬</div><div class="quick-link-label" id="dashboardPendingCommentLabel">审核评论 (0)</div></div>
-            <div class="quick-link" onclick="showAdminPage('novels')"><div class="quick-link-icon">📖</div><div class="quick-link-label">更新小说</div></div>
-            <div class="quick-link" onclick="showAdminPage('settings')"><div class="quick-link-icon">⚙️</div><div class="quick-link-label">网站设置</div></div>
+            <div class="quick-link" onclick="newPost()"><div class="quick-link-icon">✏️</div><div class="quick-link-label" data-i18n="admin.quick.newPost">写新文章</div></div>
+            <div class="quick-link" onclick="showAdminPage('comments')"><div class="quick-link-icon">💬</div><div class="quick-link-label" id="dashboardPendingCommentLabel"><span data-i18n="admin.quick.reviewComments">审核评论</span> (<span id="dashboardPendingCommentCount">0</span>)</div></div>
+            <div class="quick-link" onclick="showAdminPage('novels')"><div class="quick-link-icon">📖</div><div class="quick-link-label" data-i18n="admin.quick.updateNovel">更新小说</div></div>
+            <div class="quick-link" onclick="showAdminPage('settings')"><div class="quick-link-icon">⚙️</div><div class="quick-link-label" data-i18n="admin.quick.settings">网站设置</div></div>
           </div>
         </div>
       </div>
 
       <div class="admin-page" id="adminPage-articles">
         <div class="admin-header">
-          <div class="admin-page-title">文章管理</div>
+          <div class="admin-page-title" data-i18n="admin.page.articles">文章管理</div>
           <div class="admin-header-actions">
-            <div class="admin-search"><span class="admin-search-icon">🔍</span><input id="adminArticleSearch" placeholder="搜索文章…"></div>
-            <button class="btn btn-admin" onclick="newPost()">+ 新建文章</button>
+            <div class="admin-search"><span class="admin-search-icon">🔍</span><input id="adminArticleSearch" data-i18n-placeholder="admin.search.articles" placeholder="搜索文章…"></div>
+            <button class="btn btn-admin" onclick="newPost()" data-i18n="admin.action.newPost">+ 新建文章</button>
           </div>
         </div>
         <div class="admin-content">
           <div class="top-tabs">
-            <div class="top-tab active" data-filter="all">全部 <span class="tab-count" id="adminArticleCountAll">0</span></div>
-            <div class="top-tab" data-filter="published">已发布 <span class="tab-count" id="adminArticleCountPublished">0</span></div>
-            <div class="top-tab" data-filter="draft">草稿 <span class="tab-count" id="adminArticleCountDraft">0</span></div>
-            <div class="top-tab" data-filter="archived">已归档 <span class="tab-count" id="adminArticleCountArchived">0</span></div>
+            <div class="top-tab active" data-filter="all"><span data-i18n="admin.filter.all">全部</span> <span class="tab-count" id="adminArticleCountAll">0</span></div>
+            <div class="top-tab" data-filter="published"><span data-i18n="admin.filter.published">已发布</span> <span class="tab-count" id="adminArticleCountPublished">0</span></div>
+            <div class="top-tab" data-filter="draft"><span data-i18n="admin.filter.draft">草稿</span> <span class="tab-count" id="adminArticleCountDraft">0</span></div>
+            <div class="top-tab" data-filter="archived"><span data-i18n="admin.filter.archived">已归档</span> <span class="tab-count" id="adminArticleCountArchived">0</span></div>
           </div>
           <div class="table-card">
             <div class="table-card-header">
-              <div class="table-card-title">文章列表</div>
+              <div class="table-card-title" data-i18n="admin.section.articleList">文章列表</div>
               <div style="display:flex;gap:.5rem">
                 <select id="adminArticleCategoryFilter" style="padding:.3rem .6rem;background:var(--admin-bg);border:1px solid var(--admin-border);border-radius:5px;color:var(--admin-muted);font-size:12px">
-                  <option value="">全部分类</option>
+                  <option value="" data-i18n="admin.filter.allCategories">全部分类</option>
                 </select>
                 <select id="adminArticleSort" style="padding:.3rem .6rem;background:var(--admin-bg);border:1px solid var(--admin-border);border-radius:5px;color:var(--admin-muted);font-size:12px">
-                  <option value="date">最新</option>
-                  <option value="comments">按评论数</option>
+                  <option value="date" data-i18n="admin.sort.latest">最新</option>
+                  <option value="comments" data-i18n="admin.sort.byComments">按评论数</option>
                 </select>
               </div>
             </div>
             <div class="table-wrap">
               <table class="admin-table">
-                <thead><tr><th>标题</th><th>分类</th><th>状态</th><th>阅读量</th><th>评论</th><th>发布时间</th><th>操作</th></tr></thead>
+                <thead><tr><th data-i18n="admin.table.title">标题</th><th data-i18n="admin.table.category">分类</th><th data-i18n="admin.table.status">状态</th><th data-i18n="admin.table.views">阅读量</th><th data-i18n="admin.table.comments">评论</th><th data-i18n="admin.table.publishedAt">发布时间</th><th data-i18n="admin.table.actions">操作</th></tr></thead>
                 <tbody id="articleListBody"></tbody>
               </table>
             </div>
@@ -220,19 +224,19 @@
 
       <div class="admin-page" id="adminPage-editor">
         <div class="admin-header">
-          <div class="admin-page-title">写作编辑器</div>
+          <div class="admin-page-title" data-i18n="admin.page.editor">写作编辑器</div>
           <div class="admin-header-actions">
-            <button class="btn btn-admin-outline btn-sm" onclick="saveEditor(false)">保存</button>
-            <button class="btn btn-admin btn-sm" onclick="saveEditor(true)">发布</button>
+            <button class="btn btn-admin-outline btn-sm" onclick="saveEditor(false)" data-i18n="admin.action.save">保存</button>
+            <button class="btn btn-admin btn-sm" onclick="saveEditor(true)" data-i18n="admin.action.publish">发布</button>
           </div>
         </div>
         <div class="admin-content">
           <div class="editor-wrap">
-            <input class="editor-title-input" id="editorTitle" placeholder="输入文章标题…" value="">
+            <input class="editor-title-input" id="editorTitle" data-i18n-placeholder="admin.editor.titlePlaceholder" placeholder="输入文章标题…" value="">
             <div class="editor-toolbar">
-              <button class="toolbar-btn active" title="加粗"><b>B</b></button>
-              <button class="toolbar-btn" title="斜体"><i>I</i></button>
-              <button class="toolbar-btn" title="下划线"><u>U</u></button>
+              <button class="toolbar-btn active" title="加粗" data-i18n-title="admin.editor.bold"><b>B</b></button>
+              <button class="toolbar-btn" title="斜体" data-i18n-title="admin.editor.italic"><i>I</i></button>
+              <button class="toolbar-btn" title="下划线" data-i18n-title="admin.editor.underline"><u>U</u></button>
               <div class="toolbar-sep"></div>
               <button class="toolbar-btn">H1</button>
               <button class="toolbar-btn">H2</button>
@@ -245,62 +249,62 @@
               <button class="toolbar-btn">🔗</button>
               <button class="toolbar-btn">—</button>
               <div class="toolbar-sep"></div>
-              <button class="toolbar-btn" style="width:auto;padding:0 8px;font-size:11px;color:var(--admin-muted)">撤销</button>
-              <button class="toolbar-btn" style="width:auto;padding:0 8px;font-size:11px;color:var(--admin-muted)">重做</button>
+              <button class="toolbar-btn" style="width:auto;padding:0 8px;font-size:11px;color:var(--admin-muted)" data-i18n="admin.editor.undo">撤销</button>
+              <button class="toolbar-btn" style="width:auto;padding:0 8px;font-size:11px;color:var(--admin-muted)" data-i18n="admin.editor.redo">重做</button>
             </div>
             <div class="editor-layout">
               <div class="editor-body">
-                <textarea class="editor-textarea" id="editorContent" placeholder="开始写作…"></textarea>
+                <textarea class="editor-textarea" id="editorContent" data-i18n-placeholder="admin.editor.contentPlaceholder" placeholder="开始写作…"></textarea>
               </div>
               <div class="editor-sidebar-panel">
-                <div class="editor-panel-title">文章设置</div>
+                <div class="editor-panel-title" data-i18n="admin.editor.settings">文章设置</div>
                 <div class="editor-field">
-                  <label class="editor-label">内容类型</label>
+                  <label class="editor-label" data-i18n="admin.editor.contentType">内容类型</label>
                   <select class="editor-input" id="editorMode" style="height:36px">
-                    <option value="post">文章</option>
-                    <option value="novel">小说章节</option>
+                    <option value="post" data-i18n="admin.content.post">文章</option>
+                    <option value="novel" data-i18n="admin.content.novelChapter">小说章节</option>
                   </select>
                 </div>
 
                 <div id="editorNovelFields" style="display:none">
                   <div class="editor-field">
-                    <label class="editor-label">小说</label>
+                    <label class="editor-label" data-i18n="admin.editor.novel">小说</label>
                     <select class="editor-input" id="editorNovelId" style="height:36px">
-                      <option value="">选择小说…</option>
+                      <option value="" data-i18n="admin.editor.selectNovel">选择小说…</option>
                     </select>
                   </div>
                   <div class="editor-field">
-                    <label class="editor-label">章节文件名</label>
-                    <input class="editor-input" id="editorChapterFilename" placeholder="例如：001-第一章.md">
+                    <label class="editor-label" data-i18n="admin.editor.chapterFilename">章节文件名</label>
+                    <input class="editor-input" id="editorChapterFilename" data-i18n-placeholder="admin.editor.chapterFilenamePlaceholder" placeholder="例如：001-第一章.md">
                   </div>
                 </div>
 
                 <div id="editorPostFields">
                 <div class="editor-field">
-                  <label class="editor-label">分类</label>
-                  <input class="editor-input" id="editorCategory" placeholder="例如：文章, 随笔">
+                  <label class="editor-label" data-i18n="admin.editor.category">分类</label>
+                  <input class="editor-input" id="editorCategory" data-i18n-placeholder="admin.editor.categoryPlaceholder" placeholder="例如：文章, 随笔">
                 </div>
                 <div class="editor-field">
-                  <label class="editor-label">标签</label>
-                  <input class="editor-input" id="editorTags" placeholder="例如：写作, 随想">
+                  <label class="editor-label" data-i18n="admin.editor.tags">标签</label>
+                  <input class="editor-input" id="editorTags" data-i18n-placeholder="admin.editor.tagsPlaceholder" placeholder="例如：写作, 随想">
                 </div>
                 <div class="editor-field">
-                  <label class="editor-label">摘要</label>
-                  <textarea class="editor-input" id="editorExcerpt" style="min-height:70px;resize:none;line-height:1.6" placeholder="用于列表与 SEO"></textarea>
+                  <label class="editor-label" data-i18n="admin.editor.excerpt">摘要</label>
+                  <textarea class="editor-input" id="editorExcerpt" style="min-height:70px;resize:none;line-height:1.6" data-i18n-placeholder="admin.editor.excerptPlaceholder" placeholder="用于列表与 SEO"></textarea>
                 </div>
                 <div class="editor-field">
-                  <label class="editor-label">文件名/Slug</label>
-                  <input class="editor-input" id="editorSlug" placeholder="例如：memory-and-forgetting">
+                  <label class="editor-label" data-i18n="admin.editor.slug">文件名/Slug</label>
+                  <input class="editor-input" id="editorSlug" data-i18n-placeholder="admin.editor.slugPlaceholder" placeholder="例如：memory-and-forgetting">
                 </div>
                 <div class="editor-field">
-                  <label class="editor-label">封面图 URL</label>
-                  <input class="editor-input" id="editorCover" placeholder="例如：https://... 或 /images/xxx.jpg">
+                  <label class="editor-label" data-i18n="admin.editor.coverUrl">封面图 URL</label>
+                  <input class="editor-input" id="editorCover" data-i18n-placeholder="admin.editor.coverUrlPlaceholder" placeholder="例如：https://... 或 /images/xxx.jpg">
                 </div>
                 </div>
-                <div class="editor-panel-title" style="margin-top:1.25rem">媒体上传</div>
+                <div class="editor-panel-title" style="margin-top:1.25rem" data-i18n="admin.editor.mediaUpload">媒体上传</div>
                 <div class="upload-zone" onclick="document.getElementById('mediaInput').click()">
                   <div class="upload-zone-icon">📁</div>
-                  <div class="upload-zone-text">点击或拖拽上传<br>图片 / GIF / 视频 (≤100MB)</div>
+                  <div class="upload-zone-text" data-i18n-html="admin.editor.uploadHint">点击或拖拽上传<br>图片 / GIF / 视频 (≤100MB)</div>
                   <input type="file" id="mediaInput" hidden onchange="uploadMedia(this.files[0])">
                 </div>
               </div>
@@ -311,17 +315,17 @@
 
       <div class="admin-page" id="adminPage-novels">
         <div class="admin-header">
-          <div class="admin-page-title">小说管理</div>
+          <div class="admin-page-title" data-i18n="admin.page.novels">小说管理</div>
           <div class="admin-header-actions">
-            <button class="btn btn-admin" onclick="createNovel()">+ 新建小说</button>
+            <button class="btn btn-admin" onclick="createNovel()" data-i18n="admin.action.newNovel">+ 新建小说</button>
           </div>
         </div>
         <div class="admin-content">
           <div class="table-card">
-            <div class="table-card-header"><div class="table-card-title">小说列表</div></div>
+            <div class="table-card-header"><div class="table-card-title" data-i18n="admin.section.novelList">小说列表</div></div>
             <div class="table-wrap">
               <table class="admin-table">
-                <thead><tr><th>小说名</th><th>类型</th><th>章节数</th><th>总字数</th><th>状态</th><th>最后更新</th><th>操作</th></tr></thead>
+                <thead><tr><th data-i18n="admin.table.novelTitle">小说名</th><th data-i18n="admin.table.genre">类型</th><th data-i18n="admin.table.chapterCount">章节数</th><th data-i18n="admin.table.wordCount">总字数</th><th data-i18n="admin.table.status">状态</th><th data-i18n="admin.table.updatedAt">最后更新</th><th data-i18n="admin.table.actions">操作</th></tr></thead>
                 <tbody id="novelListBody"></tbody>
               </table>
             </div>
@@ -329,11 +333,11 @@
 
           <div class="table-card" id="novelChaptersCard" style="margin-top:1rem;display:none">
             <div class="table-card-header" style="display:flex;align-items:center;justify-content:space-between;gap:12px">
-              <div class="table-card-title" id="novelChaptersTitle">章节管理</div>
+              <div class="table-card-title" id="novelChaptersTitle" data-i18n="admin.section.chapterManage">章节管理</div>
               <div style="display:flex;gap:.5rem">
-                <button class="btn btn-admin-outline btn-sm" onclick="newNovelChapter()">新建章节</button>
-                <button class="btn btn-admin btn-sm" onclick="saveNovelChapter()">保存章节</button>
-                <button class="btn btn-sm" style="color:var(--red);border:1px solid rgba(239,68,68,.3);border-radius:5px;padding:.3rem .7rem;font-size:12px;background:transparent" onclick="deleteNovelChapter()">删除章节</button>
+                <button class="btn btn-admin-outline btn-sm" onclick="newNovelChapter()" data-i18n="admin.action.newChapter">新建章节</button>
+                <button class="btn btn-admin btn-sm" onclick="saveNovelChapter()" data-i18n="admin.action.saveChapter">保存章节</button>
+                <button class="btn btn-sm" style="color:var(--red);border:1px solid rgba(239,68,68,.3);border-radius:5px;padding:.3rem .7rem;font-size:12px;background:transparent" onclick="deleteNovelChapter()" data-i18n="admin.action.deleteChapter">删除章节</button>
               </div>
             </div>
             <div style="display:grid;grid-template-columns:260px 1fr;gap:12px;padding:12px">
@@ -341,8 +345,8 @@
                 <div id="novelChaptersList"></div>
               </div>
               <div style="display:flex;flex-direction:column;gap:.6rem">
-                <input class="settings-input" id="novelChapterFilename" placeholder="章节文件名，如 001-第一章.md" />
-                <input class="settings-input" id="novelChapterTitle" placeholder="章节标题（展示用）" />
+                <input class="settings-input" id="novelChapterFilename" data-i18n-placeholder="admin.chapter.filenamePlaceholder" placeholder="章节文件名，如 001-第一章.md" />
+                <input class="settings-input" id="novelChapterTitle" data-i18n-placeholder="admin.chapter.titlePlaceholder" placeholder="章节标题（展示用）" />
                 <textarea class="editor-textarea" id="novelChapterContent" style="min-height:380px"></textarea>
               </div>
             </div>
@@ -352,26 +356,26 @@
             <div class="admin-modal-backdrop" onclick="closeNovelMetaModal()"></div>
             <div class="admin-modal-card">
               <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px">
-                <div style="font-size:14px;font-weight:700;color:var(--admin-text)">编辑小说信息</div>
-                <button class="btn btn-admin-outline btn-sm" onclick="closeNovelMetaModal()">关闭</button>
+                <div style="font-size:14px;font-weight:700;color:var(--admin-text)" data-i18n="admin.modal.editNovel">编辑小说信息</div>
+                <button class="btn btn-admin-outline btn-sm" onclick="closeNovelMetaModal()" data-i18n="admin.action.close">关闭</button>
               </div>
               <div style="display:flex;flex-direction:column;gap:10px">
-                <input class="settings-input" id="novelMetaTitle" placeholder="小说标题" />
-                <input class="settings-input" id="novelMetaGenre" placeholder="类型，如 科幻" />
+                <input class="settings-input" id="novelMetaTitle" data-i18n-placeholder="admin.novel.titlePlaceholder" placeholder="小说标题" />
+                <input class="settings-input" id="novelMetaGenre" data-i18n-placeholder="admin.novel.genrePlaceholder" placeholder="类型，如 科幻" />
                 <select class="settings-input" id="novelMetaStatus">
-                  <option value="ongoing">ongoing（连载中）</option>
-                  <option value="finished">finished（已完结）</option>
+                  <option value="ongoing" data-i18n="admin.novel.status.ongoing">ongoing（连载中）</option>
+                  <option value="finished" data-i18n="admin.novel.status.finished">finished（已完结）</option>
                 </select>
                 <div style="display:flex;gap:10px;align-items:center">
-                  <input class="settings-input" id="novelMetaCover" placeholder="封面图 URL（可留空）" style="flex:1" oninput="syncNovelCoverPreview()" />
+                  <input class="settings-input" id="novelMetaCover" data-i18n-placeholder="admin.novel.coverPlaceholder" placeholder="封面图 URL（可留空）" style="flex:1" oninput="syncNovelCoverPreview()" />
                   <input type="file" id="novelCoverFileInput" accept="image/*" style="display:none" onchange="uploadNovelCoverFile(this.files[0])" />
-                  <button class="btn btn-admin-outline btn-sm" onclick="document.getElementById('novelCoverFileInput').click()">上传封面</button>
+                  <button class="btn btn-admin-outline btn-sm" onclick="document.getElementById('novelCoverFileInput').click()" data-i18n="admin.action.uploadCover">上传封面</button>
                 </div>
-                <div class="admin-modal-cover" id="novelMetaCoverPreview">暂无封面</div>
+                <div class="admin-modal-cover" id="novelMetaCoverPreview" data-i18n="admin.novel.noCover">暂无封面</div>
               </div>
               <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:14px">
-                <button class="btn btn-admin-outline btn-sm" onclick="closeNovelMetaModal()">取消</button>
-                <button class="btn btn-admin btn-sm" onclick="saveNovelMetaModal()">保存</button>
+                <button class="btn btn-admin-outline btn-sm" onclick="closeNovelMetaModal()" data-i18n="admin.action.cancel">取消</button>
+                <button class="btn btn-admin btn-sm" onclick="saveNovelMetaModal()" data-i18n="admin.action.save">保存</button>
               </div>
             </div>
           </div>
@@ -380,36 +384,36 @@
 
       <div class="admin-page" id="adminPage-comments">
         <div class="admin-header">
-          <div class="admin-page-title">评论审核</div>
-          <div id="adminCommentsSummary" style="margin-left:auto;font-size:13px;color:var(--admin-muted)">0 条待审核</div>
+          <div class="admin-page-title" data-i18n="admin.page.comments">评论审核</div>
+          <div id="adminCommentsSummary" style="margin-left:auto;font-size:13px;color:var(--admin-muted)"><span id="adminCommentsPendingCount">0</span> <span data-i18n="admin.comments.pendingUnit">条待审核</span></div>
         </div>
         <div class="admin-content">
           <div class="top-tabs">
-            <div class="top-tab active" data-filter="all">全部 <span class="tab-count" id="adminCommentCountAll">0</span></div>
-            <div class="top-tab" data-filter="pending">待审核 <span class="tab-count" id="adminCommentCountPending">0</span></div>
-            <div class="top-tab" data-filter="approved">已通过 <span class="tab-count" id="adminCommentCountApproved">0</span></div>
-            <div class="top-tab" data-filter="hidden">已隐藏 <span class="tab-count" id="adminCommentCountHidden">0</span></div>
+            <div class="top-tab active" data-filter="all"><span data-i18n="admin.filter.all">全部</span> <span class="tab-count" id="adminCommentCountAll">0</span></div>
+            <div class="top-tab" data-filter="pending"><span data-i18n="admin.filter.pending">待审核</span> <span class="tab-count" id="adminCommentCountPending">0</span></div>
+            <div class="top-tab" data-filter="approved"><span data-i18n="admin.filter.approved">已通过</span> <span class="tab-count" id="adminCommentCountApproved">0</span></div>
+            <div class="top-tab" data-filter="hidden"><span data-i18n="admin.filter.hidden">已隐藏</span> <span class="tab-count" id="adminCommentCountHidden">0</span></div>
           </div>
         </div>
       </div>
 
       <div class="admin-page" id="adminPage-users">
         <div class="admin-header">
-          <div class="admin-page-title">用户管理</div>
+          <div class="admin-page-title" data-i18n="admin.page.users">用户管理</div>
           <div class="admin-header-actions">
-            <div class="admin-search"><span class="admin-search-icon">🔍</span><input id="adminUserSearch" placeholder="搜索用户…"></div>
+            <div class="admin-search"><span class="admin-search-icon">🔍</span><input id="adminUserSearch" data-i18n-placeholder="admin.search.users" placeholder="搜索用户…"></div>
           </div>
         </div>
         <div class="admin-content">
           <div class="top-tabs">
-            <div class="top-tab active" data-filter="all">全部用户 <span class="tab-count" id="adminUserCountAll">0</span></div>
-            <div class="top-tab" data-filter="active">正常 <span class="tab-count" id="adminUserCountActive">0</span></div>
-            <div class="top-tab" data-filter="banned">已封禁 <span class="tab-count" id="adminUserCountBanned">0</span></div>
+            <div class="top-tab active" data-filter="all"><span data-i18n="admin.filter.allUsers">全部用户</span> <span class="tab-count" id="adminUserCountAll">0</span></div>
+            <div class="top-tab" data-filter="active"><span data-i18n="admin.filter.active">正常</span> <span class="tab-count" id="adminUserCountActive">0</span></div>
+            <div class="top-tab" data-filter="banned"><span data-i18n="admin.filter.banned">已封禁</span> <span class="tab-count" id="adminUserCountBanned">0</span></div>
           </div>
           <div class="table-card">
             <div class="table-wrap">
               <table class="admin-table">
-                <thead><tr><th>用户</th><th>邮箱</th><th>角色</th><th>状态</th><th>评论数</th><th>注册时间</th><th>操作</th></tr></thead>
+                <thead><tr><th data-i18n="admin.table.user">用户</th><th data-i18n="admin.table.email">邮箱</th><th data-i18n="admin.table.role">角色</th><th data-i18n="admin.table.status">状态</th><th data-i18n="admin.table.commentCount">评论数</th><th data-i18n="admin.table.createdAt">注册时间</th><th data-i18n="admin.table.actions">操作</th></tr></thead>
                 <tbody id="adminUserTableBody"></tbody>
               </table>
             </div>
@@ -419,70 +423,94 @@
 
       <div class="admin-page" id="adminPage-settings">
         <div class="admin-header">
-          <div class="admin-page-title">网站设置</div>
+          <div class="admin-page-title" data-i18n="admin.page.settings">网站设置</div>
           <div class="admin-header-actions">
-            <button class="btn btn-admin" onclick="saveSettings()">保存更改</button>
+            <button class="btn btn-admin" onclick="saveSettings()" data-i18n="admin.action.saveChanges">保存更改</button>
           </div>
         </div>
         <div class="admin-content">
           <div class="settings-section">
             <div class="settings-section-header">
-              <div class="settings-section-title">基本信息</div>
-              <div class="settings-section-desc">网站名称、描述与联系方式</div>
+              <div class="settings-section-title" data-i18n="admin.settings.basic">基本信息</div>
+              <div class="settings-section-desc" data-i18n="admin.settings.basicDesc">网站名称、描述与联系方式</div>
             </div>
             <div class="settings-body">
               <div class="settings-row">
-                <div class="settings-label-wrap"><div class="settings-label">网站名称</div><div class="settings-desc">显示在浏览器标签和网站 Logo 处</div></div>
-                <input class="settings-input" id="settingsSiteTitle" value="拾墨">
+                <div class="settings-label-wrap"><div class="settings-label" data-i18n="admin.settings.siteTitle">网站名称</div><div class="settings-desc" data-i18n="admin.settings.siteTitleDesc">显示在浏览器标签和网站 Logo 处</div></div>
+                <div style="display:flex;flex-direction:column;gap:.5rem;flex:1">
+                  <input class="settings-input" id="settingsSiteTitle" value="拾墨">
+                  <input class="settings-input" id="settingsSiteTitleJa" data-i18n-placeholder="admin.placeholder.jaOptional" placeholder="日本語（可选）">
+                </div>
               </div>
               <div class="settings-row">
-                <div class="settings-label-wrap"><div class="settings-label">网站简介</div><div class="settings-desc">显示在 SEO meta description 和关于页</div></div>
-                <input class="settings-input" id="settingsSiteDescription" value="一个关于文字、思考与创作的私人空间">
+                <div class="settings-label-wrap"><div class="settings-label" data-i18n="admin.settings.siteDescription">网站简介</div><div class="settings-desc" data-i18n="admin.settings.siteDescriptionDesc">显示在 SEO meta description 和关于页</div></div>
+                <div style="display:flex;flex-direction:column;gap:.5rem;flex:1">
+                  <input class="settings-input" id="settingsSiteDescription" value="一个关于文字、思考与创作的私人空间">
+                  <input class="settings-input" id="settingsSiteDescriptionJa" data-i18n-placeholder="admin.placeholder.jaOptional" placeholder="日本語（可选）">
+                </div>
               </div>
               <div class="settings-row">
-                <div class="settings-label-wrap"><div class="settings-label">作者名</div><div class="settings-desc">文章署名与关于页显示</div></div>
-                <input class="settings-input" id="settingsAuthorName" value="某位写作者">
+                <div class="settings-label-wrap"><div class="settings-label" data-i18n="admin.settings.author">作者名</div><div class="settings-desc" data-i18n="admin.settings.authorDesc">文章署名与关于页显示</div></div>
+                <div style="display:flex;flex-direction:column;gap:.5rem;flex:1">
+                  <input class="settings-input" id="settingsAuthorName" value="某位写作者">
+                  <input class="settings-input" id="settingsAuthorNameJa" data-i18n-placeholder="admin.placeholder.jaOptional" placeholder="日本語（可选）">
+                </div>
               </div>
             </div>
           </div>
 
           <div class="settings-section">
             <div class="settings-section-header">
-              <div class="settings-section-title">首页与关于</div>
-              <div class="settings-section-desc">自定义首页文案与关于作者内容</div>
+              <div class="settings-section-title" data-i18n="admin.settings.homeAbout">首页与关于</div>
+              <div class="settings-section-desc" data-i18n="admin.settings.homeAboutDesc">自定义首页文案与关于作者内容</div>
             </div>
             <div class="settings-body">
               <div class="settings-row settings-row-full">
-                <div class="settings-label-wrap"><div class="settings-label">首页介绍</div><div class="settings-desc">显示在首页顶部大段文字</div></div>
-                <textarea class="editor-textarea" id="settingsHomeIntro" style="min-height:90px"></textarea>
+                <div class="settings-label-wrap"><div class="settings-label" data-i18n="admin.settings.homeIntro">首页介绍</div><div class="settings-desc" data-i18n="admin.settings.homeIntroDesc">显示在首页顶部大段文字</div></div>
+                <div style="display:flex;flex-direction:column;gap:.5rem;flex:1">
+                  <textarea class="editor-textarea" id="settingsHomeIntro" style="min-height:90px"></textarea>
+                  <textarea class="editor-textarea" id="settingsHomeIntroJa" data-i18n-placeholder="admin.placeholder.jaOptional" placeholder="日本語（可选）" style="min-height:90px"></textarea>
+                </div>
               </div>
               <div class="settings-row settings-row-full">
-                <div class="settings-label-wrap"><div class="settings-label">页脚介绍</div><div class="settings-desc">显示在首页页脚</div></div>
-                <textarea class="editor-textarea" id="settingsFooterIntro" style="min-height:90px"></textarea>
+                <div class="settings-label-wrap"><div class="settings-label" data-i18n="admin.settings.footerIntro">页脚介绍</div><div class="settings-desc" data-i18n="admin.settings.footerIntroDesc">显示在首页页脚</div></div>
+                <div style="display:flex;flex-direction:column;gap:.5rem;flex:1">
+                  <textarea class="editor-textarea" id="settingsFooterIntro" style="min-height:90px"></textarea>
+                  <textarea class="editor-textarea" id="settingsFooterIntroJa" data-i18n-placeholder="admin.placeholder.jaOptional" placeholder="日本語（可选）" style="min-height:90px"></textarea>
+                </div>
               </div>
               <div class="settings-row">
-                <div class="settings-label-wrap"><div class="settings-label">关于页副标题</div><div class="settings-desc">显示在关于作者页顶部</div></div>
-                <input class="settings-input" id="settingsAboutSubtitle" placeholder="例如：一个喜欢用文字思考的人">
+                <div class="settings-label-wrap"><div class="settings-label" data-i18n="admin.settings.aboutSubtitle">关于页副标题</div><div class="settings-desc" data-i18n="admin.settings.aboutSubtitleDesc">显示在关于作者页顶部</div></div>
+                <div style="display:flex;flex-direction:column;gap:.5rem;flex:1">
+                  <input class="settings-input" id="settingsAboutSubtitle" data-i18n-placeholder="admin.settings.aboutSubtitlePlaceholder" placeholder="例如：一个喜欢用文字思考的人">
+                  <input class="settings-input" id="settingsAboutSubtitleJa" data-i18n-placeholder="admin.placeholder.jaOptional" placeholder="日本語（可选）">
+                </div>
               </div>
               <div class="settings-row">
-                <div class="settings-label-wrap"><div class="settings-label">作者标签</div><div class="settings-desc">显示在作者名下方</div></div>
-                <input class="settings-input" id="settingsAboutTagline" placeholder="例如：作家 · 随笔作者 · 小说创作者">
+                <div class="settings-label-wrap"><div class="settings-label" data-i18n="admin.settings.aboutTagline">作者标签</div><div class="settings-desc" data-i18n="admin.settings.aboutTaglineDesc">显示在作者名下方</div></div>
+                <div style="display:flex;flex-direction:column;gap:.5rem;flex:1">
+                  <input class="settings-input" id="settingsAboutTagline" data-i18n-placeholder="admin.settings.aboutTaglinePlaceholder" placeholder="例如：作家 · 随笔作者 · 小说创作者">
+                  <input class="settings-input" id="settingsAboutTaglineJa" data-i18n-placeholder="admin.placeholder.jaOptional" placeholder="日本語（可选）">
+                </div>
               </div>
               <div class="settings-row settings-row-full">
-                <div class="settings-label-wrap"><div class="settings-label">关于作者内容</div><div class="settings-desc">支持 Markdown</div></div>
-                <textarea class="editor-textarea" id="settingsAboutContent" style="min-height:140px"></textarea>
+                <div class="settings-label-wrap"><div class="settings-label" data-i18n="admin.settings.aboutContent">关于作者内容</div><div class="settings-desc" data-i18n="admin.settings.aboutContentDesc">支持 Markdown</div></div>
+                <div style="display:flex;flex-direction:column;gap:.5rem;flex:1">
+                  <textarea class="editor-textarea" id="settingsAboutContent" style="min-height:140px"></textarea>
+                  <textarea class="editor-textarea" id="settingsAboutContentJa" data-i18n-placeholder="admin.placeholder.jaOptional" placeholder="日本語（可选）" style="min-height:140px"></textarea>
+                </div>
               </div>
             </div>
           </div>
 
           <div class="settings-section">
             <div class="settings-section-header">
-              <div class="settings-section-title">功能开关</div>
-              <div class="settings-section-desc">控制前台功能的开启与关闭</div>
+              <div class="settings-section-title" data-i18n="admin.settings.features">功能开关</div>
+              <div class="settings-section-desc" data-i18n="admin.settings.featuresDesc">控制前台功能的开启与关闭</div>
             </div>
             <div class="settings-body">
               <div class="settings-row">
-                <div class="settings-label-wrap"><div class="settings-label">允许注册</div><div class="settings-desc">关闭后访客无法注册新账号</div></div>
+                <div class="settings-label-wrap"><div class="settings-label" data-i18n="admin.settings.allowRegister">允许注册</div><div class="settings-desc" data-i18n="admin.settings.allowRegisterDesc">关闭后访客无法注册新账号</div></div>
                 <div class="settings-toggle-row"><div class="settings-toggle on" onclick="this.classList.toggle('on')"><div class="settings-toggle-knob"></div></div></div>
               </div>
             </div>
