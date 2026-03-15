@@ -564,18 +564,46 @@ async function applyFrontSettings() {
     const meta = document.querySelector('meta[name="description"]');
     if (meta && description) meta.setAttribute('content', description);
 
-    if (homeIntroEl && homeIntro) homeIntroEl.textContent = homeIntro;
-    if (footerIntroEl && footerIntro) footerIntroEl.textContent = footerIntro;
-    if (aboutSubtitleEl) aboutSubtitleEl.textContent = aboutSubtitle || description || aboutSubtitleEl.textContent;
-    if (aboutNameEl) aboutNameEl.textContent = author || aboutNameEl.textContent;
-    if (aboutTaglineEl && aboutTagline) aboutTaglineEl.textContent = aboutTagline;
-    if (aboutContentEl && aboutContent) {
-      if (window.marked && window.DOMPurify) {
-        aboutContentEl.innerHTML = DOMPurify.sanitize(marked.parse(aboutContent));
-      } else {
-        aboutContentEl.textContent = aboutContent;
+    const setText = (el, value, placeholderKey) => {
+      if (!el) return;
+      const v = value != null ? String(value).trim() : '';
+      if (v) {
+        el.textContent = v;
+        el.removeAttribute('data-i18n');
+        el.removeAttribute('data-i18n-html');
+        return;
       }
-    }
+      if (placeholderKey) {
+        if (!el.getAttribute('data-i18n')) el.setAttribute('data-i18n', placeholderKey);
+      }
+    };
+
+    const setHtml = (el, value, placeholderKey) => {
+      if (!el) return;
+      const v = value != null ? String(value).trim() : '';
+      if (v) {
+        el.removeAttribute('data-i18n');
+        el.removeAttribute('data-i18n-html');
+        if (window.marked && window.DOMPurify) {
+          el.innerHTML = DOMPurify.sanitize(marked.parse(v));
+        } else {
+          el.textContent = v;
+        }
+        return;
+      }
+      if (placeholderKey) {
+        if (!el.getAttribute('data-i18n-html')) el.setAttribute('data-i18n-html', placeholderKey);
+      }
+    };
+
+    setText(homeIntroEl, homeIntro, 'front.hero.desc');
+    setText(footerIntroEl, footerIntro, 'front.footer.desc');
+    setText(aboutSubtitleEl, aboutSubtitle || description, 'front.about.subtitlePlaceholder');
+    setText(aboutNameEl, author, 'front.author.placeholder');
+    setText(aboutTaglineEl, aboutTagline, 'front.about.taglinePlaceholder');
+    setHtml(aboutContentEl, aboutContent, 'front.about.contentPlaceholder');
+
+    applyI18n();
   } catch {
   }
 }
@@ -2094,6 +2122,9 @@ async function showPage(name, param) {
   if (name === 'novels') {
     renderFrontendNovels();
   }
+  if (name === 'home' || name === 'about') {
+    await applyFrontSettings();
+  }
   if (name === 'home' || name === 'articles' || name === 'novels' || name === 'about') {
     trackView('page', name);
   }
@@ -3144,6 +3175,7 @@ async function saveSettings() {
       return;
     }
     showToast(t('admin.toast.settingsSaved'));
+    await applyFrontSettings();
   } catch (err) { showToast(t('admin.toast.saveError')); }
 }
 

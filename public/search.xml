@@ -1,20 +1,21 @@
 <?xml version="1.0" encoding="utf-8"?>
-<search> 
-  
-  
-    
-    <entry>
-      <title></title>
-      <link href="/2026/03/11/1772725057080-test/"/>
-      <url>/2026/03/11/1772725057080-test/</url>
-      
-        <content type="html"><![CDATA[<p>test</p>]]></content>
-      
-      
-      
-    </entry>
-    
-    
-  
-  
+<search>
+  <entry>
+    <title>test</title>
+    <link href="/blog/"/>
+    <url>/blog/</url>
+    <content type="text"><![CDATA[1234]]></content>
+  </entry>
+  <entry>
+    <title>バグ記録</title>
+    <link href="/blog/"/>
+    <url>/blog/</url>
+    <content type="text"><![CDATA[１，成功ログインしたとき、ログイン画面そのまま表示されているので。ログインに成功したら、ログイン画面を非表示にして、ホームページの内容を表示するべきです。 ２，管理人権限以外のユーザーは右上のユーザーメニューをクリックすると、管理画面へ遷移ではなく、個人情報画面へ遷移する方が正しい]]></content>
+  </entry>
+  <entry>
+    <title>今天随感</title>
+    <link href="/blog/"/>
+    <url>/blog/</url>
+    <content type="text"><![CDATA[阳光依旧温暖如常，风似乎比之前更加柔和。。。 我不在身边的日子， <u 你是可以如往常一般，</u 那样快乐的过着每一天 我希望你这样， 我希望你可以永远这样 不要悲伤和难过]]></content>
+  </entry>
 </search>
