@@ -1,21 +1,56 @@
+/*
+  api-handler.js（后端 API 聚合处理器）
+
+  设计目标：
+  - 让“静态页面 + 少量 API”即可实现写作平台的前后台功能
+  - 部署到 Vercel 时：
+    - /api/* 由 Vercel Functions 执行（见 vercel.json rewrites）
+    - 数据默认写回 GitHub 仓库 data/ 目录（需要配置 token）
+  - 本地开发时：
+    - scripts/dev-server.cjs 会直接 require 本文件作为 API handler
+    - 若开启本地模式，会读写工作区 data/ 目录，便于调试（无需 GitHub）
+
+  路由约定：
+  - 本文件通过 req.query.path（catch-all）决定具体子路由
+  - 主要路由（与前端 js/main.js 对应）：
+    - auth：login/register/me
+    - content：posts/post/featured/novels/novel/novel-chapter/upload/view/reactions
+    - admin：stats/settings/comments/comment/users/user
+
+  数据文件约定（仓库根目录 data/）：
+  - posts/: Markdown 文章（带 front-matter）
+  - novels/: 每本小说一个目录，含 meta.json + 章节 md
+  - settings.json：站点设置（支持中/日双语字段 *Ja）
+  - comments.json：评论列表
+  - users.json：用户列表（含角色/状态）
+  - views.json：阅读量统计
+*/
+
 const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 
 module.exports = async function handler(req, res) {
   try {
+    // 通用响应头：JSON + CORS + 预检请求
     setCommonHeaders(res);
     if (req.method === 'OPTIONS') return res.status(204).end();
 
+    // 统一将 catch-all path 解析成 segments，例如：
+    // - /api/posts => ['posts']
+    // - /api/post?filename=xxx => ['post']
     const segments = normalizeCatchAll(req.query && req.query.path);
     const route = segments[0] ? String(segments[0]) : '';
 
+    // ── AUTH ──
     if (route === 'login') return await handleLogin(req, res);
     if (route === 'register') return await handleRegister(req, res);
     if (route === 'me') return await handleMe(req, res);
 
+    // ── ADMIN ──
     if (route === 'stats') return await handleStats(req, res);
 
+    // ── CONTENT ──
     if (route === 'posts') return await handlePosts(req, res);
     if (route === 'post') return await handlePost(req, res, segments);
     if (route === 'featured') return await handleFeatured(req, res);
@@ -39,12 +74,15 @@ module.exports = async function handler(req, res) {
 
     return res.status(404).json({ error: 'Not found' });
   } catch (err) {
+    // 统一异常兜底：尽量返回可读错误信息
     const status = err && err.status ? err.status : 500;
     return res.status(status).json({ error: err && err.message ? err.message : 'Server error' });
   }
 };
 
 function setCommonHeaders(res) {
+  // 注意：这里默认全部返回 JSON；
+  // 图片上传接口本身也返回 JSON（url/success 等），不直接返回二进制
   res.setHeader('Content-Type', 'application/json; charset=utf-8');
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS');
@@ -58,6 +96,9 @@ function normalizeCatchAll(value) {
 }
 
 function getGithubConfig() {
+  // GitHub 相关配置：
+  // - owner/repo/branch：决定写入到哪个仓库/分支
+  // - token：访问 GitHub API（读写 data/ 内容、提交变更）
   const owner =
     process.env.GITHUB_OWNER ||
     process.env.VERCEL_GIT_REPO_OWNER ||
@@ -853,6 +894,12 @@ async function handleUser(req, res) {
   return res.status(405).json({ error: 'Method not allowed' });
 }
 
+// /api/stats（管理员）
+// 返回后台仪表盘所需的聚合数据，包括：
+// - 总访问量、今日/昨日对比
+// - 用户/评论/文章数量与趋势
+// - TOP 内容/页面、最近动态等
+// 数据来源：data/views.json + data/users.json + data/comments.json + data/posts/*
 async function handleStats(req, res) {
   if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
   await requireAdmin(req);
@@ -1266,6 +1313,10 @@ function buildActivity14Days(posts, commentList) {
 }
 
 async function handlePosts(req, res) {
+  // /api/posts（公开 + 管理员）
+  // - GET：返回文章元信息列表（title/date/tags/categories/cover/views/published/archived）
+  // - 非管理员：只返回 published 且未 archived 的文章
+  // - 管理员：返回全部文章（含草稿/归档）
   if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
   const payload = parseToken(getBearerToken(req));
   const isAdmin = payload && payload.role === 'admin';
@@ -1454,6 +1505,10 @@ async function handlePost(req, res, segments) {
   return res.status(405).json({ error: 'Method not allowed' });
 }
 
+// /api/settings（公开读取 + 管理员写入）
+// - GET：前台用于渲染站点标题/简介/作者/首页与关于页文案等
+// - PUT：后台“网站设置”保存入口（需要管理员）
+// - 字段支持双语：xxxJa 用于日语模式展示
 async function handleSettings(req, res) {
   const { owner, repo, token } = getGithubConfig();
   const headers = githubHeaders(token);
@@ -1524,6 +1579,15 @@ async function handleSettings(req, res) {
   return res.status(200).json({ success: true });
 }
 
+// /api/comments（公开读取 approved + 登录用户提交 + 管理员全量读取）
+// - GET：
+//   - query.post 可按文章 filename 过滤
+//   - 非管理员：仅返回 approved（已通过）评论
+//   - 管理员：返回全部评论（pending/approved/hidden）
+//   - 同时会“回填展示昵称”：根据 userId/username 从 users.json 映射到最新 name
+// - POST：
+//   - 需要登录（requireUser）
+//   - 新评论默认 status=pending（等待后台审核）
 async function handleComments(req, res) {
   const { owner, repo, token } = getGithubConfig();
   const headers = githubHeaders(token);
@@ -1646,6 +1710,10 @@ async function handleComments(req, res) {
   return res.status(405).json({ error: 'Method not allowed' });
 }
 
+// /api/comment（管理员）
+// - PUT：更新评论状态（pending/approved/hidden）
+// - DELETE：删除评论
+// 说明：评论正文内容存储在 comments.json 中，不做富文本渲染，前端会做安全展示
 async function handleComment(req, res) {
   const { owner, repo, token } = getGithubConfig();
   const headers = githubHeaders(token);

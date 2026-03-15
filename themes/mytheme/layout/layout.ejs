@@ -4,9 +4,16 @@
   <%- partial('_partial/head') %>
 </head>
 <body>
+  <!-- 全站统一 toast：前台/后台共用（由 js/main.js 的 showToast 控制） -->
   <%- partial('_partial/toast') %>
+
+  <!-- 前台应用：所有页面容器都在该 partial 内，通过 .page.active 进行切换 -->
   <%- partial('_partial/frontend', { initialPage: typeof initialPage !== 'undefined' ? initialPage : 'home' }) %>
+
+  <!-- 后台应用：默认 hidden，通过 setMode('admin') 显示 -->
   <%- partial('_partial/admin') %>
+
+  <!-- 主脚本：包含前台/后台全部交互与业务逻辑 -->
   <script src="/js/main.js"></script>
 </body>
 </html>

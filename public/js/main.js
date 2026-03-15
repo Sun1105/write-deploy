@@ -1,7 +1,32 @@
+/*
+  main.js（前台 + 后台共用脚本）
+
+  这份脚本承载了站点的核心交互与业务逻辑，属于“单页应用式”的静态站点实现：
+  - 页面层：通过 showPage 在同一份 HTML 中切换不同 page 容器（.page / #page-xxx）
+  - 主题/语言：使用 localStorage 记忆偏好，通过 CSS 变量 + data-* 属性实现切换
+  - 数据层：通过 /api/* 拉取与写入 data/ 下的 JSON/Markdown（开发环境走本地，部署走 GitHub）
+  - 前台功能：文章/小说渲染、评论、搜索、阅读进度等
+  - 后台功能：统计概览、文章编辑发布、小说章节管理、评论审核、用户管理、站点设置
+
+  重要约定：
+  - 所有 API 请求统一走 apiUrl('/xxx') => '/api/xxx'
+  - 前台与后台共用同一套 toast（#toast/#toastMsg），便于统一提示风格
+  - i18n 约定：DOM 上用 data-i18n / data-i18n-html / data-i18n-placeholder 等属性绑定 key
+*/
+
 console.log("Main.js loaded successfully!");
 
+// ─────────────────────────────────────────────────────────────
+// 全局常量/状态（运行时内存）
+// ─────────────────────────────────────────────────────────────
+
+// API 前缀：Vercel rewrites 或 dev-server 会将 /api/* 路由到后端 handler
 const API_BASE = '/api';
+
+// 当前登录用户信息（来源：localStorage + /api/me 校验）
 let CURRENT_USER = null;
+
+// 编辑器上下文：用于文章编辑（filename/sha/date）与小说章节编辑（novelId/chapterFile/sha）
 let currentEditingFile = null;
 let currentEditingSha = null;
 let currentEditingDate = null;
@@ -10,6 +35,8 @@ let currentNovelChapterFile = null;
 let currentNovelChapterSha = null;
 let cachedNovelsForEditor = null;
 let currentNovelMetaId = null;
+
+// 后台缓存/筛选状态：文章列表、评论列表、用户列表，以及 UI 绑定防重复标记
 let adminPostsCache = [];
 let adminPostFilter = 'all';
 let adminPostSearch = '';
@@ -28,6 +55,7 @@ let adminUsersUiBound = false;
 let lastAdminStats = null;
 let adminPostTitleIndex = null;
 
+// 前台缓存/筛选状态：文章列表、评论列表、小说列表、精选/最新缓存、阅读上下文等
 let frontUiBound = false;
 let frontPostsCache = [];
 let frontCommentsCache = null;
@@ -43,11 +71,17 @@ let currentFrontArticleId = '';
 let currentFrontArticleCover = '';
 let currentNovelChapterTitle = '';
 
+// 用户偏好 key：用于 localStorage 持久化（主题/语言）
 const PREF_THEME_KEY = 'pref_theme';
 const PREF_LANG_KEY = 'pref_lang';
 let CURRENT_THEME = '';
 let CURRENT_LANG = '';
 
+// ─────────────────────────────────────────────────────────────
+// 国际化词典（UI 文案）
+// - key：字符串标识
+// - zh/ja：对应语言文案（未命中时会 fallback 到 key 或 zh）
+// ─────────────────────────────────────────────────────────────
 const I18N = {
   'nav.home': { zh: '首页', ja: 'ホーム' },
   'nav.articles': { zh: '文章', ja: '記事' },
@@ -387,11 +421,14 @@ const I18N = {
   'admin.settings.allowRegisterDesc': { zh: '关闭后访客无法注册新账号', ja: 'オフにすると新規登録できません' }
 };
 
+// 将业务代码中的路径统一规范为 /api/xxx
+// - pathname 可以传入 '/posts' 或 'posts'，最终都拼到 API_BASE 下
 function apiUrl(pathname) {
   const p = pathname.startsWith('/') ? pathname : `/${pathname}`;
   return `${API_BASE}${p}`;
 }
 
+// 安全解析 JSON：避免 res.json() 解析失败导致异常中断
 async function safeJson(res) {
   try {
     return await res.json();
@@ -400,16 +437,21 @@ async function safeJson(res) {
   }
 }
 
+// 读取本地保存的 token（登录后写入）
 function getAuthToken() {
   return localStorage.getItem('auth_token') || '';
 }
 
+// 为 fetch headers 追加 Authorization
 function withAuthHeaders(headers) {
   const token = getAuthToken();
   if (!token) return headers || {};
   return { ...(headers || {}), Authorization: `Bearer ${token}` };
 }
 
+// i18n 文案读取：
+// - CURRENT_LANG 决定使用 zh/ja
+// - 未命中 key：直接返回 key（便于发现遗漏）
 function t(key) {
   const lang = CURRENT_LANG === 'ja' ? 'ja' : 'zh';
   const hit = I18N && Object.prototype.hasOwnProperty.call(I18N, key) ? I18N[key] : null;
@@ -417,6 +459,10 @@ function t(key) {
   return hit[lang] || hit.zh || key;
 }
 
+// 将页面上所有带 data-i18n* 的节点批量翻译为当前语言
+// - data-i18n：写入 textContent
+// - data-i18n-html：写入 innerHTML（仅用于受控的模板片段）
+// - data-i18n-placeholder/title/aria-label：写入对应属性
 function applyI18n() {
   const nodes = document.querySelectorAll('[data-i18n]');
   nodes.forEach((el) => {
@@ -450,6 +496,9 @@ function applyI18n() {
   });
 }
 
+// 设置主题（light/dark）
+// - 写入 html[data-theme] 触发 CSS 变量切换
+// - 写入 localStorage 作为持久化偏好
 function setTheme(next) {
   const theme = next === 'dark' ? 'dark' : 'light';
   CURRENT_THEME = theme;
@@ -465,6 +514,10 @@ function toggleTheme() {
   setTheme(CURRENT_THEME === 'dark' ? 'light' : 'dark');
 }
 
+// 设置语言（zh/ja）
+// - 写入 html[lang] + html[data-lang] 方便 CSS/调试使用
+// - applyI18n：将所有标注 data-i18n 的 UI 文案切换到目标语言
+// - applyFrontSettings：将“站点设置内容”（可能是中文/日文两套）应用到前台 DOM
 function setLang(next) {
   const lang = next === 'ja' ? 'ja' : 'zh';
   CURRENT_LANG = lang;
@@ -485,6 +538,7 @@ function toggleLang() {
   setLang(CURRENT_LANG === 'ja' ? 'zh' : 'ja');
 }
 
+// 同步主题/语言按钮的显示文本（前台与后台各一份按钮）
 function refreshPrefButtons() {
   const themeText = CURRENT_THEME === 'dark' ? `🌞 ${t('pref.theme.light')}` : `🌙 ${t('pref.theme.dark')}`;
   const langText = CURRENT_LANG === 'ja' ? t('pref.lang.zh') : t('pref.lang.ja');
@@ -500,6 +554,9 @@ function refreshPrefButtons() {
   });
 }
 
+// 初始化偏好（主题/语言）
+// - 从 localStorage 读取；无值时用默认值
+// - 注意：setLang 内部会触发 applyI18n/applyFrontSettings 等副作用
 function initPreferences() {
   let theme = 'light';
   let lang = 'zh';
@@ -515,6 +572,7 @@ function initPreferences() {
 }
 
 // ── INIT ──
+// DOMContentLoaded 只会触发一次，用于完成“首次渲染/绑定”
 window.addEventListener('DOMContentLoaded', () => {
   initPreferences();
   checkAuth();
@@ -527,12 +585,19 @@ window.addEventListener('DOMContentLoaded', () => {
   // If hash is present, route to it? For now default home
 });
 
+// 将“站点设置”（/api/settings）应用到前台 DOM：
+// - 这些内容属于“站点内容配置”，不是纯 UI 文案；因此不能被 applyI18n 覆盖
+// - 处理策略：
+//   1) 有真实值：写入 DOM，并移除 data-i18n/data-i18n-html，防止后续翻译覆盖
+//   2) 无真实值：保留/补充 data-i18n*，回退到占位翻译文案
+// - 日语模式：优先读取 *Ja 字段；若为空则回退到占位文案（避免显示中文）
 async function applyFrontSettings() {
   try {
     const res = await fetch(apiUrl('/settings'));
     const data = await safeJson(res) || {};
     if (!res.ok || !data) return;
 
+    // pick：根据当前语言，从 settings 中取出对应字段（zh 或 ja）
     const pick = (key) => {
       if (!data || typeof data !== 'object') return '';
       const jaKey = `${key}Ja`;
@@ -564,6 +629,7 @@ async function applyFrontSettings() {
     const meta = document.querySelector('meta[name="description"]');
     if (meta && description) meta.setAttribute('content', description);
 
+    // setText：写入纯文本；没值时回退到 placeholderKey（走 i18n）
     const setText = (el, value, placeholderKey) => {
       if (!el) return;
       const v = value != null ? String(value).trim() : '';
@@ -578,6 +644,7 @@ async function applyFrontSettings() {
       }
     };
 
+    // setHtml：写入富文本（Markdown -> HTML）；没值时回退到 placeholderKey（走 i18n-html）
     const setHtml = (el, value, placeholderKey) => {
       if (!el) return;
       const v = value != null ? String(value).trim() : '';
@@ -603,12 +670,17 @@ async function applyFrontSettings() {
     setText(aboutTaglineEl, aboutTagline, 'front.about.taglinePlaceholder');
     setHtml(aboutContentEl, aboutContent, 'front.about.contentPlaceholder');
 
+    // 注意：applyFrontSettings 可能设置/移除 data-i18n*，因此最后再执行一次翻译刷新
     applyI18n();
   } catch {
   }
 }
 
-// ── AUTH ──
+// ── AUTH ─────────────────────────────────────────────────────
+// 认证模型：
+// - 登录成功后服务端返回 token（JWT 风格），保存在 localStorage.auth_token
+// - 本地还会缓存 user_info（用于首屏快速展示）
+// - 页面加载后通过 /api/me 校验 token，有效则更新 CURRENT_USER，无效则清理并回到访客态
 function checkAuth() {
   const token = localStorage.getItem('auth_token');
   if (token) {
@@ -641,6 +713,10 @@ async function verifyAuthToken() {
   handleUnauthorized(null, false);
 }
 
+// 统一处理“未授权/登录失效”场景：
+// - 清理本地 token 与缓存用户信息
+// - 切回前台模式，并可选择跳到登录页
+// - message 非空时通过 toast 提示用户
 function handleUnauthorized(message, navigate = true) {
   localStorage.removeItem('auth_token');
   localStorage.removeItem('user_info');
@@ -653,6 +729,9 @@ function handleUnauthorized(message, navigate = true) {
   if (message) showToast(message);
 }
 
+// 登录表单提交：调用 /api/login
+// - 成功：保存 token + user_info，刷新导航，并根据角色进入后台/回到首页
+// - 失败：提示错误信息
 async function handleLogin() {
   const username = document.getElementById('loginUsername').value;
   const password = document.getElementById('loginPassword').value;
@@ -687,6 +766,7 @@ async function handleLogin() {
   }
 }
 
+// 注册页仅在 #page-register 存在时绑定事件
 function initRegisterForm() {
   const page = document.getElementById('page-register');
   if (!page) return;
@@ -695,6 +775,9 @@ function initRegisterForm() {
   submit.onclick = handleRegister;
 }
 
+// 注册表单提交：调用 /api/register
+// - 成功：提示并跳转登录页
+// - 失败：提示服务端返回原因
 async function handleRegister() {
   const page = document.getElementById('page-register');
   if (!page) return;
@@ -742,6 +825,9 @@ async function handleRegister() {
   }
 }
 
+// 根据登录态刷新顶部导航（已登录）
+// - 前台：显示头像入口、搜索/置顶、退出等
+// - 后台侧边栏底部：显示当前用户的昵称与角色
 function updateNavUser() {
   if (CURRENT_USER) {
     const actions = document.querySelector('.nav-actions');
@@ -759,6 +845,7 @@ function updateNavUser() {
   }
 }
 
+// 根据登录态刷新顶部导航（未登录）
 function updateNavGuest() {
   const actions = document.querySelector('.nav-actions');
   if (!actions) return;
@@ -2069,6 +2156,8 @@ function initEditorToolbar() {
   });
 }
 
+// 编辑器工具栏辅助：在 textarea 光标位置插入文本片段
+// - before/after：包裹选中文本，例如 **bold**
 function insertText(textarea, before, after) {
   const start = textarea.selectionStart;
   const end = textarea.selectionEnd;
@@ -2084,6 +2173,10 @@ function insertText(textarea, before, after) {
 }
 
 // ── PAGE ROUTING ──
+// 前台页面路由（单页切换）
+// - name 对应 #page-${name}
+// - param 用于详情页（文章 filename、小说章节 novelId/chapterFilename）
+// - 该函数只负责“切页 + 触发对应加载/渲染”，不直接操作 API 数据结构
 async function showPage(name, param) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   const target = document.getElementById('page-' + name);
@@ -2092,7 +2185,7 @@ async function showPage(name, param) {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
   
-  // Update nav
+  // 同步顶部导航的 active 状态
   document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
   const navMap = { home:'navHome', articles:'navArticles', novels:'navNovels', about:'navAbout' };
   if (navMap[name]) {
@@ -2100,7 +2193,7 @@ async function showPage(name, param) {
     if (navEl) navEl.classList.add('active');
   }
 
-  // Page specific logic
+  // 按页面触发加载逻辑（可能包含 API 请求）
   if (name === 'article' && param) {
     await loadArticle(param);
   }
@@ -2130,6 +2223,7 @@ async function showPage(name, param) {
   }
 }
 
+// 个人中心页渲染：读取 CURRENT_USER 并填充到 profile 页面
 function renderProfilePage() {
   const avatar = document.getElementById('profileAvatar');
   const nameEl = document.getElementById('profileName');

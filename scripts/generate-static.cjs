@@ -1,3 +1,16 @@
+/*
+  generate-static.cjs（静态站点构建脚本）
+
+  作用：
+  - 将源码目录（css/js/images/themes）打包输出到 public/
+  - 生成若干“入口页面”HTML（不同 URL 指向同一套 layout，只是 initialPage 不同）
+  - 构建 search.xml（简易搜索索引），供前端搜索或第三方工具使用
+
+  重要约定：
+  - public/ 是唯一构建产物目录（vercel.json 的 outputDirectory 也是它）
+  - themes/mytheme/layout/layout.ejs 是页面骨架，内部 include 了 _partial/*
+*/
+
 const fs = require('fs');
 const path = require('path');
 const ejs = require('ejs');
@@ -6,17 +19,26 @@ async function main() {
   const rootDir = process.cwd();
   const outDir = path.join(rootDir, 'public');
 
+  // 每次构建都清空 public/，确保不会残留旧文件导致“页面看起来没更新”
   const startAt = Date.now();
   await rmIfExists(outDir);
   await fs.promises.mkdir(outDir, { recursive: true });
 
+  // 复制静态资源（供 HTML 引用）
   await copyIfExists(path.join(rootDir, 'css'), path.join(outDir, 'css'));
   await copyIfExists(path.join(rootDir, 'js'), path.join(outDir, 'js'));
   await copyIfExists(path.join(rootDir, 'images'), path.join(outDir, 'images'));
 
+  // GitHub Pages / 一些静态托管会用 Jekyll 处理目录；.nojekyll 可关闭该行为
   await writeNoJekyll(outDir);
+
+  // 生成站内搜索索引
   await writeSearchXml(rootDir, outDir);
 
+  // 入口页列表：
+  // - out：输出到 public/ 的路径
+  // - initialPage：前端 SPA 首次展示的 page（对应 #page-xxx）
+  // - title：用于页面 <title>（部分页面会被 settings 覆盖）
   const pages = [
     { out: 'index.html', initialPage: 'home', title: '' },
     { out: 'about/index.html', initialPage: 'about', title: '关于' },
@@ -53,6 +75,7 @@ async function writeSearchXml(rootDir, outDir) {
   const postsDir = path.join(rootDir, 'data', 'posts');
   const outPath = path.join(outDir, 'search.xml');
 
+  // 逐个读取 Markdown，提取标题与纯文本摘要（避免把 Markdown 符号塞进索引）
   let entries = [];
   try {
     const files = await fs.promises.readdir(postsDir);

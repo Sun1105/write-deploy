@@ -12,9 +12,24 @@
 
 </head>
 <body>
-  <div class="toast" id="toast"><span class="toast-icon">✓</span><span id="toastMsg">操作成功</span></div>
+  <!-- 全站统一 toast：前台/后台共用（由 js/main.js 的 showToast 控制） -->
+  <!-- 提示框（toast）
+  - #toast / #toastMsg 会被 js/main.js 中的 showToast 更新与控制显示
+  - 样式在 css/custom.css 的 .toast 中定义，并随主题切换
+-->
+<div class="toast" id="toast"><span class="toast-icon">✓</span><span id="toastMsg">操作成功</span></div>
 
+
+  <!-- 前台应用：所有页面容器都在该 partial 内，通过 .page.active 进行切换 -->
   
+<!-- 前台应用（SPA 式静态页面）
+  - 顶部导航通过 showPage('xxx') 切换页面
+  - 每个页面容器 id 规则：#page-${name}
+  - 站点设置（/api/settings）会覆盖部分文本内容：
+    - 首页文案：#homeIntroText
+    - 页脚文案：#footerIntroText
+    - 关于页：#aboutHeroSubtitle / #aboutAuthorName / #aboutAuthorTagline / #aboutAuthorContent
+-->
 <div id="frontendApp">
   <nav class="front-nav">
     <div class="nav-logo" onclick="showPage('home')">拾<span>墨</span></div>
@@ -95,7 +110,7 @@
         <div class="footer-logo">拾墨</div>
         <p id="footerIntroText" style="font-size:13px;margin-top:.5rem;max-width:360px;line-height:1.7" data-i18n="front.footer.desc">一个关于文字、思考与创作的私人空间。感谢你的到来。</p>
         <div class="footer-bottom">
-          <span data-i18n="front.footer.copyright">© 2024 拾墨 · 保留所有权利</span>
+          <span data-i18n="front.footer.copyright">© 2026 拾墨 · 保留所有权利</span>
           <span data-i18n="front.footer.powered">Powered by Next.js · Neon · Vercel</span>
         </div>
       </div>
@@ -321,7 +336,14 @@
   </div>
 </div>
 
-  <div id="adminApp" class="hidden">
+
+  <!-- 后台应用：默认 hidden，通过 setMode('admin') 显示 -->
+  <!-- 后台应用
+  - 初始为 hidden，通过 js/main.js 的 setMode('admin') 显示
+  - 页面容器规则：#adminPage-${name}
+  - 站点设置保存后会写入 data/settings.json，并影响前台首页/关于页显示
+-->
+<div id="adminApp" class="hidden">
   <div class="admin-wrap">
     <aside class="admin-sidebar">
       <div class="admin-sidebar-logo">
@@ -844,6 +866,8 @@
   </div>
 </div>
 
+
+  <!-- 主脚本：包含前台/后台全部交互与业务逻辑 -->
   <script src="/js/main.js"></script>
 </body>
 </html>

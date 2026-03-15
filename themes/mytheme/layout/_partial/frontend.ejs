@@ -1,4 +1,12 @@
 <% var initialPage = (typeof initialPage !== 'undefined' && initialPage) ? initialPage : 'home'; %>
+<!-- 前台应用（SPA 式静态页面）
+  - 顶部导航通过 showPage('xxx') 切换页面
+  - 每个页面容器 id 规则：#page-${name}
+  - 站点设置（/api/settings）会覆盖部分文本内容：
+    - 首页文案：#homeIntroText
+    - 页脚文案：#footerIntroText
+    - 关于页：#aboutHeroSubtitle / #aboutAuthorName / #aboutAuthorTagline / #aboutAuthorContent
+-->
 <div id="frontendApp">
   <nav class="front-nav">
     <div class="nav-logo" onclick="showPage('home')">拾<span>墨</span></div>
@@ -79,7 +87,7 @@
         <div class="footer-logo">拾墨</div>
         <p id="footerIntroText" style="font-size:13px;margin-top:.5rem;max-width:360px;line-height:1.7" data-i18n="front.footer.desc">一个关于文字、思考与创作的私人空间。感谢你的到来。</p>
         <div class="footer-bottom">
-          <span data-i18n="front.footer.copyright">© 2024 拾墨 · 保留所有权利</span>
+          <span data-i18n="front.footer.copyright">© 2026 拾墨 · 保留所有权利</span>
           <span data-i18n="front.footer.powered">Powered by Next.js · Neon · Vercel</span>
         </div>
       </div>
