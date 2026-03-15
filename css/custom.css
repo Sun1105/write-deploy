@@ -18,17 +18,60 @@
   --red-light: #fdecea;
   --blue: #1e4d8c;
   --blue-light: #e8eef8;
-  --admin-bg: #111827;
-  --admin-surface: #1f2937;
-  --admin-border: #374151;
-  --admin-text: #f9fafb;
-  --admin-muted: #9ca3af;
-  --admin-accent: #10b981;
+  --front-nav-bg: rgba(250,248,245,0.92);
+  --front-hero-bg: #1c1917;
+  --front-footer-bg: #1c1917;
+  --toast-bg: #1c1917;
+  --toast-text: #ffffff;
+  --toast-border: rgba(255,255,255,.08);
+  --admin-bg: #f7f3ee;
+  --admin-surface: #ffffff;
+  --admin-border: #e7e3dc;
+  --admin-text: #1c1917;
+  --admin-muted: #78716c;
+  --admin-accent: #1a5c4a;
   --r: 6px;
   --r-lg: 12px;
   --shadow-sm: 0 1px 3px rgba(0,0,0,.07), 0 1px 2px rgba(0,0,0,.05);
   --shadow: 0 4px 16px rgba(0,0,0,.08), 0 2px 6px rgba(0,0,0,.05);
   --shadow-lg: 0 16px 48px rgba(0,0,0,.12), 0 6px 16px rgba(0,0,0,.07);
+}
+
+[data-theme="dark"] {
+  --bg: #0b1020;
+  --surface: #111827;
+  --surface-2: #0f172a;
+  --surface-3: #0b1224;
+  --ink: #f1f5f9;
+  --ink-2: rgba(241,245,249,.85);
+  --ink-3: rgba(241,245,249,.65);
+  --ink-4: rgba(241,245,249,.45);
+  --border: rgba(148,163,184,.18);
+  --border-2: rgba(148,163,184,.28);
+  --accent: #10b981;
+  --accent-light: rgba(16,185,129,.14);
+  --accent-2: #059669;
+  --gold: #f59e0b;
+  --gold-light: rgba(245,158,11,.14);
+  --red: #f87171;
+  --red-light: rgba(248,113,113,.12);
+  --blue: #60a5fa;
+  --blue-light: rgba(96,165,250,.14);
+  --front-nav-bg: rgba(15,23,42,0.86);
+  --front-hero-bg: #070b18;
+  --front-footer-bg: #070b18;
+  --toast-bg: #111827;
+  --toast-text: #f1f5f9;
+  --toast-border: rgba(148,163,184,.18);
+  --admin-bg: #0b1020;
+  --admin-surface: #111827;
+  --admin-border: rgba(148,163,184,.18);
+  --admin-text: #f1f5f9;
+  --admin-muted: rgba(241,245,249,.6);
+  --admin-accent: #10b981;
+  --shadow-sm: 0 1px 3px rgba(0,0,0,.35), 0 1px 2px rgba(0,0,0,.25);
+  --shadow: 0 8px 26px rgba(0,0,0,.42), 0 2px 8px rgba(0,0,0,.25);
+  --shadow-lg: 0 18px 60px rgba(0,0,0,.55), 0 6px 16px rgba(0,0,0,.35);
 }
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -110,7 +153,7 @@ a { color: inherit; text-decoration: none; }
 /* ───── FRONT NAV ───── */
 .front-nav {
   position: sticky; top: 0; z-index: 100;
-  background: rgba(250,248,245,0.92); backdrop-filter: blur(12px);
+  background: var(--front-nav-bg); backdrop-filter: blur(12px);
   border-bottom: 1px solid var(--border);
   padding: 0 2rem; height: 60px;
   display: flex; align-items: center; gap: 2rem;
@@ -182,7 +225,7 @@ a { color: inherit; text-decoration: none; }
 
 /* ═══════════════════ HOME ═══════════════════ */
 .hero {
-  background: var(--ink);
+  background: var(--front-hero-bg);
   color: white;
   padding: 5rem 2rem 4rem;
   position: relative; overflow: hidden;
@@ -322,7 +365,7 @@ a { color: inherit; text-decoration: none; }
 
 /* Footer */
 .front-footer {
-  background: var(--ink); color: rgba(255,255,255,.5);
+  background: var(--front-footer-bg); color: rgba(255,255,255,.5);
   padding: 3rem 2rem 2rem; margin-top: 4rem;
 }
 .footer-inner { max-width: 1100px; margin: 0 auto; }
@@ -422,7 +465,7 @@ a { color: inherit; text-decoration: none; }
 
 /* ═══════════════════ NOVEL LIST ═══════════════════ */
 .page-hero {
-  background: var(--ink); color: white; padding: 4rem 2rem;
+  background: var(--front-hero-bg); color: white; padding: 4rem 2rem;
   margin-bottom: 0;
 }
 .page-hero-inner { max-width: 1100px; margin: 0 auto; }
@@ -752,7 +795,8 @@ a { color: inherit; text-decoration: none; }
 /* Toast notification */
 .toast {
   position: fixed; bottom: 2rem; right: 2rem;
-  background: var(--ink); color: white;
+  background: var(--toast-bg); color: var(--toast-text);
+  border: 1px solid var(--toast-border);
   padding: 0.75rem 1.25rem; border-radius: 10px;
   font-size: 14px; font-family: 'Noto Sans SC', sans-serif;
   box-shadow: var(--shadow-lg); z-index: 9999;

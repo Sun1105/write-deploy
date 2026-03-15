@@ -3,14 +3,17 @@
   <nav class="front-nav">
     <div class="nav-logo" onclick="showPage('home')">拾<span>墨</span></div>
     <div class="nav-links">
-      <div class="nav-link <%= initialPage === 'home' ? 'active' : '' %>" id="navHome" onclick="showPage('home')">首页</div>
-      <div class="nav-link <%= initialPage === 'articles' ? 'active' : '' %>" id="navArticles" onclick="showPage('articles')">文章</div>
-      <div class="nav-link <%= initialPage === 'novels' ? 'active' : '' %>" id="navNovels" onclick="showPage('novels')">小说</div>
-      <div class="nav-link <%= initialPage === 'about' ? 'active' : '' %>" id="navAbout" onclick="showPage('about')">关于</div>
+      <div class="nav-link <%= initialPage === 'home' ? 'active' : '' %>" id="navHome" onclick="showPage('home')" data-i18n="nav.home">首页</div>
+      <div class="nav-link <%= initialPage === 'articles' ? 'active' : '' %>" id="navArticles" onclick="showPage('articles')" data-i18n="nav.articles">文章</div>
+      <div class="nav-link <%= initialPage === 'novels' ? 'active' : '' %>" id="navNovels" onclick="showPage('novels')" data-i18n="nav.novels">小说</div>
+      <div class="nav-link <%= initialPage === 'about' ? 'active' : '' %>" id="navAbout" onclick="showPage('about')" data-i18n="nav.about">关于</div>
     </div>
     <div class="nav-actions">
-      <button class="btn btn-ghost btn-sm" onclick="showPage('login')">登录</button>
-      <button class="btn btn-primary btn-sm" onclick="showPage('register')">注册</button>
+      <button class="btn btn-ghost btn-sm" id="frontThemeToggle" onclick="toggleTheme()"></button>
+      <button class="btn btn-ghost btn-sm" id="frontLangToggle" onclick="toggleLang()"></button>
+      <div class="nav-actions-divider"></div>
+      <button class="btn btn-ghost btn-sm" onclick="showPage('login')" data-i18n="action.login">登录</button>
+      <button class="btn btn-primary btn-sm" onclick="showPage('register')" data-i18n="action.register">注册</button>
     </div>
   </nav>
 
@@ -18,23 +21,23 @@
     <section class="hero">
       <div class="hero-inner">
         <div>
-          <div class="hero-eyebrow">Personal Writing Platform</div>
-          <h1 class="hero-title">记录生命中的<br><em>每一刻灵光</em></h1>
-          <p class="hero-desc" id="homeIntroText">文字是我与世界的桥梁。这里有我对生活的思考、对文学的探索，以及那些尚未完成的故事。</p>
+          <div class="hero-eyebrow" data-i18n="front.hero.eyebrow">Personal Writing Platform</div>
+          <h1 class="hero-title" data-i18n-html="front.hero.title">记录生命中的<br><em>每一刻灵光</em></h1>
+          <p class="hero-desc" id="homeIntroText" data-i18n="front.hero.desc">文字是我与世界的桥梁。这里有我对生活的思考、对文学的探索，以及那些尚未完成的故事。</p>
           <div class="hero-actions">
-            <button class="hero-btn-primary" onclick="showPage('articles')">浏览文章</button>
-            <button class="hero-btn-outline" onclick="showPage('novels')">阅读小说</button>
+            <button class="hero-btn-primary" onclick="showPage('articles')" data-i18n="front.hero.browseArticles">浏览文章</button>
+            <button class="hero-btn-outline" onclick="showPage('novels')" data-i18n="front.hero.readNovels">阅读小说</button>
           </div>
         </div>
         <div class="hero-side">
           <div class="hero-card" id="homeLatestWorkCard">
-            <div style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.12em;color:rgba(255,255,255,.4);margin-bottom:.75rem">LATEST WORK</div>
+            <div style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.12em;color:rgba(255,255,255,.4);margin-bottom:.75rem" data-i18n="front.hero.latestWork">LATEST WORK</div>
             <div class="hero-card-title" id="homeLatestWorkTitle">--</div>
             <div class="hero-card-meta" id="homeLatestWorkMeta">--</div>
             <div class="hero-card-stats">
-              <div class="hero-stat"><span class="hero-stat-val" id="homeStatArticles">--</span><span class="hero-stat-lbl">ARTICLES</span></div>
-              <div class="hero-stat"><span class="hero-stat-val" id="homeStatNovels">--</span><span class="hero-stat-lbl">NOVELS</span></div>
-              <div class="hero-stat"><span class="hero-stat-val" id="homeStatReaders">--</span><span class="hero-stat-lbl">READERS</span></div>
+              <div class="hero-stat"><span class="hero-stat-val" id="homeStatArticles">--</span><span class="hero-stat-lbl" data-i18n="front.hero.stats.articles">ARTICLES</span></div>
+              <div class="hero-stat"><span class="hero-stat-val" id="homeStatNovels">--</span><span class="hero-stat-lbl" data-i18n="front.hero.stats.novels">NOVELS</span></div>
+              <div class="hero-stat"><span class="hero-stat-val" id="homeStatReaders">--</span><span class="hero-stat-lbl" data-i18n="front.hero.stats.readers">READERS</span></div>
             </div>
           </div>
         </div>
@@ -43,11 +46,11 @@
 
     <div class="container">
       <div class="section-header">
-        <div class="section-title">精选推荐</div>
+        <div class="section-title" data-i18n="front.section.featured">精选推荐</div>
       </div>
       <div class="featured-article" id="homeFeatured">
         <div class="featured-body">
-          <div class="featured-label">Editor's Pick</div>
+          <div class="featured-label" data-i18n="front.featured.label">Editor's Pick</div>
           <h2 class="featured-title" id="homeFeaturedTitle">--</h2>
           <p class="featured-excerpt" id="homeFeaturedExcerpt">--</p>
           <div class="card-meta" id="homeFeaturedMeta"></div>
@@ -56,17 +59,17 @@
       </div>
 
       <div class="cat-tabs" id="homeCatTabs">
-        <div class="cat-tab active" data-tab="all">全部</div>
-        <div class="cat-tab" data-tab="article">文章</div>
-        <div class="cat-tab" data-tab="essay">随笔</div>
-        <div class="cat-tab" data-tab="comment">评论</div>
+        <div class="cat-tab active" data-tab="all" data-i18n="front.tab.all">全部</div>
+        <div class="cat-tab" data-tab="article" data-i18n="nav.articles">文章</div>
+        <div class="cat-tab" data-tab="essay" data-i18n="front.tab.essay">随笔</div>
+        <div class="cat-tab" data-tab="comment" data-i18n="section.comments">评论</div>
       </div>
 
       <div class="articles-grid" id="homeArticlesGrid"></div>
 
       <div class="section-header">
-        <div class="section-title">连载小说</div>
-        <div class="section-more" onclick="showPage('novels')">查看全部 →</div>
+        <div class="section-title" data-i18n="section.serialNovels">连载小说</div>
+        <div class="section-more" onclick="showPage('novels')" data-i18n="front.action.viewAll">查看全部 →</div>
       </div>
       <div class="novels-grid" id="homeNovelsGrid"></div>
     </div>
@@ -74,10 +77,10 @@
     <footer class="front-footer">
       <div class="footer-inner">
         <div class="footer-logo">拾墨</div>
-        <p id="footerIntroText" style="font-size:13px;margin-top:.5rem;max-width:360px;line-height:1.7">一个关于文字、思考与创作的私人空间。感谢你的到来。</p>
+        <p id="footerIntroText" style="font-size:13px;margin-top:.5rem;max-width:360px;line-height:1.7" data-i18n="front.footer.desc">一个关于文字、思考与创作的私人空间。感谢你的到来。</p>
         <div class="footer-bottom">
-          <span>© 2024 拾墨 · 保留所有权利</span>
-          <span>Powered by Next.js · Neon · Vercel</span>
+          <span data-i18n="front.footer.copyright">© 2024 拾墨 · 保留所有权利</span>
+          <span data-i18n="front.footer.powered">Powered by Next.js · Neon · Vercel</span>
         </div>
       </div>
     </footer>
@@ -87,9 +90,9 @@
     <div class="container">
       <div class="article-header">
         <div class="article-breadcrumb">
-          <span onclick="showPage('home')">首页</span>
+          <span onclick="showPage('home')" data-i18n="nav.home">首页</span>
           <span style="color:var(--border-2)">›</span>
-          <span>文章</span>
+          <span data-i18n="nav.articles">文章</span>
         </div>
         <div class="article-tags" style="margin-bottom:1rem"></div>
         <h1 class="article-headline"></h1>
@@ -108,25 +111,25 @@
       <div class="article-layout">
         <div class="article-content"></div>
         <div class="media-panel">
-          <div class="media-panel-label">配图与媒体</div>
+          <div class="media-panel-label" data-i18n="front.media.panel">配图与媒体</div>
           <div class="media-item">
             <div class="media-img">📚</div>
-            <div class="media-caption">媒体面板</div>
+            <div class="media-caption" data-i18n="front.media.caption">媒体面板</div>
           </div>
         </div>
       </div>
     </div>
     <div class="container-sm">
       <div class="comments-section">
-        <div class="comments-title">评论</div>
+        <div class="comments-title" data-i18n="section.comments">评论</div>
         <div class="comment-input-area">
-          <textarea placeholder="写下你的想法……（登录后才能评论）" readonly onclick="showPage('login')"></textarea>
+          <textarea data-i18n-placeholder="comment.placeholderLogin" placeholder="写下你的想法……（登录后才能评论）" readonly onclick="showPage('login')"></textarea>
           <div class="comment-input-footer">
             <div class="comment-user-info">
               <div class="comment-avatar">?</div>
-              <span>请先登录</span>
+              <span data-i18n="action.pleaseLogin">请先登录</span>
             </div>
-            <button class="btn btn-primary btn-sm" onclick="showPage('login')">登录后评论</button>
+            <button class="btn btn-primary btn-sm" onclick="showPage('login')" data-i18n="action.loginToComment">登录后评论</button>
           </div>
         </div>
       </div>
@@ -136,18 +139,18 @@
   <div class="page <%= initialPage === 'novels' ? 'active' : '' %>" id="page-novels">
     <div class="page-hero">
       <div class="page-hero-inner">
-        <h1>连载小说</h1>
-        <p>正在进行中的故事，以及那些已经画上句号的世界</p>
+        <h1 data-i18n="section.serialNovels">连载小说</h1>
+        <p data-i18n="front.novels.subtitle">正在进行中的故事，以及那些已经画上句号的世界</p>
       </div>
     </div>
     <div class="container">
       <div class="cat-tabs" style="padding-top:2rem">
-        <div class="cat-tab active" data-tab="all">全部</div>
-        <div class="cat-tab" data-tab="ongoing">连载中</div>
-        <div class="cat-tab" data-tab="finished">已完结</div>
-        <div class="cat-tab" data-tab="genre:科幻">科幻</div>
-        <div class="cat-tab" data-tab="genre:奇幻">奇幻</div>
-        <div class="cat-tab" data-tab="genre:现实主义">现实主义</div>
+        <div class="cat-tab active" data-tab="all" data-i18n="front.tab.all">全部</div>
+        <div class="cat-tab" data-tab="ongoing" data-i18n="front.novelFilter.ongoing">连载中</div>
+        <div class="cat-tab" data-tab="finished" data-i18n="front.novelFilter.finished">已完结</div>
+        <div class="cat-tab" data-tab="genre:科幻" data-i18n="front.genre.scifi">科幻</div>
+        <div class="cat-tab" data-tab="genre:奇幻" data-i18n="front.genre.fantasy">奇幻</div>
+        <div class="cat-tab" data-tab="genre:现实主义" data-i18n="front.genre.realism">现实主义</div>
       </div>
       <div class="novels-list-grid"></div>
     </div>
@@ -155,27 +158,27 @@
 
   <div class="page <%= initialPage === 'chapter' ? 'active' : '' %>" id="page-chapter">
     <div class="chapter-header">
-      <div class="chapter-back" onclick="showPage('novels')">← 返回目录</div>
-      <div class="chapter-title-bar">小说阅读</div>
+      <div class="chapter-back" onclick="showPage('novels')" data-i18n="front.chapter.backToList">← 返回目录</div>
+      <div class="chapter-title-bar" data-i18n="front.chapter.reader">小说阅读</div>
       <div class="chapter-nav-btns">
-        <button class="btn btn-outline btn-sm" onclick="goPrevChapter()">← 上一章</button>
-        <button class="btn btn-primary btn-sm" onclick="goNextChapter()">下一章 →</button>
+        <button class="btn btn-outline btn-sm" onclick="goPrevChapter()" data-i18n="front.chapter.prev">← 上一章</button>
+        <button class="btn btn-primary btn-sm" onclick="goNextChapter()" data-i18n="front.chapter.next">下一章 →</button>
       </div>
     </div>
     <div class="reading-progress"><div class="reading-progress-bar"></div></div>
     <div class="chapter-reader-layout">
       <div class="chapter-content-wrap">
-        <span class="chapter-num-label">章节</span>
-        <h1 class="chapter-title">章节标题</h1>
+        <span class="chapter-num-label" data-i18n="front.chapter.label">章节</span>
+        <h1 class="chapter-title" data-i18n="front.chapter.titlePlaceholder">章节标题</h1>
         <div class="chapter-body"></div>
         <div class="chapter-nav-footer">
-          <button class="btn btn-outline" onclick="goPrevChapter()">← 上一章</button>
-          <button class="btn btn-primary" onclick="goNextChapter()">下一章 →</button>
+          <button class="btn btn-outline" onclick="goPrevChapter()" data-i18n="front.chapter.prev">← 上一章</button>
+          <button class="btn btn-primary" onclick="goNextChapter()" data-i18n="front.chapter.next">下一章 →</button>
         </div>
       </div>
       <div>
         <div class="chapter-toc">
-          <div class="chapter-toc-header">章节目录</div>
+          <div class="chapter-toc-header" data-i18n="front.chapter.toc">章节目录</div>
           <div class="chapter-toc-list"></div>
         </div>
       </div>
@@ -185,41 +188,41 @@
   <div class="page <%= initialPage === 'about' ? 'active' : '' %>" id="page-about">
     <div class="page-hero">
       <div class="page-hero-inner">
-        <h1>关于作者</h1>
-        <p id="aboutHeroSubtitle">一个喜欢用文字思考的人</p>
+        <h1 data-i18n="about.author">关于作者</h1>
+        <p id="aboutHeroSubtitle" data-i18n="front.about.subtitlePlaceholder">一个喜欢用文字思考的人</p>
       </div>
     </div>
     <div class="container-sm" style="padding:3rem 2rem 5rem">
       <div style="display:flex;gap:3rem;align-items:flex-start;margin-bottom:3rem">
         <div style="width:120px;height:120px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--gold));flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:2.5rem;color:white">✍</div>
         <div>
-          <h2 id="aboutAuthorName" style="font-family:'Playfair Display',serif;font-size:1.8rem;margin-bottom:.5rem">某位写作者</h2>
-          <p id="aboutAuthorTagline" style="color:var(--ink-3);font-size:.9rem;margin-bottom:1rem;font-family:'DM Mono',monospace">作家 · 随笔作者 · 小说创作者</p>
+          <h2 id="aboutAuthorName" style="font-family:'Playfair Display',serif;font-size:1.8rem;margin-bottom:.5rem" data-i18n="front.author.placeholder">某位写作者</h2>
+          <p id="aboutAuthorTagline" style="color:var(--ink-3);font-size:.9rem;margin-bottom:1rem;font-family:'DM Mono',monospace" data-i18n="front.about.taglinePlaceholder">作家 · 随笔作者 · 小说创作者</p>
           <div style="display:flex;gap:.75rem;flex-wrap:wrap">
-            <span class="tag tag-green">文学</span>
-            <span class="tag tag-gold">哲学</span>
-            <span class="tag tag-blue">电影</span>
-            <span class="tag tag-gray">旅行</span>
+            <span class="tag tag-green" data-i18n="about.tag.literature">文学</span>
+            <span class="tag tag-gold" data-i18n="about.tag.philosophy">哲学</span>
+            <span class="tag tag-blue" data-i18n="about.tag.film">电影</span>
+            <span class="tag tag-gray" data-i18n="about.tag.travel">旅行</span>
           </div>
         </div>
       </div>
-      <div id="aboutAuthorContent" style="font-size:1.02rem;line-height:1.9;color:var(--ink-2)"><p>这是一个关于文字与思考的私人空间。</p></div>
+      <div id="aboutAuthorContent" style="font-size:1.02rem;line-height:1.9;color:var(--ink-2)" data-i18n-html="front.about.contentPlaceholder"><p>这是一个关于文字与思考的私人空间。</p></div>
     </div>
   </div>
 
   <div class="page <%= initialPage === 'articles' ? 'active' : '' %>" id="page-articles">
     <div class="page-hero">
       <div class="page-hero-inner">
-        <h1>全部文章</h1>
-        <p>文章、随笔与评论</p>
+        <h1 data-i18n="section.allArticles">全部文章</h1>
+        <p data-i18n="section.articleSubtitle">文章、随笔与评论</p>
       </div>
     </div>
     <div class="container">
       <div class="cat-tabs" style="padding-top:2rem" id="articlesCatTabs">
-        <div class="cat-tab active" data-tab="all">全部</div>
-        <div class="cat-tab" data-tab="article">文章</div>
-        <div class="cat-tab" data-tab="essay">随笔</div>
-        <div class="cat-tab" data-tab="comment">评论</div>
+        <div class="cat-tab active" data-tab="all" data-i18n="front.tab.all">全部</div>
+        <div class="cat-tab" data-tab="article" data-i18n="nav.articles">文章</div>
+        <div class="cat-tab" data-tab="essay" data-i18n="front.tab.essay">随笔</div>
+        <div class="cat-tab" data-tab="comment" data-i18n="section.comments">评论</div>
       </div>
       <div class="articles-grid" id="articlesGrid"></div>
       <div class="pagination" id="frontArticlesPagination" style="border-color:var(--border)"></div>
@@ -230,18 +233,18 @@
     <div class="auth-page">
       <div class="auth-card">
         <div class="auth-logo"><div class="auth-logo-text">拾墨</div></div>
-        <h2 class="auth-title">欢迎回来</h2>
-        <p class="auth-subtitle">登录你的账号，加入对话</p>
+        <h2 class="auth-title" data-i18n="auth.welcomeBack">欢迎回来</h2>
+        <p class="auth-subtitle" data-i18n="auth.loginSubtitle">登录你的账号，加入对话</p>
         <div class="form-group">
-          <label class="form-label">邮箱地址</label>
-          <input type="text" id="loginUsername" class="form-input" placeholder="输入用户名">
+          <label class="form-label" data-i18n="form.email">邮箱地址</label>
+          <input type="text" id="loginUsername" class="form-input" data-i18n-placeholder="form.emailPlaceholder" placeholder="输入用户名">
         </div>
         <div class="form-group">
-          <label class="form-label">密码</label>
-          <input type="password" id="loginPassword" class="form-input" placeholder="输入密码">
+          <label class="form-label" data-i18n="form.password">密码</label>
+          <input type="password" id="loginPassword" class="form-input" data-i18n-placeholder="form.passwordPlaceholder" placeholder="输入密码">
         </div>
-        <button class="form-submit" onclick="handleLogin()">登录</button>
-        <div class="auth-switch">还没有账号？<span onclick="showPage('register')">立即注册</span></div>
+        <button class="form-submit" onclick="handleLogin()" data-i18n="action.login">登录</button>
+        <div class="auth-switch"><span data-i18n="auth.noAccount">还没有账号？</span><span onclick="showPage('register')" data-i18n="auth.registerNow">立即注册</span></div>
       </div>
     </div>
   </div>
@@ -250,26 +253,26 @@
     <div class="auth-page">
       <div class="auth-card">
         <div class="auth-logo"><div class="auth-logo-text">拾墨</div></div>
-        <h2 class="auth-title">创建账号</h2>
-        <p class="auth-subtitle">加入读者社区，参与内容讨论</p>
+        <h2 class="auth-title" data-i18n="auth.createAccount">创建账号</h2>
+        <p class="auth-subtitle" data-i18n="auth.registerSubtitle">加入读者社区，参与内容讨论</p>
         <div class="form-group">
-          <label class="form-label">昵称</label>
-          <input type="text" class="form-input" placeholder="你的显示名称">
+          <label class="form-label" data-i18n="form.nickname">昵称</label>
+          <input type="text" class="form-input" data-i18n-placeholder="form.nicknamePlaceholder" placeholder="你的显示名称">
         </div>
         <div class="form-group">
-          <label class="form-label">邮箱地址</label>
-          <input type="email" class="form-input" placeholder="your@email.com">
+          <label class="form-label" data-i18n="form.email">邮箱地址</label>
+          <input type="email" class="form-input" data-i18n-placeholder="form.emailPlaceholder" placeholder="your@email.com">
         </div>
         <div class="form-group">
-          <label class="form-label">密码</label>
-          <input type="password" class="form-input" placeholder="至少 8 位字符">
+          <label class="form-label" data-i18n="form.password">密码</label>
+          <input type="password" class="form-input" data-i18n-placeholder="form.passwordMinPlaceholder" placeholder="至少 8 位字符">
         </div>
         <div class="form-group">
-          <label class="form-label">确认密码</label>
-          <input type="password" class="form-input" placeholder="再次输入密码">
+          <label class="form-label" data-i18n="form.confirmPassword">确认密码</label>
+          <input type="password" class="form-input" data-i18n-placeholder="form.confirmPasswordPlaceholder" placeholder="再次输入密码">
         </div>
-        <button class="form-submit">注册</button>
-        <div class="auth-switch">已有账号？<span onclick="showPage('login')">直接登录</span></div>
+        <button class="form-submit" data-i18n="action.register">注册</button>
+        <div class="auth-switch"><span data-i18n="auth.haveAccount">已有账号？</span><span onclick="showPage('login')" data-i18n="auth.directLogin">直接登录</span></div>
       </div>
     </div>
   </div>
@@ -286,16 +289,16 @@
 
       <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);padding:1.25rem 1.25rem">
         <div class="profile-grid" style="display:grid;grid-template-columns:140px 1fr;row-gap:.75rem;column-gap:1rem;font-size:14px">
-          <div style="color:var(--ink-4);font-family:'DM Mono',monospace">用户名</div>
+          <div style="color:var(--ink-4);font-family:'DM Mono',monospace" data-i18n="profile.username">用户名</div>
           <div id="profileUsername">--</div>
-          <div style="color:var(--ink-4);font-family:'DM Mono',monospace">角色</div>
+          <div style="color:var(--ink-4);font-family:'DM Mono',monospace" data-i18n="profile.role">角色</div>
           <div id="profileRole">--</div>
-          <div style="color:var(--ink-4);font-family:'DM Mono',monospace">注册时间</div>
+          <div style="color:var(--ink-4);font-family:'DM Mono',monospace" data-i18n="profile.createdAt">注册时间</div>
           <div id="profileCreatedAt">--</div>
         </div>
         <div style="display:flex;gap:.75rem;flex-wrap:wrap;margin-top:1.25rem">
-          <button class="btn btn-primary btn-sm" onclick="showPage('home')">返回主页</button>
-          <button class="btn btn-outline btn-sm" onclick="logout()">退出登录</button>
+          <button class="btn btn-primary btn-sm" onclick="showPage('home')" data-i18n="action.backHome">返回主页</button>
+          <button class="btn btn-outline btn-sm" onclick="logout()" data-i18n="action.logout">退出登录</button>
         </div>
       </div>
     </div>

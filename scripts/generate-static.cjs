@@ -14,8 +14,8 @@ async function main() {
   await copyIfExists(path.join(rootDir, 'js'), path.join(outDir, 'js'));
   await copyIfExists(path.join(rootDir, 'images'), path.join(outDir, 'images'));
 
-  await copyFileIfExists(path.join(rootDir, '.nojekyll'), path.join(outDir, '.nojekyll'));
-  await copyFileIfExists(path.join(rootDir, 'search.xml'), path.join(outDir, 'search.xml'));
+  await writeNoJekyll(outDir);
+  await writeSearchXml(rootDir, outDir);
 
   const pages = [
     { out: 'index.html', initialPage: 'home', title: '' },
@@ -42,6 +42,103 @@ async function main() {
 
   const ms = Date.now() - startAt;
   process.stdout.write(`Generated ${pages.length} pages into ${outDir} (${ms}ms)\n`);
+}
+
+async function writeNoJekyll(outDir) {
+  const outPath = path.join(outDir, '.nojekyll');
+  await fs.promises.writeFile(outPath, '', 'utf8');
+}
+
+async function writeSearchXml(rootDir, outDir) {
+  const postsDir = path.join(rootDir, 'data', 'posts');
+  const outPath = path.join(outDir, 'search.xml');
+
+  let entries = [];
+  try {
+    const files = await fs.promises.readdir(postsDir);
+    const mdFiles = files.filter((f) => /\.md$/i.test(f || ''));
+    const list = await Promise.all(
+      mdFiles.map(async (filename) => {
+        try {
+          const fullPath = path.join(postsDir, filename);
+          const md = await fs.promises.readFile(fullPath, 'utf8');
+          const { title, content } = extractSimplePostInfo(md);
+          return { filename, title, content };
+        } catch {
+          return null;
+        }
+      })
+    );
+    entries = list.filter(Boolean);
+  } catch {
+  }
+
+  const xml = buildSearchXml(entries);
+  await fs.promises.writeFile(outPath, xml, 'utf8');
+}
+
+function extractSimplePostInfo(markdown) {
+  const raw = String(markdown || '').replace(/^\uFEFF/, '');
+  const fmMatch = raw.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n/);
+  const body = fmMatch ? raw.slice(fmMatch[0].length) : raw;
+  const fmText = fmMatch ? fmMatch[1] : '';
+
+  let title = '';
+  if (fmText) {
+    const m = fmText.match(/^\s*title\s*:\s*(.+)\s*$/m);
+    if (m && m[1]) title = String(m[1]).trim().replace(/^["']|["']$/g, '');
+  }
+  if (!title) {
+    const h = body.match(/^\s*#\s+(.+)\s*$/m);
+    if (h && h[1]) title = String(h[1]).trim();
+  }
+  if (!title) title = '';
+
+  const text = body
+    .replace(/```[\s\S]*?```/g, ' ')
+    .replace(/`[^`]*`/g, ' ')
+    .replace(/!\[[^\]]*\]\([^)]+\)/g, ' ')
+    .replace(/\[[^\]]*\]\([^)]+\)/g, ' ')
+    .replace(/[#>*_~\-]+/g, ' ')
+    .replace(/\r?\n+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  return { title, content: text.slice(0, 600) };
+}
+
+function escapeXml(s) {
+  return String(s || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&apos;');
+}
+
+function buildSearchXml(entries) {
+  const list = Array.isArray(entries) ? entries : [];
+  const items = list.map((e) => {
+    const title = escapeXml(e.title || '');
+    const url = '/blog/';
+    const content = e.content ? `<![CDATA[${String(e.content)}]]>` : '<![CDATA[]]>';
+    return [
+      '  <entry>',
+      `    <title>${title}</title>`,
+      `    <link href="${url}"/>`,
+      `    <url>${url}</url>`,
+      `    <content type="text">${content}</content>`,
+      '  </entry>'
+    ].join('\n');
+  });
+
+  return [
+    '<?xml version="1.0" encoding="utf-8"?>',
+    '<search>',
+    items.join('\n'),
+    '</search>',
+    ''
+  ].join('\n');
 }
 
 function renderLayout(rootDir, locals) {

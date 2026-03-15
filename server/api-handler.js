@@ -591,7 +591,25 @@ async function writeJsonFile(owner, repo, token, filePath, data, sha, message) {
 
 async function getSettings(owner, repo, headers) {
   const filePath = 'data/settings.json';
-  const fallback = { title: '拾墨', description: '', author: '', allowRegister: true, homeIntro: '', footerIntro: '', aboutSubtitle: '', aboutTagline: '', aboutContent: '' };
+  const fallback = {
+    title: '拾墨',
+    titleJa: '',
+    description: '',
+    descriptionJa: '',
+    author: '',
+    authorJa: '',
+    allowRegister: true,
+    homeIntro: '',
+    homeIntroJa: '',
+    footerIntro: '',
+    footerIntroJa: '',
+    aboutSubtitle: '',
+    aboutSubtitleJa: '',
+    aboutTagline: '',
+    aboutTaglineJa: '',
+    aboutContent: '',
+    aboutContentJa: ''
+  };
   const { data } = await readJsonFileOr(owner, repo, headers, filePath, fallback);
   if (!data || typeof data !== 'object') return fallback;
   return { ...fallback, ...data };
@@ -1440,7 +1458,25 @@ async function handleSettings(req, res) {
   const { owner, repo, token } = getGithubConfig();
   const headers = githubHeaders(token);
   const filePath = 'data/settings.json';
-  const fallback = { title: '拾墨', description: '', author: '', allowRegister: true, homeIntro: '', footerIntro: '', aboutSubtitle: '', aboutTagline: '', aboutContent: '' };
+  const fallback = {
+    title: '拾墨',
+    titleJa: '',
+    description: '',
+    descriptionJa: '',
+    author: '',
+    authorJa: '',
+    allowRegister: true,
+    homeIntro: '',
+    homeIntroJa: '',
+    footerIntro: '',
+    footerIntroJa: '',
+    aboutSubtitle: '',
+    aboutSubtitleJa: '',
+    aboutTagline: '',
+    aboutTaglineJa: '',
+    aboutContent: '',
+    aboutContentJa: ''
+  };
 
   if (req.method === 'GET') {
     if (shouldUseLocalPosts()) {
@@ -1464,13 +1500,21 @@ async function handleSettings(req, res) {
   }
   const next = { ...(existing.data || fallback) };
   if (body.title !== undefined) next.title = String(body.title);
+  if (body.titleJa !== undefined) next.titleJa = String(body.titleJa);
   if (body.description !== undefined) next.description = String(body.description);
+  if (body.descriptionJa !== undefined) next.descriptionJa = String(body.descriptionJa);
   if (body.author !== undefined) next.author = String(body.author);
+  if (body.authorJa !== undefined) next.authorJa = String(body.authorJa);
   if (body.homeIntro !== undefined) next.homeIntro = String(body.homeIntro);
+  if (body.homeIntroJa !== undefined) next.homeIntroJa = String(body.homeIntroJa);
   if (body.footerIntro !== undefined) next.footerIntro = String(body.footerIntro);
+  if (body.footerIntroJa !== undefined) next.footerIntroJa = String(body.footerIntroJa);
   if (body.aboutSubtitle !== undefined) next.aboutSubtitle = String(body.aboutSubtitle);
+  if (body.aboutSubtitleJa !== undefined) next.aboutSubtitleJa = String(body.aboutSubtitleJa);
   if (body.aboutTagline !== undefined) next.aboutTagline = String(body.aboutTagline);
+  if (body.aboutTaglineJa !== undefined) next.aboutTaglineJa = String(body.aboutTaglineJa);
   if (body.aboutContent !== undefined) next.aboutContent = String(body.aboutContent);
+  if (body.aboutContentJa !== undefined) next.aboutContentJa = String(body.aboutContentJa);
   if (body.allowRegister !== undefined) next.allowRegister = Boolean(body.allowRegister);
   if (shouldUseLocalPosts()) {
     await writeLocalJson('settings.json', next);
